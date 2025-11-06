@@ -1,4 +1,4 @@
-import { collection, getDocs, addDoc, deleteDoc, doc, query, where, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, addDoc, deleteDoc, doc, setDoc, query, where, Timestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { formatDate } from '../utils/dateUtils';
 
@@ -76,14 +76,23 @@ class ReservationService {
     }
   }
   
-  async createReservation(spaceId, userId, checkIn, checkOut, memo = '') {
+  async createReservation(spaceId, reservationData) {
     const reservesRef = collection(db, `spaces/${spaceId}/reserves`);
     
-    await addDoc(reservesRef, {
-      userId,
-      checkIn: Timestamp.fromDate(checkIn),
-      checkOut: Timestamp.fromDate(checkOut),
-      memo,
+    // 타임스탬프 기반 문서 ID 생성 (기존 패턴 유지)
+    const now = new Date();
+    const docId = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}_${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`;
+    
+    await setDoc(doc(reservesRef, docId), {
+      userId: reservationData.userId,
+      name: reservationData.name,
+      type: reservationData.type,
+      checkIn: Timestamp.fromDate(reservationData.checkIn),
+      checkOut: Timestamp.fromDate(reservationData.checkOut),
+      nights: reservationData.nights || 1,
+      memo: reservationData.memo || '',
+      phone: reservationData.phone || '',
+      status: 'active',
       createdAt: Timestamp.now()
     });
   }
