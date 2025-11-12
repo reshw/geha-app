@@ -2,6 +2,17 @@ const axios = require('axios');
 const { Resend } = require('resend');
 
 exports.handler = async (event) => {
+  // 🔍 현재 서버 IP 확인 (알리고 등록용)
+  try {
+    const ipResponse = await axios.get('https://api.ipify.org?format=json');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🌐 현재 Netlify Functions 서버 IP:', ipResponse.data.ip);
+    console.log('이 IP를 알리고에 등록하세요!');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  } catch (ipError) {
+    console.log('IP 확인 실패:', ipError.message);
+  }
+
   // CORS 헤더
   const headers = {
     'Access-Control-Allow-Origin': '*',
