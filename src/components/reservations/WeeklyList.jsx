@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, Check, X } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useReservations } from '../../hooks/useReservations';
 import useStore from '../../store/useStore';
@@ -9,6 +9,105 @@ import Loading from '../common/Loading';
 import Modal from '../common/Modal';
 import ReservationModal from './ReservationModal';
 import { formatDate, formatWeekDay, getWeekDates, isToday } from '../../utils/dateUtils';
+
+// 토스트 알림 컴포넌트
+const Toast = ({ message, type = 'success', onClose }) => {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 3000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        top: '20px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 9999,
+        padding: '16px 24px',
+        borderRadius: '12px',
+        background: type === 'success' ? '#10b981' : '#ef4444',
+        color: 'white',
+        boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        fontSize: '15px',
+        fontWeight: '600',
+        animation: 'slideDown 0.3s ease-out'
+      }}
+    >
+      {type === 'success' ? (
+        <Check className="w-5 h-5" />
+      ) : (
+        <X className="w-5 h-5" />
+      )}
+      {message}
+      <style>{`
+        @keyframes slideDown {
+          from {
+            transform: translate(-50%, -100%);
+            opacity: 0;
+          }
+          to {
+            transform: translate(-50%, 0);
+            opacity: 1;
+          }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+// 로딩 오버레이 컴포넌트
+const LoadingOverlay = () => (
+  <div
+    style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: 'rgba(0,0,0,0.5)',
+      zIndex: 9998,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }}
+  >
+    <div
+      style={{
+        background: 'white',
+        borderRadius: '16px',
+        padding: '24px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '16px'
+      }}
+    >
+      <div
+        style={{
+          width: '48px',
+          height: '48px',
+          border: '4px solid #e5e7eb',
+          borderTop: '4px solid #2563eb',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }}
+      />
+      <div style={{ fontSize: '15px', fontWeight: '600', color: '#374151' }}>
+        예약 처리 중...
+      </div>
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
+  </div>
+);
 
 const WeeklyList = () => {
   const { user, isLoggedIn } = useAuth();
@@ -31,6 +130,8 @@ const WeeklyList = () => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [toast, setToast] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const { reservations, loading: reservationsLoading, createReservation } = useReservations(selectedSpace?.id, currentWeekStart);
   
@@ -111,6 +212,7 @@ const WeeklyList = () => {
   };
   
   const handleReservationConfirm = async (reservationData) => {
+    setIsSubmitting(true);
     try {
       console.log('🔵 예약 시작');
       console.log('user:', user);
@@ -135,12 +237,14 @@ const WeeklyList = () => {
       
       console.log('✅ 예약 완료!');
       setShowReservationModal(false);
-      alert('예약이 완료되었습니다!');
+      setToast({ message: '예약이 완료되었습니다! 🎉', type: 'success' });
     } catch (error) {
       console.error('❌ 예약 실패 상세:', error);
       console.error('에러 메시지:', error.message);
       console.error('에러 스택:', error.stack);
-      alert(`예약에 실패했습니다.\n에러: ${error.message}`);
+      setToast({ message: `예약 실패: ${error.message}`, type: 'error' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
   
@@ -383,10 +487,21 @@ const WeeklyList = () => {
                   style={{
                     background: 'var(--surface)',
                     borderRadius: 'var(--radius)',
-                    border: isCurrentDay ? '2px solid var(--brand)' : '1px solid rgba(255,255,255,.08)',
-                    overflow: 'hidden'
+                    border: isCurrentDay 
+                      ? '1px solid var(--brand)' 
+                      : '1px solid rgba(255,255,255,.08)',
+                    overflow: 'hidden',
+                    transition: 'all 0.2s ease'
                   }}
                   open={isCurrentDay}
+                  onToggle={(e) => {
+                    // 열림/닫힘 상태에 따라 배경색 변경
+                    if (e.target.open) {
+                      e.target.style.background = 'rgba(37, 99, 235, 0.05)';
+                    } else {
+                      e.target.style.background = 'var(--surface)';
+                    }
+                  }}
                 >
                   <summary
                     style={{
@@ -400,8 +515,12 @@ const WeeklyList = () => {
                     <div style={{
                       minWidth: '120px',
                       fontWeight: '800',
-                      fontSize: '15px'
+                      fontSize: '15px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
                     }}>
+                      {isCurrentDay && <span style={{ fontSize: '12px' }}>📍</span>}
                       {date.getMonth() + 1}월 {date.getDate()}일
                       <span style={{
                         marginLeft: '4px',
@@ -670,6 +789,18 @@ const WeeklyList = () => {
           </div>
         </Modal>
       )}
+      
+      {/* 토스트 알림 */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+      
+      {/* 로딩 오버레이 */}
+      {isSubmitting && <LoadingOverlay />}
     </div>
   );
 };
