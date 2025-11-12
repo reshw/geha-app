@@ -1,15 +1,38 @@
-import { collection, getDocs, addDoc, deleteDoc, doc, setDoc, query, where, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, addDoc, deleteDoc, doc, setDoc, query, where, Timestamp, orderBy } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { formatDate } from '../utils/dateUtils';
 
 class ReservationService {
-  async getReservations(spaceId) {
+  async getReservations(spaceId, currentWeekStart) {
     try {
       console.log('🔍 예약 조회 시작, spaceId:', spaceId);
       
       const reservesRef = collection(db, `spaces/${spaceId}/reserves`);
-      // 모든 예약 가져오기 (과거 포함)
-      const snapshot = await getDocs(reservesRef);
+      
+      // 현재 주 시작일 기준으로 앞뒤 1주씩 (총 3주 범위)
+      const startDate = new Date(currentWeekStart);
+      startDate.setDate(startDate.getDate() - 7); // 1주 전
+      startDate.setHours(0, 0, 0, 0);
+      
+      const endDate = new Date(currentWeekStart);
+      endDate.setDate(endDate.getDate() + 20); // 현재주 7일 + 뒤 2주 (13일)
+      endDate.setHours(23, 59, 59, 999);
+      
+      console.log('📅 쿼리 범위:', {
+        start: startDate.toLocaleDateString('ko-KR'),
+        end: endDate.toLocaleDateString('ko-KR'),
+        currentWeek: currentWeekStart.toLocaleDateString('ko-KR')
+      });
+      
+      // checkIn <= endDate AND checkOut >= startDate 범위의 예약만 조회
+      const q = query(
+        reservesRef,
+        where('checkIn', '<=', Timestamp.fromDate(endDate)),
+        where('checkOut', '>=', Timestamp.fromDate(startDate)),
+        orderBy('checkIn', 'asc')
+      );
+      
+      const snapshot = await getDocs(q);
       
       console.log('📋 reserves 문서 수:', snapshot.size);
       
@@ -17,57 +40,49 @@ class ReservationService {
       const userIds = new Set();
       
       snapshot.forEach((docSnap) => {
-        try {
-          const data = docSnap.data();
-          console.log('  - 예약 문서:', docSnap.id, data);
+        const data = docSnap.data();
+        
+        // checkIn, checkOut이 존재하고 Timestamp인지 확인
+        if (!data.checkIn || !data.checkOut) {
+          console.warn('⚠️ checkIn/checkOut 없음:', docSnap.id);
+          return;
+        }
+        
+        if (typeof data.checkIn.toDate !== 'function' || typeof data.checkOut.toDate !== 'function') {
+          console.warn('⚠️ Timestamp 아님:', docSnap.id);
+          return;
+        }
+        
+        userIds.add(data.userId);
+        
+        const checkIn = data.checkIn.toDate();
+        const checkOut = data.checkOut.toDate();
+        
+        // 체크인부터 체크아웃 전날까지
+        let current = new Date(checkIn);
+        const lastDay = new Date(checkOut);
+        lastDay.setDate(lastDay.getDate() - 1);
+        
+        while (current <= lastDay) {
+          const dateStr = formatDate(current);
           
-          // checkIn, checkOut이 존재하고 Timestamp인지 확인
-          if (!data.checkIn || !data.checkOut) {
-            console.log('  ⚠️ checkIn/checkOut 없음:', docSnap.id);
-            return;
+          if (!reserveData[dateStr]) {
+            reserveData[dateStr] = [];
           }
           
-          if (typeof data.checkIn.toDate !== 'function' || typeof data.checkOut.toDate !== 'function') {
-            console.log('  ⚠️ Timestamp 아님:', docSnap.id);
-            return;
-          }
+          reserveData[dateStr].push({
+            id: docSnap.id,
+            ...data,
+            checkIn,
+            checkOut,
+            isCheckIn: current.getTime() === checkIn.getTime()
+          });
           
-          userIds.add(data.userId);
-          
-          const checkIn = data.checkIn.toDate();
-          const checkOut = data.checkOut.toDate();
-          
-          // 체크인부터 체크아웃 전날까지
-          let current = new Date(checkIn);
-          const lastDay = new Date(checkOut);
-          lastDay.setDate(lastDay.getDate() - 1);
-          
-          while (current <= lastDay) {
-            const dateStr = formatDate(current);
-            
-            if (!reserveData[dateStr]) {
-              reserveData[dateStr] = [];
-            }
-            
-            reserveData[dateStr].push({
-              id: docSnap.id,
-              ...data,
-              checkIn,
-              checkOut,
-              isCheckIn: current.getTime() === checkIn.getTime()
-            });
-            
-            current.setDate(current.getDate() + 1);
-          }
-          
-          console.log('  ✅ 예약 처리 완료:', docSnap.id);
-        } catch (error) {
-          console.error('  ❌ 예약 처리 에러:', docSnap.id, error);
+          current.setDate(current.getDate() + 1);
         }
       });
       
-      console.log('✅ 최종 reserveData keys:', Object.keys(reserveData));
-      console.log('✅ 총 날짜 수:', Object.keys(reserveData).length);
+      console.log('✅ 날짜별 예약 생성 완료:', Object.keys(reserveData).length, '개 날짜');
       
       return { reservations: reserveData, userIds: Array.from(userIds) };
     } catch (error) {

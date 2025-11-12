@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Calendar as CalendarIcon, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useReservations } from '../../hooks/useReservations';
 import useStore from '../../store/useStore';
@@ -13,9 +13,8 @@ import { formatDate, formatWeekDay, getWeekDates, isToday } from '../../utils/da
 const WeeklyList = () => {
   const { user, isLoggedIn } = useAuth();
   const { selectedSpace, setSelectedSpace, profiles } = useStore();
-  const hasInitializedSpace = useRef(false); // 초기 스페이스 설정 플래그
+  const hasInitializedSpace = useRef(false);
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
-    // 이번주 월요일로 시작
     const today = new Date();
     const day = today.getDay();
     const diff = day === 0 ? -6 : 1 - day;
@@ -33,24 +32,17 @@ const WeeklyList = () => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   
-  const { reservations, loading: reservationsLoading, createReservation } = useReservations(selectedSpace?.id);
+  const { reservations, loading: reservationsLoading, createReservation } = useReservations(selectedSpace?.id, currentWeekStart);
   
-  // 사용자 스페이스 로드
   useEffect(() => {
     const loadSpaces = async () => {
-      if (!user?.id) {
-        console.log('❌ user.id 없음:', user);
-        return;
-      }
+      if (!user?.id) return;
       
-      console.log('✅ 스페이스 로딩 시작, user.id:', user.id);
       setLoading(true);
       const spaces = await spaceService.getUserSpaces(user.id);
-      console.log('📦 불러온 스페이스:', spaces);
       setUserSpaces(spaces);
       
       if (spaces.length > 0 && !hasInitializedSpace.current) {
-        console.log('🎯 첫 번째 스페이스 선택:', spaces[0]);
         setSelectedSpace(spaces[0]);
         hasInitializedSpace.current = true;
       }
@@ -59,18 +51,6 @@ const WeeklyList = () => {
     
     loadSpaces();
   }, [user, setSelectedSpace]);
-  
-  const prevMonth = () => {
-    const newDate = new Date(currentWeekStart);
-    newDate.setMonth(newDate.getMonth() - 1);
-    setCurrentWeekStart(newDate);
-  };
-  
-  const nextMonth = () => {
-    const newDate = new Date(currentWeekStart);
-    newDate.setMonth(newDate.getMonth() + 1);
-    setCurrentWeekStart(newDate);
-  };
   
   const prevWeek = () => {
     const newDate = new Date(currentWeekStart);
@@ -107,38 +87,12 @@ const WeeklyList = () => {
   
   const weekDates = getWeekDates(currentWeekStart);
   
-  // 디버깅: reservations 데이터 확인
-  useEffect(() => {
-    console.log('=== Reservations Data ===');
-    console.log('selectedSpace:', selectedSpace);
-    console.log('reservations 객체:', reservations);
-    console.log('reservations keys:', Object.keys(reservations));
-    console.log('profiles:', profiles);
-    
-    // 샘플 날짜 포맷 테스트
-    const testDate = new Date(2024, 11, 30); // 2024년 12월 30일
-    console.log('테스트 날짜 포맷:', formatDate(testDate));
-    console.log('========================');
-  }, [reservations, selectedSpace, profiles]);
-  
   const getDateReservations = (date) => {
     const dateStr = formatDate(date);
-    const dateReservations = reservations[dateStr] || [];
-    
-    // 디버깅용
-    console.log('날짜:', date.toLocaleDateString('ko-KR'), '=> formatDate:', dateStr);
-    if (dateReservations.length > 0) {
-      console.log('  예약 발견:', dateReservations);
-    }
-    if (Object.keys(reservations).length > 0 && dateReservations.length === 0) {
-      console.log('  예약 없음. 전체 reservations keys:', Object.keys(reservations));
-    }
-    
-    return dateReservations;
+    return reservations[dateStr] || [];
   };
   
   const getReservationStats = (dateReservations) => {
-    // manager, vice-manager, shareholder를 주주로 묶음
     const memberTypes = ['shareholder', 'manager', 'vice-manager'];
     const weekdayCount = dateReservations.filter(r => memberTypes.includes(r.type)).length;
     const guestCount = dateReservations.filter(r => r.type === 'guest').length;
@@ -147,16 +101,10 @@ const WeeklyList = () => {
     return { weekdayCount, guestCount, total };
   };
   
-  const handleReservationClick = (reservation) => {
-    alert(`예약 상세 - ${reservation.name || reservation.userId}`);
-  };
-  
   const handleDateClick = (date, reservations) => {
     if (reservations.length === 0) {
-      // 예약 없으면 예약 추가
       setShowReservationModal(true);
     } else {
-      // 예약 있으면 상세보기
       setSelectedDateDetail({ date, reservations });
       setShowDetailModal(true);
     }
@@ -164,8 +112,6 @@ const WeeklyList = () => {
   
   const handleReservationConfirm = async (reservationData) => {
     try {
-      console.log('예약 데이터:', reservationData);
-      // Firebase에 저장
       await createReservation(
         user.id,
         reservationData.checkIn,
@@ -188,112 +134,196 @@ const WeeklyList = () => {
     return <Loading />;
   }
   
-  // 년도 옵션 (현재 년도 기준 ±5년)
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i);
   const months = Array.from({ length: 12 }, (_, i) => i);
   
+  const weekStart = currentWeekStart;
+  const weekEnd = new Date(currentWeekStart);
+  weekEnd.setDate(weekEnd.getDate() + 6);
+  const weekRange = `${weekStart.getFullYear()}.${String(weekStart.getMonth() + 1).padStart(2, '0')}.${String(weekStart.getDate()).padStart(2, '0')} ~ ${String(weekEnd.getMonth() + 1).padStart(2, '0')}.${String(weekEnd.getDate()).padStart(2, '0')}`;
+  
   return (
-    <div className="min-h-screen bg-gray-50 flex justify-center">
-      {/* 모바일 폭 고정 컨테이너 */}
-      <div className="w-full max-w-[480px] bg-white min-h-screen shadow-lg">
-        {/* 헤더 */}
-        <div className="bg-blue-600 text-white p-4 sticky top-0 z-10 shadow-md">
-          <div className="flex items-center justify-between mb-3">
-            <h1 className="text-xl font-bold">
-              {selectedSpace?.name || '308호 예약'}
-            </h1>
-            <div className="flex items-center gap-2">
-              {/* 예약 추가 버튼 */}
-              <button
-                onClick={() => setShowReservationModal(true)}
-                className="p-2 bg-blue-500 rounded-lg hover:bg-blue-700"
-                title="예약 추가"
-              >
-                <Plus className="w-5 h-5" />
-              </button>
-              {/* 프로필 정보 */}
-              {user && (
-                <>
-                  {user.profileImage ? (
-                    <img 
-                      src={user.profileImage} 
-                      alt={user.displayName || '프로필'}
-                      className="w-8 h-8 rounded-full border-2 border-white"
-                    />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full bg-blue-500 border-2 border-white flex items-center justify-center">
-                      <span className="text-sm font-bold">
-                        {user.displayName?.[0] || 'U'}
-                      </span>
-                    </div>
-                  )}
-                </>
-              )}
+    <div style={{ 
+      minHeight: '100vh', 
+      background: 'var(--bg)',
+      display: 'flex',
+      justifyContent: 'center'
+    }}>
+      <div style={{ 
+        width: '100%', 
+        maxWidth: '720px',
+        background: 'var(--bg)',
+        minHeight: '100vh'
+      }}>
+        {/* Sticky 헤더 */}
+        <div style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 20,
+          background: 'linear-gradient(180deg, rgba(15,23,42,.98), rgba(15,23,42,.92))',
+          backdropFilter: 'saturate(180%) blur(12px)',
+          borderBottom: '1px solid rgba(255,255,255,.06)'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            padding: '10px 12px'
+          }}>
+            <div style={{
+              fontSize: '18px',
+              fontWeight: '700',
+              letterSpacing: '.2px',
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              color: '#fff'
+            }}>
+              {selectedSpace?.name || '예약 관리'} ▾
             </div>
-          </div>
-          
-          {/* 월 단위 네비게이션 */}
-          <div className="flex items-center justify-between mb-2">
-            <button 
-              onClick={prevMonth} 
-              className="p-2 hover:bg-blue-500 rounded-lg"
-              title="1개월 전"
-            >
-              <ChevronsLeft className="w-5 h-5" />
-            </button>
             <button
               onClick={() => setShowDatePicker(true)}
-              className="flex items-center gap-2 px-3 py-2 hover:bg-blue-500 rounded-lg"
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '12px',
+                display: 'grid',
+                placeItems: 'center',
+                border: '1px solid rgba(255,255,255,.08)',
+                background: 'rgba(255,255,255,.04)',
+                color: '#fff',
+                cursor: 'pointer'
+              }}
             >
-              <CalendarIcon className="w-4 h-4" />
-              <span className="text-sm font-medium">
-                {currentWeekStart.getFullYear()}년 {currentWeekStart.getMonth() + 1}월 {currentWeekStart.getDate()}일 ~ {weekDates[6].getFullYear()}년 {weekDates[6].getMonth() + 1}월 {weekDates[6].getDate()}일
-              </span>
+              <CalendarIcon className="w-5 h-5" />
             </button>
-            <button 
-              onClick={nextMonth} 
-              className="p-2 hover:bg-blue-500 rounded-lg"
-              title="1개월 후"
-            >
-              <ChevronsRight className="w-5 h-5" />
-            </button>
+            {user && (
+              user.profileImage ? (
+                <img 
+                  src={user.profileImage} 
+                  alt={user.name}
+                  style={{
+                    width: '34px',
+                    height: '34px',
+                    borderRadius: '50%',
+                    objectFit: 'cover'
+                  }}
+                />
+              ) : (
+                <div style={{
+                  width: '34px',
+                  height: '34px',
+                  borderRadius: '50%',
+                  background: '#ddd',
+                  display: 'grid',
+                  placeItems: 'center',
+                  fontSize: '14px',
+                  fontWeight: '700'
+                }}>
+                  {user.name?.[0] || '?'}
+                </div>
+              )
+            )}
           </div>
           
-          {/* 주 단위 네비게이션 */}
-          <div className="flex items-center justify-between gap-2">
-            <button 
-              onClick={prevWeek} 
-              className="p-2 hover:bg-blue-500 rounded-lg"
-              title="지난주"
+          {/* 주간 네비게이션 */}
+          <div style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '8px',
+            padding: '10px 12px 12px',
+            justifyContent: 'center'
+          }}>
+            <button
+              onClick={prevWeek}
+              style={{
+                height: '36px',
+                padding: '0 12px',
+                borderRadius: '999px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                background: 'transparent',
+                color: 'var(--text)',
+                border: '1px solid rgba(255,255,255,.14)',
+                cursor: 'pointer',
+                fontWeight: '600'
+              }}
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <button 
-              onClick={thisWeek}
-              className="flex-1 px-3 py-2 bg-blue-500 rounded-lg text-sm hover:bg-blue-700 font-medium"
-            >
-              이번주
-            </button>
-            <button 
-              onClick={nextWeek} 
-              className="p-2 hover:bg-blue-500 rounded-lg"
-              title="다음주"
+            <div style={{
+              height: '36px',
+              padding: '0 12px',
+              borderRadius: '999px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: 'var(--brand-weak)',
+              color: '#0b1220',
+              border: '1px solid rgba(0,0,0,.06)',
+              fontWeight: '600',
+              cursor: 'pointer'
+            }}
+            onClick={() => setShowDatePicker(true)}>
+              <span>📅</span>
+              <span style={{ fontWeight: '500', color: '#3b4660' }}>{weekRange}</span>
+            </div>
+            <button
+              onClick={nextWeek}
+              style={{
+                height: '36px',
+                padding: '0 12px',
+                borderRadius: '999px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                background: 'transparent',
+                color: 'var(--text)',
+                border: '1px solid rgba(255,255,255,.14)',
+                cursor: 'pointer',
+                fontWeight: '600'
+              }}
             >
               <ChevronRight className="w-5 h-5" />
+            </button>
+            <button
+              onClick={thisWeek}
+              style={{
+                height: '36px',
+                padding: '0 12px',
+                borderRadius: '999px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                background: 'transparent',
+                color: 'var(--text)',
+                border: '1px solid rgba(255,255,255,.14)',
+                cursor: 'pointer',
+                fontWeight: '600'
+              }}
+            >
+              오늘
             </button>
           </div>
           
           {/* 스페이스 선택 */}
           {userSpaces.length > 1 && (
-            <div className="mt-3">
+            <div style={{ padding: '0 12px 10px' }}>
               <select 
                 value={selectedSpace?.id || ''} 
                 onChange={(e) => {
                   const space = userSpaces.find(s => s.id === e.target.value);
                   setSelectedSpace(space);
                 }}
-                className="w-full px-3 py-2 bg-white text-gray-900 rounded-lg"
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  background: 'rgba(255,255,255,.08)',
+                  color: '#fff',
+                  border: '1px solid rgba(255,255,255,.14)',
+                  borderRadius: '8px',
+                  fontWeight: '600'
+                }}
               >
                 {userSpaces.map(space => (
                   <option key={space.id} value={space.id}>
@@ -305,8 +335,22 @@ const WeeklyList = () => {
           )}
         </div>
         
-        {/* 날짜별 리스트 */}
-        <div className="p-4 space-y-4">
+        {/* 섹션 라벨 */}
+        <div style={{
+          padding: '4px 14px',
+          color: 'var(--muted)',
+          fontSize: '13px'
+        }}>
+          이번주 예약 현황
+        </div>
+        
+        {/* 날짜별 카드 리스트 */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+          padding: '0 12px 80px'
+        }}>
           {reservationsLoading ? (
             <Loading />
           ) : (
@@ -316,67 +360,193 @@ const WeeklyList = () => {
               const isCurrentDay = isToday(date);
               
               return (
-                <div 
+                <details
                   key={index}
-                  className={`bg-white rounded-lg shadow-sm border-2 ${
-                    isCurrentDay ? 'border-blue-500' : 'border-gray-200'
-                  }`}
+                  style={{
+                    background: 'var(--surface)',
+                    borderRadius: 'var(--radius)',
+                    border: isCurrentDay ? '2px solid var(--brand)' : '1px solid rgba(255,255,255,.08)',
+                    overflow: 'hidden'
+                  }}
+                  open={isCurrentDay}
                 >
-                  {/* 날짜 헤더 */}
-                  <div className={`p-4 border-b ${
-                    isCurrentDay ? 'bg-blue-50' : ''
-                  }`}>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="text-lg font-bold">
-                          {date.getFullYear()}년 {date.getMonth() + 1}월 {date.getDate()}일
-                        </span>
-                        <span className={`ml-2 text-sm ${
-                          formatWeekDay(date) === '일' ? 'text-red-500' :
-                          formatWeekDay(date) === '토' ? 'text-blue-500' :
-                          'text-gray-600'
-                        }`}>
-                          ({formatWeekDay(date)})
-                        </span>
+                  <summary
+                    style={{
+                      padding: '14px 16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <div style={{
+                      minWidth: '120px',
+                      fontWeight: '800',
+                      fontSize: '15px'
+                    }}>
+                      {date.getMonth() + 1}월 {date.getDate()}일
+                      <span style={{
+                        marginLeft: '4px',
+                        fontSize: '13px',
+                        color: formatWeekDay(date) === '일' ? '#ef4444' :
+                               formatWeekDay(date) === '토' ? '#3b82f6' :
+                               'var(--muted)'
+                      }}>
+                        ({formatWeekDay(date)})
+                      </span>
+                    </div>
+                    <div style={{
+                      color: 'var(--muted)',
+                      fontSize: '13px'
+                    }}>
+                      주주 {stats.weekdayCount} · 게스트 {stats.guestCount}
+                    </div>
+                    <div style={{
+                      marginLeft: 'auto',
+                      textAlign: 'right'
+                    }}>
+                      <div style={{
+                        fontSize: '32px',
+                        fontWeight: '900',
+                        lineHeight: '1'
+                      }}>
+                        {stats.total}명
                       </div>
-                      <div className="text-sm text-gray-600">
-                        <span className="text-blue-600 font-medium">주주 {stats.weekdayCount}명</span>
-                        {' | '}
-                        <span className="text-gray-500">게스트 {stats.guestCount}명</span>
-                        {' | '}
-                        <span className="font-bold">총 {stats.total}명</span>
+                      <div style={{
+                        display: 'flex',
+                        gap: '6px',
+                        marginTop: '4px',
+                        justifyContent: 'flex-end'
+                      }}>
+                        {stats.total === 0 ? (
+                          <span style={{
+                            fontSize: '12px',
+                            padding: '4px 8px',
+                            borderRadius: '999px',
+                            background: 'rgba(255,255,255,.06)',
+                            color: 'var(--muted)',
+                            border: '1px solid rgba(255,255,255,.08)'
+                          }}>
+                            예약 없음
+                          </span>
+                        ) : stats.total <= 2 ? (
+                          <span style={{
+                            fontSize: '12px',
+                            padding: '4px 8px',
+                            borderRadius: '999px',
+                            background: 'rgba(22,163,74,.12)',
+                            color: '#a7f3d0',
+                            border: '1px solid rgba(22,163,74,.24)'
+                          }}>
+                            여유
+                          </span>
+                        ) : (
+                          <span style={{
+                            fontSize: '12px',
+                            padding: '4px 8px',
+                            borderRadius: '999px',
+                            background: 'rgba(217,119,6,.12)',
+                            color: '#fed7aa',
+                            border: '1px solid rgba(217,119,6,.24)'
+                          }}>
+                            예약 많음
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </summary>
+                  
+                  {/* 카드 상세 */}
+                  <div style={{
+                    borderTop: '1px dashed rgba(255,255,255,.12)',
+                    padding: '12px 16px 16px',
+                    background: 'linear-gradient(180deg, rgba(255,255,255,.02), transparent)'
+                  }}>
+                    <div style={{ display: 'grid', gap: '8px' }}>
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '10px 12px',
+                        borderRadius: '10px',
+                        background: 'rgba(255,255,255,.03)',
+                        border: '1px solid rgba(255,255,255,.06)'
+                      }}>
+                        <div style={{ color: 'var(--muted)' }}>주주</div>
+                        <div style={{ fontWeight: '800' }}>
+                          <strong style={{ fontSize: '16px' }}>{stats.weekdayCount}</strong> 명
+                        </div>
+                      </div>
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '10px 12px',
+                        borderRadius: '10px',
+                        background: 'rgba(255,255,255,.03)',
+                        border: '1px solid rgba(255,255,255,.06)'
+                      }}>
+                        <div style={{ color: 'var(--muted)' }}>게스트</div>
+                        <div style={{ fontWeight: '800' }}>
+                          <strong style={{ fontSize: '16px' }}>{stats.guestCount}</strong> 명
+                        </div>
+                      </div>
+                      <div
+                        onClick={() => handleDateClick(date, dateReservations)}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '10px 12px',
+                          borderRadius: '10px',
+                          background: 'rgba(255,255,255,.03)',
+                          border: '1px solid rgba(255,255,255,.06)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <div style={{ color: 'var(--muted)' }}>
+                          {dateReservations.length > 0 ? '상세 보기' : '예약 추가'}
+                        </div>
+                        <div style={{
+                          fontWeight: '700',
+                          textDecoration: 'underline',
+                          color: 'var(--brand)'
+                        }}>
+                          {dateReservations.length > 0 ? '클릭하여 상세보기' : '예약 만들기'}
+                        </div>
                       </div>
                     </div>
                   </div>
-                  
-                  {/* 예약 목록 */}
-                  <div 
-                    className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
-                    onClick={() => handleDateClick(date, dateReservations)}
-                  >
-                    {dateReservations.length === 0 ? (
-                      <div className="text-center py-8">
-                        <p className="text-gray-400 text-sm mb-2">예약 없음</p>
-                        <p className="text-blue-500 text-xs">클릭하여 예약하기</p>
-                      </div>
-                    ) : (
-                      <div className="text-center py-4">
-                        <div className="text-3xl font-bold text-blue-600 mb-1">
-                          {stats.total}명
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          주주 {stats.weekdayCount} · 게스트 {stats.guestCount}
-                        </div>
-                        <p className="text-blue-500 text-xs mt-2">클릭하여 상세보기</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                </details>
               );
             })
           )}
         </div>
       </div>
+      
+      {/* 플로팅 버튼 */}
+      <button
+        onClick={() => setShowReservationModal(true)}
+        style={{
+          position: 'fixed',
+          right: '18px',
+          bottom: 'calc(18px + env(safe-area-inset-bottom))',
+          width: '56px',
+          height: '56px',
+          borderRadius: '18px',
+          display: 'grid',
+          placeItems: 'center',
+          background: 'var(--brand)',
+          color: 'white',
+          boxShadow: 'var(--shadow)',
+          border: 'none',
+          cursor: 'pointer',
+          fontSize: '22px'
+        }}
+        aria-label="새 예약 추가"
+      >
+        <Plus className="w-6 h-6" />
+      </button>
       
       {/* 날짜 선택 모달 */}
       <Modal isOpen={showDatePicker} onClose={() => setShowDatePicker(false)} title="날짜 선택">

@@ -3,16 +3,16 @@ import useStore from '../store/useStore';
 import reservationService from '../services/reservationService';
 import authService from '../services/authService';
 
-export const useReservations = (spaceId) => {
+export const useReservations = (spaceId, currentWeekStart) => {
   const { reservations, setReservations, addProfiles } = useStore();
   const [loading, setLoading] = useState(false);
   
   const fetchReservations = useCallback(async () => {
-    if (!spaceId) return;
+    if (!spaceId || !currentWeekStart) return;
     
     setLoading(true);
     try {
-      const { reservations: data, userIds } = await reservationService.getReservations(spaceId);
+      const { reservations: data, userIds } = await reservationService.getReservations(spaceId, currentWeekStart);
       console.log('📥 예약 데이터 store에 저장:', Object.keys(data).length, '개 날짜');
       setReservations(data);
       
@@ -31,7 +31,7 @@ export const useReservations = (spaceId) => {
     } finally {
       setLoading(false);
     }
-  }, [spaceId, setReservations, addProfiles]);
+  }, [spaceId, currentWeekStart, setReservations, addProfiles]);
   
   useEffect(() => {
     fetchReservations();
