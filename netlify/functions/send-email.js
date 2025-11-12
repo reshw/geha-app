@@ -15,72 +15,160 @@ exports.handler = async (event) => {
 
   try {
     const resend = new Resend(process.env.RESEND_API_KEY);
-    const { type, reservationData, managers } = JSON.parse(event.body);
+    const data = JSON.parse(event.body);
 
-    let emails = [];
-
-    // 예약 확정 이메일
-    if (type === 'reservation_confirm') {
-      // 예약자에게
-      emails.push({
-        from: 'noreply@yourdomain.com',
-        to: reservationData.email || reservationData.phone + '@temp.com',
-        subject: `[${reservationData.spaceName}] 예약이 완료되었습니다`,
-        html: `
-          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #2563eb;">예약 완료</h2>
-            <p><strong>${reservationData.name}</strong>님의 예약이 완료되었습니다.</p>
-            <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <p><strong>공간:</strong> ${reservationData.spaceName}</p>
-              <p><strong>체크인:</strong> ${reservationData.checkIn}</p>
-              <p><strong>체크아웃:</strong> ${reservationData.checkOut}</p>
-              <p><strong>숙박일:</strong> ${reservationData.nights}박</p>
-              <p><strong>유형:</strong> ${reservationData.type === 'shareholder' ? '주주' : '게스트'}</p>
-            </div>
-            <p>즐거운 시간 되세요!</p>
-          </div>
-        `
-      });
-
-      // Manager들에게 알림
-      if (managers && managers.length > 0) {
-        emails.push({
-          from: 'noreply@yourdomain.com',
-          to: managers,
-          subject: `[${reservationData.spaceName}] 새 예약 알림`,
-          html: `
-            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2 style="color: #2563eb;">새 예약 알림</h2>
-              <p>새로운 예약이 접수되었습니다.</p>
-              <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <p><strong>예약자:</strong> ${reservationData.name}</p>
-                <p><strong>유형:</strong> ${reservationData.type === 'shareholder' ? '주주' : '게스트'}</p>
-                <p><strong>체크인:</strong> ${reservationData.checkIn}</p>
-                <p><strong>체크아웃:</strong> ${reservationData.checkOut}</p>
-                <p><strong>숙박일:</strong> ${reservationData.nights}박</p>
-              </div>
-            </div>
-          `
-        });
+    // 필수 필드 검증
+    const required = ['name', 'phone', 'checkIn', 'checkOut'];
+    for (const field of required) {
+      if (!data[field]) {
+        throw new Error(`Missing required field: ${field}`);
       }
     }
 
+    // 날짜 계산
+    const checkinDate = new Date(data.checkIn);
+    const checkoutDate = new Date(data.checkOut);
+    const nights = Math.floor((checkoutDate - checkinDate) / (1000 * 60 * 60 * 24));
+    const days = nights + 1;
+    const cost = nights * 30000;
+
+    // 계좌 정보
+    const accountInfo = process.env.ALIGO_ACCOUNT || '카카오뱅크 7979-38-83356 양석환';
+
+    // 날짜 포맷팅
+    const formatDate = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}년 ${month}월 ${day}일`;
+    };
+
+    // HTML 이메일 템플릿 (PHP 템플릿과 동일)
+    const htmlContent = `
+    <html>
+    <head>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #4a90e2; color: white; padding: 15px; margin-bottom: 20px; }
+            .section { margin-bottom: 25px; }
+            .section-title { font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #2c3e50; border-bottom: 2px solid #4a90e2; padding-bottom: 5px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            th, td { padding: 12px; border: 1px solid #ddd; }
+            th { background: #f8f9fa; text-align: left; width: 35%; }
+            .highlight { background: #e8f4fe; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h2 style="margin:0;">게스트 예약 안내</h2>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">예약 정보</div>
+                <table>
+                    <tr>
+                        <th>입실일</th>
+                        <td>${formatDate(checkinDate)}</td>
+                    </tr>
+                    <tr>
+                        <th>퇴실일</th>
+                        <td>${formatDate(checkoutDate)}</td>
+                    </tr>
+                    <tr class="highlight">
+                        <th>숙박 기간</th>
+                        <td>${nights}박 ${days}일</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="section">
+                <div class="section-title">게스트 정보</div>
+                <table>
+                    <tr>
+                        <th>이름</th>
+                        <td>${data.name}</td>
+                    </tr>
+                    <tr>
+                        <th>연락처</th>
+                        <td>${data.phone}</td>
+                    </tr>
+                    <tr>
+                        <th>성별</th>
+                        <td>${data.gender || '-'}</td>
+                    </tr>
+                    <tr>
+                        <th>생년</th>
+                        <td>${data.birthYear || '-'}</td>
+                    </tr>
+                    <tr>
+                        <th>초대 주주</th>
+                        <td>${data.hostDisplayName || '-'}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="section">
+                <div class="section-title">이용료 정보</div>
+                <table>
+                    <tr class="highlight">
+                        <th>총 이용료</th>
+                        <td>${cost.toLocaleString()}원 (3만원/1박)</td>
+                    </tr>
+                    <tr>
+                        <th>계좌 정보</th>
+                        <td>${accountInfo}</td>
+                    </tr>
+                </table>
+            </div>
+            
+            ${data.memo ? `
+            <div class="section">
+                <div class="section-title">메모</div>
+                <p>${data.memo}</p>
+            </div>
+            ` : ''}
+        </div>
+    </body>
+    </html>`;
+
     // 이메일 발송
-    const results = await Promise.all(
-      emails.map(email => resend.emails.send(email))
-    );
+    const result = await resend.emails.send({
+      from: 'noreply@lunagarden.co.kr',
+      to: 'reshw@naver.com', // PHP에서 사용하던 수신자
+      subject: `[${data.spaceName || '조강308호'}] 새로운 게스트 예약`,
+      html: htmlContent
+    });
+
+    console.log('Email sent:', result);
 
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ success: true, results })
+      body: JSON.stringify({ 
+        success: true,
+        email: {
+          success: true,
+          message: '이메일이 발송되었습니다.',
+          id: result.id
+        }
+      })
     };
+
   } catch (error) {
     console.error('Email send error:', error);
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ success: false, error: error.message })
+      body: JSON.stringify({ 
+        success: false,
+        email: {
+          success: false,
+          message: '이메일 발송에 실패했습니다.'
+        },
+        error: error.message 
+      })
     };
   }
 };

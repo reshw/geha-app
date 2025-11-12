@@ -1,79 +1,60 @@
 class NotificationService {
   /**
-   * 예약 확정시 알림 발송 (이메일 + 알림톡)
+   * 예약 확정시 알림 발송 (이메일 + 알림톡 통합)
    */
-  async sendReservationConfirm(reservationData, managers = []) {
-    const results = {
-      email: null,
-      alimtalk: null
-    };
+  async sendReservationConfirm(reservationData, options = {}) {
+    const {
+      alimtalkEnabled = true,  // 기본값: 알림톡 활성화
+      managers = []
+    } = options;
 
-    // 날짜 포맷팅
-    const checkInStr = this.formatDate(reservationData.checkIn);
-    const checkOutStr = this.formatDate(reservationData.checkOut);
+    // 날짜 포맷팅 (YYYY-MM-DD)
+    const checkInStr = this.formatDateSimple(reservationData.checkIn);
+    const checkOutStr = this.formatDateSimple(reservationData.checkOut);
 
     try {
-      // 1. 이메일 발송
-      const emailResponse = await fetch('/.netlify/functions/send-email', {
+      // 통합 엔드포인트 호출 (이메일 + 알림톡 한 번에)
+      const response = await fetch('/.netlify/functions/send-notification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          type: 'reservation_confirm',
-          reservationData: {
-            ...reservationData,
-            checkIn: checkInStr,
-            checkOut: checkOutStr
-          },
-          managers
+          // 필수 필드
+          name: reservationData.name,
+          phone: reservationData.phone,
+          checkIn: checkInStr,
+          checkOut: checkOutStr,
+          
+          // 선택 필드
+          gender: reservationData.gender,
+          birthYear: reservationData.birthYear,
+          hostDisplayName: reservationData.hostDisplayName,
+          spaceName: reservationData.spaceName || '조강308호',
+          memo: reservationData.memo,
+          
+          // 알림톡 제어
+          alimtalkEnabled
         })
       });
 
-      results.email = await emailResponse.json();
+      const results = await response.json();
+      
       console.log('📧 이메일 발송 결과:', results.email);
+      console.log('💬 알림톡 발송 결과:', results.alimtalk);
+
+      return results;
     } catch (error) {
-      console.error('이메일 발송 실패:', error);
-      results.email = { success: false, error: error.message };
+      console.error('알림 발송 실패:', error);
+      return {
+        success: false,
+        email: { success: false, message: '발송 실패' },
+        alimtalk: { success: false, message: '발송 실패' },
+        error: error.message
+      };
     }
-
-    // 2. 알림톡 발송 (전화번호가 있을 경우만)
-    if (reservationData.phone) {
-      try {
-        const message = `[${reservationData.spaceName}] 예약이 완료되었습니다.
-
-이름: ${reservationData.name}
-체크인: ${checkInStr}
-체크아웃: ${checkOutStr}
-숙박일: ${reservationData.nights}박
-
-즐거운 시간 되세요!`;
-
-        const alimtalkResponse = await fetch('/.netlify/functions/send-alimtalk', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            phoneNumber: reservationData.phone,
-            message,
-            reservationData: {
-              ...reservationData,
-              checkIn: checkInStr,
-              checkOut: checkOutStr
-            }
-          })
-        });
-
-        results.alimtalk = await alimtalkResponse.json();
-        console.log('💬 알림톡 발송 결과:', results.alimtalk);
-      } catch (error) {
-        console.error('알림톡 발송 실패:', error);
-        results.alimtalk = { success: false, error: error.message };
-      }
-    }
-
-    return results;
   }
 
   /**
-   * 날짜 포맷팅 헬퍼
+   * 날짜 포맷팅 헬퍼 (표시용 - 요일 포함)
    */
   formatDate(date) {
     if (!(date instanceof Date)) {
@@ -86,6 +67,20 @@ class NotificationService {
     const weekday = weekdays[date.getDay()];
     
     return `${year}년 ${month}월 ${day}일 (${weekday})`;
+  }
+
+  /**
+   * 날짜 포맷팅 헬퍼 (API용 - YYYY-MM-DD)
+   */
+  formatDateSimple(date) {
+    if (!(date instanceof Date)) {
+      date = new Date(date);
+    }
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}`;
   }
 
   /**

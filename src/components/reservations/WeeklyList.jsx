@@ -241,17 +241,32 @@ const WeeklyList = () => {
       // 알림 발송 (비동기, 실패해도 예약은 유지)
       try {
         const notificationData = {
-          ...dataToSave,
-          spaceName: selectedSpace?.name || '스페이스',
-          email: user.email
+          name: reservationData.name,
+          phone: user.phoneNumber || '',
+          checkIn: reservationData.checkIn,
+          checkOut: reservationData.checkOut,
+          gender: user.gender,
+          birthYear: user.birthYear,
+          hostDisplayName: user.name,
+          spaceName: selectedSpace?.name || '조강308호',
+          memo: reservationData.memo || ''
         };
         
-        // Manager 이메일 (TODO: Firebase에서 가져오기)
-        const managers = [];
+        // 게스트 예약일 때만 알림톡 발송 (주주는 이메일만)
+        const alimtalkEnabled = reservationData.type === 'guest';
         
-        notificationService.sendReservationConfirm(notificationData, managers)
+        notificationService.sendReservationConfirm(notificationData, {
+          alimtalkEnabled,
+          managers: []  // TODO: Firebase에서 manager 목록 가져오기
+        })
           .then(results => {
             console.log('📬 알림 발송 결과:', results);
+            if (results.email?.success) {
+              console.log('✅ 이메일 발송 성공');
+            }
+            if (results.alimtalk?.success) {
+              console.log('✅ 알림톡 발송 성공');
+            }
           })
           .catch(err => {
             console.warn('알림 발송 실패 (예약은 완료됨):', err);
