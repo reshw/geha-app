@@ -112,12 +112,18 @@ const WeeklyList = () => {
   
   const handleReservationConfirm = async (reservationData) => {
     try {
-      await createReservation(
-        user.id,
-        reservationData.checkIn,
-        reservationData.checkOut,
-        `${reservationData.name} (${reservationData.type})`
-      );
+      console.log('예약 데이터:', reservationData);
+      // Firebase에 저장
+      await createReservation({
+        userId: user.id,
+        name: reservationData.name,
+        type: reservationData.type,
+        checkIn: reservationData.checkIn,
+        checkOut: reservationData.checkOut,
+        nights: reservationData.nights,
+        phone: user.phoneNumber || '',
+        memo: ''
+      });
       setShowReservationModal(false);
       alert('예약이 완료되었습니다!');
     } catch (error) {

@@ -37,8 +37,8 @@ export const useReservations = (spaceId, currentWeekStart) => {
     fetchReservations();
   }, [fetchReservations]);
   
-  const createReservation = async (userId, checkIn, checkOut, memo) => {
-    await reservationService.createReservation(spaceId, userId, checkIn, checkOut, memo);
+  const createReservation = async (reservationData) => {
+    await reservationService.createReservation(spaceId, reservationData);
     await fetchReservations();
   };
   
