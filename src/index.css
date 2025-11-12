@@ -3,26 +3,17 @@
 @tailwind utilities;
 
 :root {
+  /* 라이트 모드 단일 */
   --brand: #2563eb;
-  --brand-weak: #e6efff;
-  --bg: #0b0f14;
-  --surface: #10151f;
-  --text: #eef2ff;
-  --muted: #97a3b6;
-  --ok: #16a34a;
-  --warn: #d97706;
+  --brand-weak: #dbeafe;
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --text: #0f172a;
+  --muted: #64748b;
+  --ok: #10b981;
+  --warn: #f59e0b;
   --radius: 14px;
-  --shadow: 0 6px 18px rgba(0, 0, 0, 0.24);
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    --bg: #f6f8fb;
-    --surface: #ffffff;
-    --text: #0b1020;
-    --muted: #5b6473;
-    --brand-weak: #eaf1ff;
-  }
+  --shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
 body {
@@ -33,7 +24,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background: var(--bg);
   color: var(--text);
-  line-height: 1.35;
+  line-height: 1.5;
 }
 
 /* Safe-area support for iOS */

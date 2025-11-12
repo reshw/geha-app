@@ -92,24 +92,46 @@ class ReservationService {
   }
   
   async createReservation(spaceId, reservationData) {
-    const reservesRef = collection(db, `spaces/${spaceId}/reserves`);
-    
-    // 타임스탬프 기반 문서 ID 생성 (기존 패턴 유지)
-    const now = new Date();
-    const docId = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}_${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`;
-    
-    await setDoc(doc(reservesRef, docId), {
-      userId: reservationData.userId,
-      name: reservationData.name,
-      type: reservationData.type,
-      checkIn: Timestamp.fromDate(reservationData.checkIn),
-      checkOut: Timestamp.fromDate(reservationData.checkOut),
-      nights: reservationData.nights || 1,
-      memo: reservationData.memo || '',
-      phone: reservationData.phone || '',
-      status: 'active',
-      createdAt: Timestamp.now()
-    });
+    try {
+      console.log('📝 createReservation 시작');
+      console.log('spaceId:', spaceId);
+      console.log('reservationData:', reservationData);
+      
+      const reservesRef = collection(db, `spaces/${spaceId}/reserves`);
+      
+      // 체크인 날짜 기준 문서 ID 생성 (관리자 편의성)
+      const checkInDate = reservationData.checkIn;
+      const now = new Date();
+      
+      // YYYYMMDD_HHMMSS_랜덤4자리
+      const docId = `${checkInDate.getFullYear()}${String(checkInDate.getMonth() + 1).padStart(2, '0')}${String(checkInDate.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}_${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`;
+      
+      console.log('생성된 문서 ID (체크인일 기준):', docId);
+      
+      const dataToSave = {
+        userId: reservationData.userId,
+        name: reservationData.name,
+        type: reservationData.type,
+        checkIn: Timestamp.fromDate(reservationData.checkIn),
+        checkOut: Timestamp.fromDate(reservationData.checkOut),
+        nights: reservationData.nights || 1,
+        memo: reservationData.memo || '',
+        phone: reservationData.phone || '',
+        status: 'active',
+        createdAt: Timestamp.now()
+      };
+      
+      console.log('💾 Firebase에 저장할 데이터:', dataToSave);
+      
+      await setDoc(doc(reservesRef, docId), dataToSave);
+      
+      console.log('✅ Firebase 저장 완료!');
+      
+      return { docId, ...dataToSave };
+    } catch (error) {
+      console.error('❌ createReservation 에러:', error);
+      throw error;
+    }
   }
   
   async cancelReservation(spaceId, reservationId) {

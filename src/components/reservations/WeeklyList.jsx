@@ -8,6 +8,7 @@ import LoginOverlay from '../auth/LoginOverlay';
 import Loading from '../common/Loading';
 import Modal from '../common/Modal';
 import ReservationModal from './ReservationModal';
+import notificationService from '../../services/notificationService';
 import { formatDate, formatWeekDay, getWeekDates, isToday } from '../../utils/dateUtils';
 
 // 토스트 알림 컴포넌트
@@ -233,9 +234,32 @@ const WeeklyList = () => {
       console.log('💾 저장할 데이터:', dataToSave);
       
       // Firebase에 저장
-      await createReservation(dataToSave);
+      const savedReservation = await createReservation(dataToSave);
       
       console.log('✅ 예약 완료!');
+      
+      // 알림 발송 (비동기, 실패해도 예약은 유지)
+      try {
+        const notificationData = {
+          ...dataToSave,
+          spaceName: selectedSpace?.name || '스페이스',
+          email: user.email
+        };
+        
+        // Manager 이메일 (TODO: Firebase에서 가져오기)
+        const managers = [];
+        
+        notificationService.sendReservationConfirm(notificationData, managers)
+          .then(results => {
+            console.log('📬 알림 발송 결과:', results);
+          })
+          .catch(err => {
+            console.warn('알림 발송 실패 (예약은 완료됨):', err);
+          });
+      } catch (notifError) {
+        console.warn('알림 발송 중 에러 (예약은 완료됨):', notifError);
+      }
+      
       setShowReservationModal(false);
       setToast({ message: '예약이 완료되었습니다! 🎉', type: 'success' });
     } catch (error) {
@@ -283,9 +307,10 @@ const WeeklyList = () => {
           position: 'sticky',
           top: 0,
           zIndex: 20,
-          background: 'linear-gradient(180deg, rgba(15,23,42,.98), rgba(15,23,42,.92))',
+          background: 'linear-gradient(180deg, rgba(37, 99, 235, 0.98), rgba(37, 99, 235, 0.95))',
           backdropFilter: 'saturate(180%) blur(12px)',
-          borderBottom: '1px solid rgba(255,255,255,.06)'
+          borderBottom: '1px solid rgba(255,255,255,0.2)',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
         }}>
           <div style={{
             display: 'flex',
@@ -366,9 +391,9 @@ const WeeklyList = () => {
                 borderRadius: '999px',
                 display: 'inline-flex',
                 alignItems: 'center',
-                background: 'transparent',
-                color: 'var(--text)',
-                border: '1px solid rgba(255,255,255,.14)',
+                background: 'rgba(255,255,255,0.2)',
+                color: '#fff',
+                border: '1px solid rgba(255,255,255,0.3)',
                 cursor: 'pointer',
                 fontWeight: '600'
               }}
@@ -382,15 +407,15 @@ const WeeklyList = () => {
               display: 'inline-flex',
               alignItems: 'center',
               gap: '8px',
-              background: 'var(--brand-weak)',
-              color: '#0b1220',
-              border: '1px solid rgba(0,0,0,.06)',
+              background: '#fff',
+              color: 'var(--brand)',
+              border: 'none',
               fontWeight: '600',
               cursor: 'pointer'
             }}
             onClick={() => setShowDatePicker(true)}>
               <span>📅</span>
-              <span style={{ fontWeight: '500', color: '#3b4660' }}>{weekRange}</span>
+              <span style={{ fontWeight: '600' }}>{weekRange}</span>
             </div>
             <button
               onClick={nextWeek}
@@ -400,9 +425,9 @@ const WeeklyList = () => {
                 borderRadius: '999px',
                 display: 'inline-flex',
                 alignItems: 'center',
-                background: 'transparent',
-                color: 'var(--text)',
-                border: '1px solid rgba(255,255,255,.14)',
+                background: 'rgba(255,255,255,0.2)',
+                color: '#fff',
+                border: '1px solid rgba(255,255,255,0.3)',
                 cursor: 'pointer',
                 fontWeight: '600'
               }}
@@ -417,9 +442,9 @@ const WeeklyList = () => {
                 borderRadius: '999px',
                 display: 'inline-flex',
                 alignItems: 'center',
-                background: 'transparent',
-                color: 'var(--text)',
-                border: '1px solid rgba(255,255,255,.14)',
+                background: 'rgba(255,255,255,0.2)',
+                color: '#fff',
+                border: '1px solid rgba(255,255,255,0.3)',
                 cursor: 'pointer',
                 fontWeight: '600'
               }}
@@ -488,10 +513,11 @@ const WeeklyList = () => {
                     background: 'var(--surface)',
                     borderRadius: 'var(--radius)',
                     border: isCurrentDay 
-                      ? '1px solid var(--brand)' 
-                      : '1px solid rgba(255,255,255,.08)',
+                      ? '2px solid var(--brand)' 
+                      : '1px solid #e2e8f0',
                     overflow: 'hidden',
-                    transition: 'all 0.2s ease'
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
                   }}
                   open={isCurrentDay}
                   onToggle={(e) => {
