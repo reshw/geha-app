@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import Modal from '../common/Modal';
 import { formatDate, formatWeekDay, getWeekDates } from '../../utils/dateUtils';
 
-const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReservations = {} }) => {
+const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReservations = {}, user }) => {
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     const today = new Date();
     const day = today.getDay();
@@ -18,6 +18,13 @@ const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReserva
   const [checkOut, setCheckOut] = useState(null);
   const [userName, setUserName] = useState('');
   const [userType, setUserType] = useState('guest');
+
+  // 모달이 열릴 때 카카오 로그인 정보로 이름 자동 입력
+  useEffect(() => {
+    if (isOpen && user?.name && !userName) {
+      setUserName(user.name);
+    }
+  }, [isOpen, user]);
 
   const weekDates = getWeekDates(currentWeekStart);
 
@@ -213,14 +220,15 @@ const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReserva
           <div className="space-y-3 pt-2 border-t">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                이름
+                이름 (카카오 로그인)
               </label>
               <input
                 type="text"
                 value={userName}
-                onChange={(e) => setUserName(e.target.value)}
-                placeholder="예약자 이름"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                readOnly
+                placeholder="카카오 로그인 정보"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
+                title="카카오 로그인 정보로 자동 입력됩니다"
               />
             </div>
 
