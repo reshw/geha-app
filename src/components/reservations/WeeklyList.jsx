@@ -240,37 +240,36 @@ const WeeklyList = () => {
       
       // 알림 발송 (비동기, 실패해도 예약은 유지)
       try {
-        const notificationData = {
-          name: reservationData.name,
-          phone: user.phoneNumber || '',
-          checkIn: reservationData.checkIn,
-          checkOut: reservationData.checkOut,
-          gender: user.gender,
-          birthYear: user.birthYear,
-          hostDisplayName: user.name,
-          spaceName: selectedSpace?.name || '조강308호',
-          memo: reservationData.memo || ''
-        };
-        
-        // 게스트 예약일 때만 알림톡 발송 (주주는 이메일만)
-        const alimtalkEnabled = reservationData.type === 'guest';
-        
-        notificationService.sendReservationConfirm(notificationData, {
-          alimtalkEnabled,
-          managers: []  // TODO: Firebase에서 manager 목록 가져오기
-        })
-          .then(results => {
-            console.log('📬 알림 발송 결과:', results);
-            if (results.email?.success) {
-              console.log('✅ 이메일 발송 성공');
-            }
-            if (results.alimtalk?.success) {
-              console.log('✅ 알림톡 발송 성공');
-            }
+        // 게스트 예약일 때만 알림 발송 (주주는 알림 불필요)
+        if (reservationData.type === 'guest') {
+          const notificationData = {
+            name: reservationData.name,
+            phone: user.phoneNumber || '',
+            checkIn: reservationData.checkIn,
+            checkOut: reservationData.checkOut,
+            gender: user.gender,
+            birthYear: user.birthYear,
+            hostDisplayName: user.name,
+            spaceName: selectedSpace?.name || '조강308호',
+            memo: reservationData.memo || ''
+          };
+          
+          notificationService.sendReservationConfirm(notificationData, {
+            alimtalkEnabled: true,
+            managers: []
           })
-          .catch(err => {
-            console.warn('알림 발송 실패 (예약은 완료됨):', err);
-          });
+            .then(results => {
+              console.log('📬 알림 발송 결과:', results);
+              if (results.alimtalk?.success) {
+                console.log('✅ 알림톡 발송 성공');
+              }
+            })
+            .catch(err => {
+              console.warn('알림 발송 실패 (예약은 완료됨):', err);
+            });
+        } else {
+          console.log('ℹ️ 주주 예약 - 알림 발송 스킵');
+        }
       } catch (notifError) {
         console.warn('알림 발송 중 에러 (예약은 완료됨):', notifError);
       }

@@ -1,6 +1,7 @@
-import { collection, getDocs, addDoc, deleteDoc, doc, setDoc, query, where, Timestamp, orderBy } from 'firebase/firestore';
+import { collection, getDocs, addDoc, deleteDoc, doc, setDoc, getDoc, query, where, Timestamp, orderBy } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { formatDate } from '../utils/dateUtils';
+import notificationService from './notificationService';
 
 class ReservationService {
   async getReservations(spaceId, currentWeekStart) {
@@ -126,6 +127,44 @@ class ReservationService {
       await setDoc(doc(reservesRef, docId), dataToSave);
       
       console.log('✅ Firebase 저장 완료!');
+      
+      // 🔥 알림 발송 추가 (이메일 + 알림톡)
+      try {
+        console.log('📧 알림 발송 시작...');
+        
+        // Firebase에서 알림톡 설정 가져오기
+        const alimtalkDocRef = doc(db, 'spaces', spaceId, 'settings', 'alimtalk');
+        const alimtalkDoc = await getDoc(alimtalkDocRef);
+        const alimtalkData = alimtalkDoc.exists() ? alimtalkDoc.data() : {};
+        const alimtalkEnabled = alimtalkData.enabled === true; // enabled 필드 확인
+        
+        // 스페이스 이름 가져오기
+        const spaceDocRef = doc(db, 'spaces', spaceId);
+        const spaceDoc = await getDoc(spaceDocRef);
+        const spaceData = spaceDoc.exists() ? spaceDoc.data() : {};
+        
+        console.log('알림톡 활성화 여부:', alimtalkEnabled);
+        console.log('알림톡 설정 데이터:', alimtalkData);
+        
+        console.log('알림톡 활성화 여부:', alimtalkEnabled);
+        console.log('알림톡 설정 데이터:', alimtalkData);
+        
+        const notificationData = {
+          ...reservationData,
+          spaceName: spaceData.name || '조강308호',
+          hostDisplayName: reservationData.hostDisplayName || ''
+        };
+        
+        const result = await notificationService.sendReservationConfirm(
+          notificationData,
+          { alimtalkEnabled }
+        );
+        
+        console.log('📬 알림 발송 결과:', result);
+      } catch (notifyError) {
+        // 알림 실패해도 예약은 성공으로 처리
+        console.error('⚠️ 알림 발송 실패 (예약은 완료됨):', notifyError);
+      }
       
       return { docId, ...dataToSave };
     } catch (error) {
