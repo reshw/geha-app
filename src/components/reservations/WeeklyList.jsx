@@ -112,9 +112,12 @@ const WeeklyList = () => {
   
   const handleReservationConfirm = async (reservationData) => {
     try {
-      console.log('예약 데이터:', reservationData);
-      // Firebase에 저장
-      await createReservation({
+      console.log('🔵 예약 시작');
+      console.log('user:', user);
+      console.log('reservationData:', reservationData);
+      console.log('selectedSpace:', selectedSpace);
+      
+      const dataToSave = {
         userId: user.id,
         name: reservationData.name,
         type: reservationData.type,
@@ -123,12 +126,21 @@ const WeeklyList = () => {
         nights: reservationData.nights,
         phone: user.phoneNumber || '',
         memo: ''
-      });
+      };
+      
+      console.log('💾 저장할 데이터:', dataToSave);
+      
+      // Firebase에 저장
+      await createReservation(dataToSave);
+      
+      console.log('✅ 예약 완료!');
       setShowReservationModal(false);
       alert('예약이 완료되었습니다!');
     } catch (error) {
-      console.error('예약 실패:', error);
-      alert('예약에 실패했습니다.');
+      console.error('❌ 예약 실패 상세:', error);
+      console.error('에러 메시지:', error.message);
+      console.error('에러 스택:', error.stack);
+      alert(`예약에 실패했습니다.\n에러: ${error.message}`);
     }
   };
   
@@ -333,7 +345,7 @@ const WeeklyList = () => {
               >
                 {userSpaces.map(space => (
                   <option key={space.id} value={space.id}>
-                    {space.name} ({space.userType})
+                    {space.name} ({space.memberType === 'shareholder' ? '주주' : '게스트'})
                   </option>
                 ))}
               </select>
@@ -609,6 +621,8 @@ const WeeklyList = () => {
         onConfirm={handleReservationConfirm}
         spaceId={selectedSpace?.id}
         existingReservations={reservations}
+        user={user}
+        selectedSpace={selectedSpace}
       />
       
       {/* 예약 상세보기 모달 */}

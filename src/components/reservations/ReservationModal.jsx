@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import Modal from '../common/Modal';
 import { formatDate, formatWeekDay, getWeekDates } from '../../utils/dateUtils';
 
-const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReservations = {}, user }) => {
+const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReservations = {}, user, selectedSpace }) => {
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     const today = new Date();
     const day = today.getDay();
@@ -16,15 +16,11 @@ const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReserva
   
   const [checkIn, setCheckIn] = useState(null);
   const [checkOut, setCheckOut] = useState(null);
-  const [userName, setUserName] = useState('');
-  const [userType, setUserType] = useState('guest');
 
-  // 모달이 열릴 때 카카오 로그인 정보로 이름 자동 입력
-  useEffect(() => {
-    if (isOpen && user?.name && !userName) {
-      setUserName(user.name);
-    }
-  }, [isOpen, user]);
+  // 카카오 로그인 정보
+  const userName = user?.displayName || user?.name || '사용자';
+  const memberType = selectedSpace?.memberType || 'guest';
+  const memberTypeLabel = memberType === 'shareholder' ? '주주' : '게스트';
 
   const weekDates = getWeekDates(currentWeekStart);
 
@@ -115,31 +111,23 @@ const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReserva
       alert('체크인/체크아웃 날짜를 모두 선택해주세요.');
       return;
     }
-    if (!userName.trim()) {
-      alert('이름을 입력해주세요.');
-      return;
-    }
 
     onConfirm({
       checkIn,
       checkOut,
       name: userName,
-      type: userType,
+      type: memberType,  // 'shareholder' 또는 'guest'
       nights: getNights()
     });
 
     // 초기화
     setCheckIn(null);
     setCheckOut(null);
-    setUserName('');
-    setUserType('guest');
   };
 
   const handleClose = () => {
     setCheckIn(null);
     setCheckOut(null);
-    setUserName('');
-    setUserType('guest');
     onClose();
   };
 
@@ -215,7 +203,7 @@ const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReserva
           </div>
         )}
 
-        {/* 예약 정보 입력 */}
+        {/* 예약 정보 표시 */}
         {checkIn && checkOut && (
           <div className="space-y-3 pt-2 border-t">
             <div>
@@ -226,8 +214,7 @@ const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReserva
                 type="text"
                 value={userName}
                 readOnly
-                placeholder="카카오 로그인 정보"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed font-semibold"
                 title="카카오 로그인 정보로 자동 입력됩니다"
               />
             </div>
@@ -236,16 +223,16 @@ const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReserva
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 예약 유형
               </label>
-              <select
-                value={userType}
-                onChange={(e) => setUserType(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="guest">게스트</option>
-                <option value="shareholder">주주</option>
-                <option value="manager">매니저</option>
-                <option value="vice-manager">부매니저</option>
-              </select>
+              <input
+                type="text"
+                value={memberTypeLabel}
+                readOnly
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed font-semibold"
+                title="사용자 권한에 따라 자동으로 결정됩니다"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                {memberType === 'shareholder' ? '주주로 예약됩니다' : '게스트로 예약됩니다'}
+              </p>
             </div>
           </div>
         )}
@@ -260,7 +247,7 @@ const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReserva
           </button>
           <button
             onClick={handleConfirm}
-            disabled={!checkIn || !checkOut || !userName.trim()}
+            disabled={!checkIn || !checkOut}
             className="px-4 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
           >
             예약하기

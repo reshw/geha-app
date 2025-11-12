@@ -13,15 +13,20 @@ class SpaceService {
       
       const spaces = [];
       for (const accessDoc of spaceAccessSnap.docs) {
-        console.log('  - spaceCode:', accessDoc.id, 'data:', accessDoc.data());
+        const accessData = accessDoc.data();
+        console.log('  - spaceCode:', accessDoc.id, 'data:', accessData);
         
         const spaceDoc = await getDoc(doc(db, 'spaces', accessDoc.id));
         if (spaceDoc.exists()) {
           const spaceData = {
             id: spaceDoc.id,
             ...spaceDoc.data(),
-            userType: accessDoc.data().userType,
-            order: accessDoc.data().order || 0
+            // role과 memberType 분리
+            role: accessData.role || accessData.userType || 'member',
+            memberType: accessData.memberType || (
+              accessData.userType === 'guest' ? 'guest' : 'shareholder'
+            ),
+            order: accessData.order || 0
           };
           console.log('  ✅ space 로드:', spaceData);
           spaces.push(spaceData);
