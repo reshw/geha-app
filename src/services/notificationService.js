@@ -1,6 +1,8 @@
 class NotificationService {
   /**
-   * 예약 확정시 알림 발송 (이메일 + 알림톡 통합)
+   * 예약 확정시 알림 발송 (이메일 + 알림톡 분리)
+   * - 이메일: Netlify Functions
+   * - 알림톡: 카페24 PHP (고정 IP)
    */
   async sendReservationConfirm(reservationData, options = {}) {
     const {
@@ -12,38 +14,87 @@ class NotificationService {
     const checkInStr = this.formatDateSimple(reservationData.checkIn);
     const checkOutStr = this.formatDateSimple(reservationData.checkOut);
 
-    try {
-      // 통합 엔드포인트 호출 (이메일 + 알림톡 한 번에)
-      const response = await fetch('/.netlify/functions/send-notification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          // 필수 필드
-          name: reservationData.name,
-          phone: reservationData.phone,
-          checkIn: checkInStr,
-          checkOut: checkOutStr,
-          
-          // 선택 필드
-          gender: reservationData.gender,
-          birthYear: reservationData.birthYear,
-          hostDisplayName: reservationData.hostDisplayName,
-          spaceName: reservationData.spaceName || '조강308호',
-          memo: reservationData.memo,
-          
-          // 알림톡 제어
-          alimtalkEnabled
-        })
-      });
+    // 공통 데이터
+    const commonData = {
+      name: reservationData.name,
+      phone: reservationData.phone,
+      checkIn: checkInStr,
+      checkOut: checkOutStr,
+      gender: reservationData.gender,
+      birthYear: reservationData.birthYear,
+      hostDisplayName: reservationData.hostDisplayName,
+      spaceName: reservationData.spaceName || '조강308호',
+      memo: reservationData.memo
+    };
 
-      const results = await response.json();
-      
-      console.log('📧 이메일 발송 결과:', results.email);
-      console.log('💬 알림톡 발송 결과:', results.alimtalk);
+    const results = {
+      success: true,
+      email: { success: false, message: '발송 안 함' },
+      alimtalk: { success: null, message: '알림톡 기능이 비활성화되어 있습니다.' }
+    };
+
+    try {
+      // === 1. 이메일 발송 (Netlify Functions) ===
+      try {
+        console.log('📧 이메일 발송 시작 (Netlify)...');
+        
+        const emailResponse = await fetch('/.netlify/functions/send-notification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(commonData)
+        });
+
+        const emailResult = await emailResponse.json();
+        results.email = emailResult.email || emailResult;
+        
+        console.log('📧 이메일 발송 결과:', results.email);
+      } catch (emailError) {
+        console.error('❌ 이메일 발송 실패:', emailError);
+        results.email = {
+          success: false,
+          message: '이메일 발송 실패',
+          error: emailError.message
+        };
+      }
+
+      // === 2. 알림톡 발송 (카페24 PHP) - alimtalkEnabled가 true일 때만 ===
+      if (alimtalkEnabled) {
+        try {
+          console.log('💬 알림톡 발송 시작 (카페24)...');
+          
+          // ⚠️ 실제 카페24 도메인으로 변경 필요!
+          const cafe24Url = 'https://yourdomain.com/guest/send_alimtalk.php';
+          
+          const alimtalkResponse = await fetch(cafe24Url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...commonData,
+              alimtalkEnabled: true  // PHP에서 실제 발송하도록
+            })
+          });
+
+          const alimtalkResult = await alimtalkResponse.json();
+          results.alimtalk = alimtalkResult.alimtalk || alimtalkResult;
+          
+          console.log('💬 알림톡 발송 결과:', results.alimtalk);
+        } catch (alimtalkError) {
+          console.error('❌ 알림톡 발송 실패:', alimtalkError);
+          results.alimtalk = {
+            success: false,
+            message: '알림톡 발송 실패',
+            error: alimtalkError.message
+          };
+        }
+      }
+
+      // 전체 성공 여부 판단 (이메일만 성공해도 OK)
+      results.success = results.email.success;
 
       return results;
+
     } catch (error) {
-      console.error('알림 발송 실패:', error);
+      console.error('❌ 알림 발송 전체 실패:', error);
       return {
         success: false,
         email: { success: false, message: '발송 실패' },
