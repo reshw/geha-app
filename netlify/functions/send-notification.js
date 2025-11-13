@@ -1,4 +1,5 @@
 const { Resend } = require('resend');
+const fetch = require('node-fetch');
 
 exports.handler = async (event) => {
   // CORS 헤더
@@ -32,9 +33,9 @@ exports.handler = async (event) => {
     const cost = nights * 30000;
 
     // 계좌 정보
-    const accountInfo = process.env.ALIGO_ACCOUNT || '카카오뱅크 7979-38-83356 양석환';
+    const accountInfo = process.env.ACCOUNT_INFO || '카카오뱅크 7979-38-83356 양석환';
 
-    // === 이메일 발송 (Resend API) ===
+    // === 1. 이메일 발송 (Resend API) ===
     let emailResult = { success: false, message: '이메일 발송 실패' };
     
     try {
@@ -159,13 +160,93 @@ exports.handler = async (event) => {
       };
     }
 
+    // === 2. 알림톡 발송 (솔라피 API) - alimtalkEnabled가 true일 때만 ===
+    let alimtalkResult = {
+      success: null,
+      message: '알림톡 기능이 비활성화되어 있습니다.'
+    };
+
+    if (data.alimtalkEnabled === true) {
+      try {
+        console.log('📱 솔라피 알림톡 발송 시작...');
+        
+        // 전화번호 정제
+        const phone = data.phone.replace(/[^0-9]/g, '');
+        const password = phone.slice(-4); // 현관 비밀번호
+
+        // 알림톡 메시지 생성
+        let message = `${data.name}님(꺄아)\n`;
+        message += `조강 308 게스트 예약되었습니다.\n\n`;
+        message += `[예약안내]\n`;
+        message += `· 입실일 : ${data.checkIn}\n`;
+        message += `· 퇴실일 : ${data.checkOut}\n`;
+        message += `   - ${nights}박 ${days}일\n\n`;
+        message += `[이용료]\n`;
+        message += `· 게스트 비용 : ${cost.toLocaleString()}원(3만원/1박)\n`;
+        message += `· ${accountInfo}\n\n`;
+        message += `[현관 번호] : ${password}11*\n`;
+        message += `(입실일~퇴실일에만 사용 가능합니다)`;
+
+        if (data.memo) {
+          message += `\n\n[메모]\n${data.memo}`;
+        }
+
+        // 솔라피 API 호출
+        const solapiResponse = await fetch('https://api.solapi.com/messages/v4/send', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.SOLAPI_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: {
+              to: phone,
+              from: process.env.SOLAPI_SENDER || '01087654321',
+              text: message,
+              type: 'ATA', // 알림톡
+              kakaoOptions: {
+                pfId: process.env.SOLAPI_PFID, // 카카오 채널 ID
+                templateId: process.env.SOLAPI_TEMPLATE_ID, // 템플릿 ID
+                buttons: [
+                  {
+                    buttonType: 'WL',
+                    buttonName: '게스트 현황 보기',
+                    linkMo: 'https://www.lunagarden.co.kr/guest',
+                    linkPc: 'https://www.lunagarden.co.kr/guest'
+                  }
+                ]
+              }
+            }
+          })
+        });
+
+        const solapiResult = await solapiResponse.json();
+        console.log('솔라피 응답:', solapiResult);
+
+        alimtalkResult = {
+          success: solapiResponse.ok,
+          message: solapiResponse.ok ? '알림톡이 발송되었습니다.' : '알림톡 발송에 실패했습니다.',
+          detail: solapiResult
+        };
+
+      } catch (alimtalkError) {
+        console.error('Alimtalk send error:', alimtalkError);
+        alimtalkResult = {
+          success: false,
+          message: '알림톡 발송 중 오류가 발생했습니다.',
+          error: alimtalkError.message
+        };
+      }
+    }
+
     // === 응답 반환 ===
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
         success: true,
-        email: emailResult
+        email: emailResult,
+        alimtalk: alimtalkResult
       })
     };
 
