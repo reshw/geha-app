@@ -19,28 +19,10 @@ class NotificationService {
     
     this.sendingInProgress.add(reservationKey);
     
-    try {
-      const {
-        alimtalkEnabled = true,  // 기본값: 알림톡 활성화
-        managers = []
-      } = options;
-
-    // 날짜 포맷팅 (YYYY-MM-DD)
-    const checkInStr = this.formatDateSimple(reservationData.checkIn);
-    const checkOutStr = this.formatDateSimple(reservationData.checkOut);
-
-    // 공통 데이터
-    const commonData = {
-      name: reservationData.name,
-      phone: reservationData.phone,
-      checkIn: checkInStr,
-      checkOut: checkOutStr,
-      gender: reservationData.gender,
-      birthYear: reservationData.birthYear,
-      hostDisplayName: reservationData.hostDisplayName,
-      spaceName: reservationData.spaceName || '조강308호',
-      memo: reservationData.memo
-    };
+    const {
+      alimtalkEnabled = true,  // 기본값: 알림톡 활성화
+      managers = []
+    } = options;
 
     const results = {
       success: true,
@@ -49,6 +31,23 @@ class NotificationService {
     };
 
     try {
+      // 날짜 포맷팅 (YYYY-MM-DD)
+      const checkInStr = this.formatDateSimple(reservationData.checkIn);
+      const checkOutStr = this.formatDateSimple(reservationData.checkOut);
+
+      // 공통 데이터
+      const commonData = {
+        name: reservationData.name,
+        phone: reservationData.phone,
+        checkIn: checkInStr,
+        checkOut: checkOutStr,
+        gender: reservationData.gender,
+        birthYear: reservationData.birthYear,
+        hostDisplayName: reservationData.hostDisplayName,
+        spaceName: reservationData.spaceName || '조강308호',
+        memo: reservationData.memo
+      };
+
       // === 1. 이메일 발송 (Netlify Functions) ===
       try {
         console.log('📧 이메일 발송 시작 (Netlify)...');
