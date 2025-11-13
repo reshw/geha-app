@@ -57,15 +57,15 @@ class NotificationService {
         };
       }
 
-      // === 2. 알림톡 발송 (카페24 PHP) - alimtalkEnabled가 true일 때만 ===
+      // === 2. 알림톡 발송 (카페24 PHP via Netlify Proxy) - alimtalkEnabled가 true일 때만 ===
       if (alimtalkEnabled) {
         try {
-          console.log('💬 알림톡 발송 시작 (카페24)...');
+          console.log('💬 알림톡 발송 시작 (Netlify 프록시 경유)...');
           
-          // 카페24도메인
-          const cafe24Url = 'https://lunagarden.co.kr/guest/send_alimtalk.php';
+          // Netlify Functions 프록시를 통해 카페24 호출 (CORS 우회)
+          const proxyUrl = '/.netlify/functions/send-alimtalk-proxy';
           
-          const alimtalkResponse = await fetch(cafe24Url, {
+          const alimtalkResponse = await fetch(proxyUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
