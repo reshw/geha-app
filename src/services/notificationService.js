@@ -62,8 +62,8 @@ class NotificationService {
         try {
           console.log('💬 알림톡 발송 시작 (카페24)...');
           
-          // ⚠️ 실제 카페24 도메인으로 변경 필요!
-          const cafe24Url = 'https://yourdomain.com/guest/send_alimtalk.php';
+          // 카페24도메인
+          const cafe24Url = 'https://lunagarden.co.kr/guest/send_alimtalk.php';
           
           const alimtalkResponse = await fetch(cafe24Url, {
             method: 'POST',
