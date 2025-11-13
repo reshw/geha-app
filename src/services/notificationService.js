@@ -1,14 +1,29 @@
 class NotificationService {
+  constructor() {
+    this.sendingInProgress = new Set(); // 발송 중인 예약 추적
+  }
+
   /**
    * 예약 확정시 알림 발송 (이메일 + 알림톡 분리)
    * - 이메일: Netlify Functions
    * - 알림톡: 카페24 PHP (고정 IP)
    */
   async sendReservationConfirm(reservationData, options = {}) {
-    const {
-      alimtalkEnabled = true,  // 기본값: 알림톡 활성화
-      managers = []
-    } = options;
+    // 중복 발송 방지
+    const reservationKey = `${reservationData.name}_${reservationData.checkIn}_${reservationData.checkOut}`;
+    
+    if (this.sendingInProgress.has(reservationKey)) {
+      console.log('⏭️ 이미 발송 중 - 스킵');
+      return { success: true, email: { success: true, message: '발송 중' }, alimtalk: { success: null } };
+    }
+    
+    this.sendingInProgress.add(reservationKey);
+    
+    try {
+      const {
+        alimtalkEnabled = true,  // 기본값: 알림톡 활성화
+        managers = []
+      } = options;
 
     // 날짜 포맷팅 (YYYY-MM-DD)
     const checkInStr = this.formatDateSimple(reservationData.checkIn);
@@ -37,6 +52,7 @@ class NotificationService {
       // === 1. 이메일 발송 (Netlify Functions) ===
       try {
         console.log('📧 이메일 발송 시작 (Netlify)...');
+        console.log('📧 이메일 데이터:', commonData);
         
         const emailResponse = await fetch('/.netlify/functions/send-notification', {
           method: 'POST',
@@ -101,6 +117,11 @@ class NotificationService {
         alimtalk: { success: false, message: '발송 실패' },
         error: error.message
       };
+    } finally {
+      // 발송 완료 후 플래그 제거 (5초 후)
+      setTimeout(() => {
+        this.sendingInProgress.delete(reservationKey);
+      }, 5000);
     }
   }
 
