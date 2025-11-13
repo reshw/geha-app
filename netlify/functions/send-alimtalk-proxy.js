@@ -33,8 +33,7 @@ exports.handler = async (event) => {
         'Content-Type': 'application/json',
         'User-Agent': 'Netlify-Functions'
       },
-      body: JSON.stringify(data),
-      timeout: 30000  // 30초 타임아웃
+      body: JSON.stringify(data)
     });
 
     const responseText = await response.text();
