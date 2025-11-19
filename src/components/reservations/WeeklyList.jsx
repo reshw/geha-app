@@ -374,6 +374,32 @@ const WeeklyList = () => {
               {selectedSpace?.spaceName || selectedSpace?.name || '예약 관리'} ▾
             </div>
             <button
+              onClick={() => {
+                const inviteUrl = `${window.location.origin}/join/${selectedSpace?.id || selectedSpace?.spaceId}`;
+                navigator.clipboard.writeText(inviteUrl).then(() => {
+                  setToast({ message: '초대 링크가 복사되었습니다!', type: 'success' });
+                }).catch(() => {
+                  setToast({ message: '복사에 실패했습니다', type: 'error' });
+                });
+              }}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '8px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: 'rgba(255,255,255,0.2)',
+                color: '#fff',
+                border: '1px solid rgba(255,255,255,0.3)',
+                cursor: 'pointer',
+                fontWeight: '600',
+                fontSize: '14px',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              초대하기
+            </button>
+            <button
               onClick={() => setShowDatePicker(true)}
               style={{
                 width: '40px',

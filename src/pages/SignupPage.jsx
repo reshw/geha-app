@@ -120,6 +120,8 @@ const SignupPage = () => {
       // 앱 세션에 로그인
       await login(kakaoUserInfo);
       
+      console.log('✅ 회원가입 완료, 이동할 경로:', from);
+      
       // 원래 가려던 페이지로 이동
       navigate(from, { replace: true });
     } catch (error) {

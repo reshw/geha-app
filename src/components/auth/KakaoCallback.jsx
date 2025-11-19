@@ -50,7 +50,7 @@ const KakaoCallback = () => {
         
         if (!exists) {
           // 미등록 사용자 → 회원가입 페이지로 이동
-          console.log('🆕 미등록 사용자 - 회원가입 페이지로 이동');
+          console.log('🆕 미등록 사용자 - 회원가입 페이지로 이동, from:', from);
           // 코드 사용 플래그 남기기
           if (code) sessionStorage.setItem(`kakao_code_used_${code}`, '1');
           
@@ -58,7 +58,7 @@ const KakaoCallback = () => {
             replace: true,
             state: { 
               kakaoUserInfo: userInfo,
-              from: from
+              from: from // 원래 가려던 경로 전달
             }
           });
           return;
