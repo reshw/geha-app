@@ -110,7 +110,7 @@ class ReservationService {
       console.log('생성된 문서 ID (체크인일 기준):', docId);
       
       const dataToSave = {
-        userId: reservationData.userId,
+        userId: String(reservationData.userId),  // 문자열로 변환
         name: reservationData.name,
         type: reservationData.type,
         checkIn: Timestamp.fromDate(reservationData.checkIn),
@@ -118,6 +118,8 @@ class ReservationService {
         nights: reservationData.nights || 1,
         memo: reservationData.memo || '',
         phone: reservationData.phone || '',
+        hostDisplayName: reservationData.hostDisplayName || '',  // 초대자 이름
+        hostId: reservationData.hostId || '',  // 초대자 ID
         status: 'active',
         createdAt: Timestamp.now()
       };

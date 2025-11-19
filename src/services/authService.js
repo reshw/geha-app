@@ -1,5 +1,5 @@
 // src/services/authService.js
-import { doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 class AuthService {
@@ -111,7 +111,7 @@ class AuthService {
       phoneNumber: userData.phoneNumber ?? '',
       profileImage: userData.profileImage ?? '',
       provider: userData.provider ?? 'kakao',
-      createdAt: new Date().toISOString()
+      createdAt: Timestamp.now()  // Firebase Timestamp 사용
     };
 
     // 선택적 필드들 (회원가입 폼에서 입력받은 정보)
@@ -174,22 +174,24 @@ class AuthService {
       await Promise.all(
         (userIds ?? []).map(async (uid) => {
           try {
-            const s = await getDoc(doc(db, 'users', uid));
+            // userId를 문자열로 변환 (Firebase doc()는 문자열 필요)
+            const userIdStr = String(uid);
+            const s = await getDoc(doc(db, 'users', userIdStr));
             if (s.exists()) {
               const d = s.data();
-              profiles[uid] = {
+              profiles[userIdStr] = {
                 displayName: d?.displayName ?? '',
                 profileImage: d?.profileImage ?? ''
               };
             }
           } catch (e) {
-            console.warn(`[AuthService] 프로필 조회 실패: ${uid}`, e.message);
+            console.warn(`[AuthService] 프로필 조회 실패: ${uid}`, e.message || e);
           }
         })
       );
       return profiles;
     } catch (error) {
-      console.warn('[AuthService] getUserProfiles 전체 실패:', error.message);
+      console.warn('[AuthService] getUserProfiles 전체 실패:', error.message || error);
       return {};
     }
   }

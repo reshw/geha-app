@@ -72,7 +72,7 @@ const JoinSpacePage = () => {
     setIsLoading(true);
     
     try {
-      const result = await spaceService.joinSpace(user.id, spaceInfo.id, {
+      const result = await spaceService.joinSpace(String(user.id), spaceInfo.id, {
         displayName: user.displayName,
         email: user.email,
         profileImage: user.profileImage

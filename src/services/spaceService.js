@@ -38,46 +38,58 @@ class SpaceService {
   // ----- 3) 스페이스에 사용자 추가 (양방향) -----
   async joinSpace(userId, spaceId, userData) {
     try {
+      // userId를 문자열로 변환
+      const userIdStr = String(userId);
+      const spaceIdStr = String(spaceId);
       const now = new Date().toISOString();
       
+      console.log('🔵 [joinSpace] 시작:', { userIdStr, spaceIdStr, userData });
+      
       // 스페이스 정보 가져오기
-      const space = await this.getSpaceByCode(spaceId);
+      const space = await this.getSpaceByCode(spaceIdStr);
       if (!space) {
         throw new Error('존재하지 않는 방입니다.');
       }
 
       // 이미 가입되어 있는지 확인
-      const alreadyJoined = await this.checkUserInSpace(userId, spaceId);
+      const alreadyJoined = await this.checkUserInSpace(userIdStr, spaceIdStr);
       if (alreadyJoined) {
+        console.log('⚠️ [joinSpace] 이미 가입됨:', userIdStr);
         return { alreadyJoined: true };
       }
 
       // 1) users/{userId}/spaceAccess/{spaceId} 생성
-      const userSpaceRef = doc(db, `users/${userId}/spaceAccess`, spaceId);
-      await setDoc(userSpaceRef, {
+      const userSpaceRef = doc(db, `users/${userIdStr}/spaceAccess`, spaceIdStr);
+      const userSpaceData = {
         joinedAt: now,
         order: 0, // 기본값, 나중에 사용자가 변경 가능
-        spaceName: space.name || spaceId,
+        spaceName: space.name || spaceIdStr,
         status: 'active',
         updatedAt: now,
         userType: 'guest' // 기본 guest로 가입
-      });
+      };
+      
+      await setDoc(userSpaceRef, userSpaceData);
+      console.log('✅ [joinSpace] users/{userId}/spaceAccess 생성:', userSpaceData);
 
       // 2) spaces/{spaceId}/assignedUsers/{userId} 생성
-      const spaceUserRef = doc(db, `spaces/${spaceId}/assignedUsers`, userId);
-      await setDoc(spaceUserRef, {
+      const spaceUserRef = doc(db, `spaces/${spaceIdStr}/assignedUsers`, userIdStr);
+      const spaceUserData = {
         displayName: userData.displayName || '',
         email: userData.email || '',
         joinedAt: now,
         profileImage: userData.profileImage || '',
         status: 'active',
         userType: 'guest'
-      });
+      };
+      
+      await setDoc(spaceUserRef, spaceUserData);
+      console.log('✅ [joinSpace] spaces/{spaceId}/assignedUsers 생성:', spaceUserData);
 
-      console.log(`✅ 사용자 ${userId}가 스페이스 ${spaceId}에 가입 완료`);
+      console.log(`✅ [joinSpace] 완료: 사용자 ${userIdStr}가 스페이스 ${spaceIdStr}에 가입`);
       return { success: true };
     } catch (error) {
-      console.error('[SpaceService] joinSpace 실패:', error);
+      console.error('❌ [SpaceService] joinSpace 실패:', error);
       throw error;
     }
   }

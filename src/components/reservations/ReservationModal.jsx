@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import Modal from '../common/Modal';
 import { formatDate, formatWeekDay, getWeekDates } from '../../utils/dateUtils';
+import HostSearchInput from './HostSearchInput';
 
 const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReservations = {}, user, selectedSpace }) => {
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
@@ -16,11 +17,33 @@ const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReserva
   
   const [checkIn, setCheckIn] = useState(null);
   const [checkOut, setCheckOut] = useState(null);
+  const [selectedHost, setSelectedHost] = useState(null);
 
   // 카카오 로그인 정보
   const userName = user?.displayName || user?.name || '사용자';
-  const memberType = selectedSpace?.memberType || 'guest';
-  const memberTypeLabel = memberType === 'shareholder' ? '주주' : '게스트';
+  
+  // 디버깅: selectedSpace 확인
+  useEffect(() => {
+    console.log('🔍 [ReservationModal] selectedSpace:', selectedSpace);
+    console.log('🔍 [ReservationModal] selectedSpace?.userType:', selectedSpace?.userType);
+  }, [selectedSpace]);
+  
+  const memberType = selectedSpace?.userType || 'guest';
+  
+  // 멤버 타입별 라벨 (주주, 매니저, 부매니저는 "주주"로 표시)
+  const getMemberTypeLabel = (type) => {
+    const memberTypes = ['shareholder', 'manager', 'vice-manager'];
+    return memberTypes.includes(type) ? '주주' : '게스트';
+  };
+  
+  const memberTypeLabel = getMemberTypeLabel(memberType);
+  const isGuest = memberType === 'guest';
+  
+  useEffect(() => {
+    console.log('🔍 [ReservationModal] memberType:', memberType);
+    console.log('🔍 [ReservationModal] memberTypeLabel:', memberTypeLabel);
+    console.log('🔍 [ReservationModal] isGuest:', isGuest);
+  }, [memberType, memberTypeLabel, isGuest]);
 
   const weekDates = getWeekDates(currentWeekStart);
 
@@ -46,7 +69,7 @@ const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReserva
     const dateStr = formatDate(date);
     const dayReservations = existingReservations[dateStr] || [];
     
-    // 예약이 3개 이상이면 비활성화 (예시)
+    // 예약이 10개 이상이면 비활성화
     return dayReservations.length >= 10;
   };
 
@@ -112,22 +135,35 @@ const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReserva
       return;
     }
 
+    // 게스트인 경우 초대자 필수
+    if (isGuest && !selectedHost) {
+      alert('초대해주신 주주님을 선택해주세요.');
+      return;
+    }
+
+    console.log('✅ [ReservationModal] 예약 확정 - type:', memberType);
+    console.log('✅ [ReservationModal] selectedHost:', selectedHost);
+
     onConfirm({
       checkIn,
       checkOut,
       name: userName,
-      type: memberType,  // 'shareholder' 또는 'guest'
-      nights: getNights()
+      type: memberType,
+      nights: getNights(),
+      hostId: selectedHost?.id || null,
+      hostDisplayName: selectedHost?.displayName || null
     });
 
     // 초기화
     setCheckIn(null);
     setCheckOut(null);
+    setSelectedHost(null);
   };
 
   const handleClose = () => {
     setCheckIn(null);
     setCheckOut(null);
+    setSelectedHost(null);
     onClose();
   };
 
@@ -231,9 +267,18 @@ const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReserva
                 title="사용자 권한에 따라 자동으로 결정됩니다"
               />
               <p className="text-xs text-gray-500 mt-1">
-                {memberType === 'shareholder' ? '주주로 예약됩니다' : '게스트로 예약됩니다'}
+                {getMemberTypeLabel(memberType) === '주주' ? '주주로 예약됩니다 (무료)' : '게스트로 예약됩니다 (유료)'}
               </p>
             </div>
+
+            {/* 게스트인 경우 초대자 선택 필수 */}
+            {isGuest && (
+              <HostSearchInput
+                spaceId={spaceId}
+                onSelect={setSelectedHost}
+                selectedHost={selectedHost}
+              />
+            )}
           </div>
         )}
 
@@ -247,7 +292,7 @@ const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReserva
           </button>
           <button
             onClick={handleConfirm}
-            disabled={!checkIn || !checkOut}
+            disabled={!checkIn || !checkOut || (isGuest && !selectedHost)}
             className="px-4 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
           >
             예약하기
