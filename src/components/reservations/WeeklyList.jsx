@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, Check, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, Check, X, Settings } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useReservations } from '../../hooks/useReservations';
 import useStore from '../../store/useStore';
@@ -10,6 +11,7 @@ import Modal from '../common/Modal';
 import ReservationModal from './ReservationModal';
 import SpaceDropdown from '../space/SpaceDropdown';
 import { formatDate, formatWeekDay, getWeekDates, isToday } from '../../utils/dateUtils';
+import { canManageSpace } from '../../utils/permissions';
 
 // 토스트 알림 컴포넌트
 const Toast = ({ message, type = 'success', onClose }) => {
@@ -42,6 +44,7 @@ const LoadingOverlay = () => (
 );
 
 const WeeklyList = () => {
+  const navigate = useNavigate();
   const { user, isLoggedIn } = useAuth();
   const { selectedSpace, setSelectedSpace, profiles } = useStore();
   const hasInitializedSpace = useRef(false);
@@ -210,6 +213,17 @@ const WeeklyList = () => {
             </div>
             
             <div className="flex items-center gap-3">
+              {/* 관리 버튼 (manager만) */}
+              {selectedSpace?.userType && canManageSpace(selectedSpace.userType) && (
+                <button
+                  onClick={() => navigate('/manage')}
+                  className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/20 hover:bg-white/30 transition-colors"
+                  title="멤버 관리"
+                >
+                  <Settings className="w-5 h-5" />
+                </button>
+              )}
+              
               <button
                 onClick={() => setShowDatePicker(true)}
                 className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/20 hover:bg-white/30"

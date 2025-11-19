@@ -3,6 +3,7 @@ import WeeklyList from './components/reservations/WeeklyList';
 import KakaoCallback from './components/auth/KakaoCallback';
 import SignupPage from './pages/SignupPage';
 import JoinSpacePage from './pages/JoinSpacePage';
+import SpaceManagePage from './pages/SpaceManagePage';
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/join" element={<JoinSpacePage />} />
           <Route path="/join/:code" element={<JoinSpacePage />} />
+          <Route path="/manage" element={<SpaceManagePage />} />
         </Routes>
       </div>
     </BrowserRouter>

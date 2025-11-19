@@ -1,5 +1,5 @@
 // src/services/spaceService.js
-import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 class SpaceService {
@@ -41,7 +41,7 @@ class SpaceService {
       // userId를 문자열로 변환
       const userIdStr = String(userId);
       const spaceIdStr = String(spaceId);
-      const now = new Date().toISOString();
+      const now = Timestamp.now();  // Firebase Timestamp 사용
       
       console.log('🔵 [joinSpace] 시작:', { userIdStr, spaceIdStr, userData });
       
@@ -104,6 +104,15 @@ class SpaceService {
       snapshot.forEach((doc) => {
         const data = doc.data();
         console.log('📦 spaceAccess 문서:', doc.id, data);
+        
+        // Timestamp를 Date로 변환
+        const joinedAt = data.joinedAt && typeof data.joinedAt.toDate === 'function' 
+          ? data.joinedAt.toDate() 
+          : null;
+        const updatedAt = data.updatedAt && typeof data.updatedAt.toDate === 'function'
+          ? data.updatedAt.toDate()
+          : null;
+        
         spaces.push({
           id: doc.id, // spaceId
           spaceId: doc.id, // 호환성을 위해 둘 다 추가
@@ -111,8 +120,8 @@ class SpaceService {
           userType: data.userType || 'guest',
           order: data.order || 0,
           status: data.status || 'active',
-          joinedAt: data.joinedAt || '',
-          updatedAt: data.updatedAt || ''
+          joinedAt: joinedAt,
+          updatedAt: updatedAt
         });
       });
       
