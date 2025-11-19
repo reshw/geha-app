@@ -2,15 +2,6 @@
 import { doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
-/**
- * .env 예시 (Vite 규칙: 반드시 VITE_ 프리픽스)
- * 
- * VITE_KAKAO_REST_API_KEY=카카오_REST_API_KEY
- * VITE_KAKAO_REDIRECT_URI=http://localhost:5173/auth/callback
- * # (앱에서 'Client Secret 사용'을 켰다면 필수)
- * VITE_KAKAO_CLIENT_SECRET=카카오_CLIENT_SECRET
- */
-
 class AuthService {
   KAUTH_BASE = 'https://kauth.kakao.com';
   KAPI_BASE = 'https://kapi.kakao.com';
@@ -42,7 +33,7 @@ class AuthService {
     }
   }
 
-  // ----- 1) 카카오 코드 → 토큰 → 사용자 정보 (프런트에서 직접 교환) -----
+  // ----- 1) 카카오 코드 → 토큰 → 사용자 정보 -----
   async getKakaoUserInfo(code) {
     if (!code) {
       throw new Error('인가 코드(code)가 없습니다. 콜백 URL/redirectUri를 확인해주세요.');
@@ -53,15 +44,13 @@ class AuthService {
       '환경변수 VITE_KAKAO_REST_API_KEY 가 필요합니다.'
     );
     
-    // 현재 호스트로 리다이렉트 URI 동적 생성
     const currentOrigin = window.location.origin;
     const REDIRECT_URI = `${currentOrigin}/auth/kakao/callback`;
     
-    const CLIENT_SECRET = import.meta.env.VITE_KAKAO_CLIENT_SECRET; // 선택
+    const CLIENT_SECRET = import.meta.env.VITE_KAKAO_CLIENT_SECRET;
 
     console.log('🔑 토큰 교환용 리다이렉트 URI:', REDIRECT_URI);
 
-    // 1) 코드 → 토큰 교환
     const tokenParams = new URLSearchParams({
       grant_type: 'authorization_code',
       client_id: REST_API_KEY,
@@ -78,11 +67,10 @@ class AuthService {
       throw new Error('토큰 교환은 성공했으나 access_token이 없습니다.');
     }
 
-    // 2) 토큰으로 사용자 정보 조회
     return await this.getKakaoUserInfoFromAccessToken(accessToken);
   }
 
-  // ----- 2) 이미 받은 access_token 으로 사용자 정보 조회 (JS SDK 사용 시) -----
+  // ----- 2) access_token으로 사용자 정보 조회 -----
   async getKakaoUserInfoFromAccessToken(accessToken) {
     if (!accessToken) {
       throw new Error('access_token 이 없습니다.');
@@ -104,7 +92,7 @@ class AuthService {
       displayName: data?.kakao_account?.profile?.nickname ?? '사용자',
       phoneNumber: data?.kakao_account?.phone_number ?? '',
       profileImage: data?.kakao_account?.profile?.profile_image_url ?? '',
-      kakaoRaw: data, // 디버깅이 필요 없으면 제거하셔도 됩니다.
+      kakaoRaw: data,
     };
   }
 
@@ -114,16 +102,27 @@ class AuthService {
     return snap.exists();
   }
 
-  // ----- 4) Firestore: 사용자 최초 등록 -----
+  // ----- 4) Firestore: 사용자 최초 등록 (확장된 필드 지원) -----
   async registerUser(userData) {
-    // userData는 getKakaoUserInfo(...)의 반환 객체 형태를 기대합니다.
-    await setDoc(doc(db, 'users', userData.id), {
+    const userDoc = {
+      id: userData.id,
       displayName: userData.displayName ?? '',
       email: userData.email ?? '',
       phoneNumber: userData.phoneNumber ?? '',
       profileImage: userData.profileImage ?? '',
+      provider: userData.provider ?? 'kakao',
       createdAt: new Date().toISOString()
-    }, { merge: true });
+    };
+
+    // 선택적 필드들 (회원가입 폼에서 입력받은 정보)
+    if (userData.birthyear) {
+      userDoc.birthyear = userData.birthyear;
+    }
+    if (userData.gender) {
+      userDoc.gender = userData.gender;
+    }
+
+    await setDoc(doc(db, 'users', userData.id), userDoc, { merge: true });
   }
 
   // ----- 5) Firestore: 사용자 + spaceAccess 묶음 조회 -----

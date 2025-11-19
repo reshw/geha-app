@@ -22,7 +22,7 @@ const KakaoCallback = () => {
       const code = url.searchParams.get('code');
       const stateStr = url.searchParams.get('state');
 
-      // state로 원래 보던 경로 복원 (redirectUri에 쿼리 붙이지 마세요)
+      // state로 원래 보던 경로 복원
       const from = (() => {
         try {
           return JSON.parse(decodeURIComponent(stateStr || ''))?.from || '/';
@@ -43,11 +43,25 @@ const KakaoCallback = () => {
         // 코드 → 토큰 → 유저정보
         const userInfo = await authService.getKakaoUserInfo(code);
 
-        // 최초 사용자면 등록
+        // 최초 사용자인지 확인
         const exists = await authService.checkUserExists(userInfo.id);
-        if (!exists) await authService.registerUser(userInfo);
+        
+        if (!exists) {
+          // 미등록 사용자 → 회원가입 페이지로 이동
+          // 코드 사용 플래그 남기기
+          if (code) sessionStorage.setItem(`kakao_code_used_${code}`, '1');
+          
+          navigate('/signup', { 
+            replace: true,
+            state: { 
+              kakaoUserInfo: userInfo,
+              from: from
+            }
+          });
+          return;
+        }
 
-        // 앱 세션에 로그인
+        // 기존 사용자 → 바로 로그인
         await login(userInfo);
 
         // 3) 재사용 금지 플래그 남기고, URL에서 ?code 제거하며 이동
