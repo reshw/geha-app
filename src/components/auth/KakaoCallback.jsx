@@ -42,12 +42,15 @@ const KakaoCallback = () => {
 
         // 코드 → 토큰 → 유저정보
         const userInfo = await authService.getKakaoUserInfo(code);
+        console.log('✅ 카카오 유저 정보 받음:', userInfo);
 
         // 최초 사용자인지 확인
         const exists = await authService.checkUserExists(userInfo.id);
+        console.log('🔍 사용자 존재 여부:', exists);
         
         if (!exists) {
           // 미등록 사용자 → 회원가입 페이지로 이동
+          console.log('🆕 미등록 사용자 - 회원가입 페이지로 이동');
           // 코드 사용 플래그 남기기
           if (code) sessionStorage.setItem(`kakao_code_used_${code}`, '1');
           
@@ -61,7 +64,15 @@ const KakaoCallback = () => {
           return;
         }
 
-        // 기존 사용자 → 바로 로그인
+        // 기존 사용자 → 프로필 정보 업데이트 후 로그인
+        console.log('👤 기존 사용자 - 로그인 처리');
+        
+        // 카카오에서 받은 최신 정보로 프로필 업데이트
+        await authService.updateUserProfile(userInfo.id, {
+          displayName: userInfo.displayName,
+          profileImage: userInfo.profileImage
+        });
+        
         await login(userInfo);
 
         // 3) 재사용 금지 플래그 남기고, URL에서 ?code 제거하며 이동

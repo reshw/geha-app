@@ -125,6 +125,22 @@ class AuthService {
     await setDoc(doc(db, 'users', userData.id), userDoc, { merge: true });
   }
 
+  // ----- 4-1) Firestore: 사용자 프로필 정보 업데이트 (재로그인 시) -----
+  async updateUserProfile(userId, profileData) {
+    const updates = {};
+    
+    if (profileData.displayName !== undefined) {
+      updates.displayName = profileData.displayName;
+    }
+    if (profileData.profileImage !== undefined) {
+      updates.profileImage = profileData.profileImage;
+    }
+    
+    if (Object.keys(updates).length > 0) {
+      await setDoc(doc(db, 'users', userId), updates, { merge: true });
+    }
+  }
+
   // ----- 5) Firestore: 사용자 + spaceAccess 묶음 조회 -----
   async getUserData(userId) {
     const userRef = doc(db, 'users', userId);

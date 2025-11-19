@@ -13,6 +13,9 @@ const SignupPage = () => {
   const kakaoUserInfo = location.state?.kakaoUserInfo;
   const from = location.state?.from || '/';
   
+  console.log('📝 SignupPage - location.state:', location.state);
+  console.log('📝 SignupPage - kakaoUserInfo:', kakaoUserInfo);
+  
   const [formData, setFormData] = useState({
     birthyear: '',
     gender: '',
@@ -24,6 +27,7 @@ const SignupPage = () => {
   useEffect(() => {
     // 카카오 정보 없이 직접 접근하면 로그인 페이지로
     if (!kakaoUserInfo) {
+      console.log('❌ kakaoUserInfo 없음 - 로그인 페이지로 리다이렉트');
       navigate('/login', { replace: true });
     }
   }, [kakaoUserInfo, navigate]);

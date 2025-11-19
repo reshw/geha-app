@@ -8,6 +8,7 @@ import LoginOverlay from '../auth/LoginOverlay';
 import Loading from '../common/Loading';
 import Modal from '../common/Modal';
 import ReservationModal from './ReservationModal';
+import SpaceDropdown from '../space/SpaceDropdown';
 import notificationService from '../../services/notificationService';
 import { formatDate, formatWeekDay, getWeekDates, isToday } from '../../utils/dateUtils';
 
@@ -294,6 +295,34 @@ const WeeklyList = () => {
     return <Loading />;
   }
   
+  // 가입한 방이 없을 때
+  if (userSpaces.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <div className="text-center max-w-md">
+          <div className="text-6xl mb-6">🏠</div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">
+            아직 가입한 방이 없습니다
+          </h2>
+          <p className="text-gray-600 mb-8">
+            방 코드를 입력하여 게스트하우스에 가입하세요
+          </p>
+          <button
+            onClick={() => window.location.href = '/join'}
+            className="px-8 py-3 bg-blue-600 text-white rounded-lg font-medium
+              hover:bg-blue-700 transition-colors"
+          >
+            방 가입하기
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (reservationsLoading) {
+    return <Loading />;
+  }
+  
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i);
   const months = Array.from({ length: 12 }, (_, i) => i);
@@ -342,7 +371,7 @@ const WeeklyList = () => {
               gap: '8px',
               color: '#fff'
             }}>
-              {selectedSpace?.name || '예약 관리'} ▾
+              {selectedSpace?.spaceName || selectedSpace?.name || '예약 관리'} ▾
             </div>
             <button
               onClick={() => setShowDatePicker(true)}
@@ -470,28 +499,15 @@ const WeeklyList = () => {
           {/* 스페이스 선택 */}
           {userSpaces.length > 1 && (
             <div style={{ padding: '0 12px 10px' }}>
-              <select 
-                value={selectedSpace?.id || ''} 
-                onChange={(e) => {
-                  const space = userSpaces.find(s => s.id === e.target.value);
-                  setSelectedSpace(space);
+              <SpaceDropdown
+                spaces={userSpaces}
+                selectedSpace={selectedSpace}
+                onSelect={(space) => setSelectedSpace(space)}
+                onReorder={async (updatedSpaces) => {
+                  await spaceService.updateSpaceOrder(user.id, updatedSpaces);
+                  setUserSpaces(updatedSpaces);
                 }}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  background: 'rgba(255,255,255,.08)',
-                  color: '#fff',
-                  border: '1px solid rgba(255,255,255,.14)',
-                  borderRadius: '8px',
-                  fontWeight: '600'
-                }}
-              >
-                {userSpaces.map(space => (
-                  <option key={space.id} value={space.id}>
-                    {space.name} ({space.memberType === 'shareholder' ? '주주' : '게스트'})
-                  </option>
-                ))}
-              </select>
+              />
             </div>
           )}
         </div>
