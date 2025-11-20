@@ -145,11 +145,13 @@ const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReserva
     console.log('✅ [ReservationModal] selectedHost:', selectedHost);
 
     onConfirm({
+      userId: user?.id,
       checkIn,
       checkOut,
       name: userName,
       type: memberType,
       nights: getNights(),
+      phone: user?.phoneNumber || '',
       hostId: selectedHost?.id || null,
       hostDisplayName: selectedHost?.displayName || null
     });

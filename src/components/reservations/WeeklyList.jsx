@@ -22,8 +22,9 @@ const Toast = ({ message, type = 'success', onClose }) => {
   }, [onClose]);
 
   return (
-    <div className="fixed top-5 left-1/2 transform -translate-x-1/2 z-[9999] px-6 py-4 rounded-xl shadow-xl flex items-center gap-3 animate-slideDown"
+    <div className="fixed left-1/2 transform -translate-x-1/2 z-[99999] px-6 py-4 rounded-xl shadow-xl flex items-center gap-3 animate-slideDown max-w-[90vw]"
       style={{
+        top: 'max(20px, env(safe-area-inset-top, 20px))',
         background: type === 'success' ? '#10b981' : '#ef4444',
         color: 'white'
       }}
@@ -490,15 +491,48 @@ const WeeklyList = () => {
                       
                       {/* 초대 코드 공유 */}
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           setShowHamburgerMenu(false);
                           const spaceId = selectedSpace?.id || selectedSpace?.spaceId;
+                          console.log('🔗 초대 링크 생성:', { selectedSpace, spaceId });
+                          
+                          if (!spaceId) {
+                            setToast({ message: '스페이스 ID를 찾을 수 없습니다', type: 'error' });
+                            return;
+                          }
+                          
                           const inviteLink = `${window.location.origin}/join/${spaceId}`;
-                          navigator.clipboard.writeText(inviteLink).then(() => {
-                            setToast({ message: '초대 코드가 복사되었습니다. 원하시는 분에게 공유해주세요!', type: 'success' });
-                          }).catch(() => {
-                            alert(`초대 링크: ${inviteLink}`);
-                          });
+                          console.log('📋 복사할 링크:', inviteLink);
+                          
+                          // 모바일 대응: textarea를 사용한 복사
+                          try {
+                            if (navigator.clipboard && window.isSecureContext) {
+                              // 최신 브라우저
+                              await navigator.clipboard.writeText(inviteLink);
+                              console.log('✅ clipboard API로 복사 성공');
+                            } else {
+                              // 구형 브라우저/모바일 대응
+                              const textArea = document.createElement('textarea');
+                              textArea.value = inviteLink;
+                              textArea.style.position = 'fixed';
+                              textArea.style.left = '-999999px';
+                              textArea.style.top = '-999999px';
+                              document.body.appendChild(textArea);
+                              textArea.focus();
+                              textArea.select();
+                              document.execCommand('copy');
+                              textArea.remove();
+                              console.log('✅ execCommand로 복사 성공');
+                            }
+                            setToast({ message: '초대 링크가 복사되었습니다!', type: 'success' });
+                          } catch (err) {
+                            console.error('❌ 복사 실패:', err);
+                            // 복사 실패 시 링크 직접 표시
+                            setToast({ message: '복사 실패', type: 'error' });
+                            setTimeout(() => {
+                              alert(`이 링크를 복사하세요:\n${inviteLink}`);
+                            }, 100);
+                          }
                         }}
                         className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors text-gray-700 flex items-center gap-3"
                       >
@@ -644,8 +678,33 @@ const WeeklyList = () => {
           // 날짜별 예약 가져오기 (객체에서 직접 접근)
           const dateReservations = reservationsObj[dateStr] || [];
           
+          // 🔍 디버깅: 예약 데이터 확인
+          console.log(`📅 ${dateStr} (${formatWeekDay(date)}) 디버깅:`, {
+            dateReservations: dateReservations.length,
+            allReservations: dateReservations.map(r => ({
+              id: r.id,
+              userId: r.userId,
+              userIdType: typeof r.userId,
+              name: r.name,
+              type: r.type
+            })),
+            currentUserId: user.id,
+            currentUserIdType: typeof user.id,
+            isGuest: isGuest
+          });
+          
           // 게스트는 본인 예약만 상세정보 표시
-          const myReservations = dateReservations.filter(r => r.userId === user.id);
+          const myReservations = dateReservations.filter(r => {
+            const match = String(r.userId) === String(user.id);
+            console.log(`  🔍 예약 ${r.id}: userId=${r.userId}, match=${match}`);
+            return match;
+          }).map(r => ({
+            ...r,
+            isCheckIn: formatDate(r.checkIn) === dateStr,
+            hostDisplayName: profiles[r.hostId]?.displayName || r.hostId
+          }));
+          
+          console.log(`  ✅ 내 예약: ${myReservations.length}개`);
           
           // 통계용 전체 예약 (게스트도 총 인원수는 봐야 함)
           const allReservations = dateReservations.map(r => ({
@@ -688,6 +747,17 @@ const WeeklyList = () => {
                   }`}>
                     ({formatWeekDay(date)})
                   </span>
+                  {/* 게스트용 체크인/체크아웃 표시 */}
+                  {isGuest && myReservations.length > 0 && myReservations.map(r => {
+                    const isCheckInDay = formatDate(r.checkIn) === dateStr;
+                    const isCheckOutDay = formatDate(r.checkOut) === dateStr;
+                    if (isCheckInDay) {
+                      return <span key={r.id} className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold ml-1">체크인</span>;
+                    } else if (isCheckOutDay) {
+                      return <span key={r.id} className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-semibold ml-1">체크아웃</span>;
+                    }
+                    return null;
+                  })}
                 </div>
                 
                 {/* 인원수 */}
@@ -710,27 +780,52 @@ const WeeklyList = () => {
               {/* 펼쳤을 때 */}
               <div className="px-4 pb-4 border-t bg-gray-50">
                 {isGuest ? (
-                  // 게스트: 본인 예약만
-                  myReservations.length > 0 ? (
-                    <div className="pt-3">
-                      <div className="text-xs text-gray-500 mb-2">내 예약</div>
-                      <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                        <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">
-                          {myReservations[0].name?.[0]}
-                        </div>
-                        <div className="flex-1">
-                          <div className="font-semibold text-gray-900">{myReservations[0].name}</div>
-                          {myReservations[0].isCheckIn && (
-                            <span className="text-xs text-green-600 font-semibold">체크인</span>
-                          )}
-                        </div>
+                  // 게스트: 본인 프로필만 표시 (주주와 동일한 방식)
+                  <div className="pt-3">
+                    {myReservations.length > 0 ? (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {myReservations.map((reservation) => {
+                          const profile = profiles[reservation.userId];
+                          
+                          return (
+                            <div key={reservation.id} className="relative group">
+                              {profile?.profileImage ? (
+                                <img
+                                  src={profile.profileImage}
+                                  alt={reservation.name}
+                                  className="w-12 h-12 rounded-full object-cover ring-2 ring-blue-500"
+                                />
+                              ) : (
+                                <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold ring-2 ring-blue-500 bg-blue-500">
+                                  {reservation.name?.[0]}
+                                </div>
+                              )}
+                              {/* 호버시 이름 + 초대자 표시 */}
+                              <div className="absolute bottom-full left-0 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap">
+                                <div>{reservation.name}</div>
+                                {reservation.hostDisplayName && (
+                                  <div className="text-[10px] text-gray-300">
+                                    {profiles[reservation.hostId]?.displayName || reservation.hostDisplayName} 초대
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                    </div>
-                  ) : (
-                    <div className="py-4 text-center text-gray-400 text-sm">
-                      다른 예약자 정보는 비공개입니다
-                    </div>
-                  )
+                    ) : (
+                      <div className="py-4 text-center text-gray-400 text-sm">
+                        내 예약 없음
+                      </div>
+                    )}
+                    
+                    {/* 다른 예약자 정보 */}
+                    {allReservations.length > myReservations.length && (
+                      <div className="mt-3 pt-3 text-xs text-gray-500 text-center border-t border-gray-200">
+                        다른 {allReservations.length - myReservations.length}명의 예약자 정보는 비공개입니다
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   // 주주: 전체 예약 (프로필 사진 가로 나열)
                   allReservations.length > 0 ? (
@@ -764,12 +859,12 @@ const WeeklyList = () => {
                                   {reservation.name?.[0]}
                                 </div>
                               )}
-                              {/* 호버시 이름 표시 */}
-                              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                                {reservation.name}
+                              {/* 호버시 이름 + 초대자 표시 */}
+                              <div className="absolute bottom-full left-0 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap">
+                                <div>{reservation.name}</div>
                                 {!isMember && reservation.hostDisplayName && (
                                   <div className="text-[10px] text-gray-300">
-                                    {reservation.hostDisplayName}님 초대
+                                    {reservation.hostDisplayName} 초대
                                   </div>
                                 )}
                               </div>
@@ -852,17 +947,19 @@ const WeeklyList = () => {
       {isSubmitting && <LoadingOverlay />}
       
       {/* 플로팅 예약 추가 버튼 */}
-      <button
-        onClick={() => setShowReservationModal(true)}
-        className="fixed bottom-6 right-6 z-50 px-5 py-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full shadow-lg flex items-center gap-2 text-white hover:shadow-xl transition-all hover:scale-105 active:scale-95"
-        style={{ 
-          bottom: 'calc(24px + env(safe-area-inset-bottom))',
-          right: 'max(24px, env(safe-area-inset-right))'
-        }}
-      >
-        <Plus className="w-5 h-5" />
-        <span className="font-semibold">예약하기</span>
-      </button>
+      {!showReservationModal && !showDatePicker && (
+        <button
+          onClick={() => setShowReservationModal(true)}
+          className="fixed bottom-6 right-6 z-40 px-5 py-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full shadow-lg flex items-center gap-2 text-white hover:shadow-xl transition-all hover:scale-105 active:scale-95"
+          style={{ 
+            bottom: 'calc(24px + env(safe-area-inset-bottom))',
+            right: 'max(24px, env(safe-area-inset-right))'
+          }}
+        >
+          <Plus className="w-5 h-5" />
+          <span className="font-semibold">예약하기</span>
+        </button>
+      )}
     </div>
   );
 };
