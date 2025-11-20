@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import WeeklyList from './components/reservations/WeeklyList';
 import KakaoCallback from './components/auth/KakaoCallback';
 import SignupPage from './pages/SignupPage';
+import SignupDemoPage from './pages/SignupDemoPage';
 import JoinSpacePage from './pages/JoinSpacePage';
 import SpaceManagePage from './pages/SpaceManagePage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
@@ -15,6 +16,7 @@ function App() {
           <Route path="/" element={<WeeklyList />} />
           <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
           <Route path="/signup" element={<SignupPage />} />
+          <Route path="/signin" element={<SignupDemoPage />} />
           <Route path="/join" element={<JoinSpacePage />} />
           <Route path="/join/:code" element={<JoinSpacePage />} />
           <Route path="/manage" element={<SpaceManagePage />} />
