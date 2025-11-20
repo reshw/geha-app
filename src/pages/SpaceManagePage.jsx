@@ -9,37 +9,53 @@ import { ArrowLeft, UserMinus, Shield, Users } from 'lucide-react';
 
 export default function SpaceManagePage() {
   const navigate = useNavigate();
-  const { user, currentSpace } = useStore();
+  const { user, selectedSpace } = useStore();  // currentSpace → selectedSpace
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
 
   // 권한 체크
   useEffect(() => {
-    if (!user || !currentSpace) {
+    console.log('🔍 SpaceManagePage 권한 체크:', { user, selectedSpace });
+    
+    if (!user || !selectedSpace) {
+      console.warn('⚠️ user 또는 selectedSpace 없음');
       alert('로그인이 필요합니다.');
       navigate('/');
       return;
     }
 
-    const userSpaceData = user.spaceAccess?.find(s => s.spaceId === currentSpace.id);
+    // selectedSpace.id 또는 selectedSpace.spaceId 사용
+    const spaceId = selectedSpace.id || selectedSpace.spaceId;
+    console.log('📌 spaceId:', spaceId);
+    console.log('📌 user.spaceAccess:', user.spaceAccess);
+    
+    const userSpaceData = user.spaceAccess?.find(s => s.spaceId === spaceId);
+    console.log('📌 userSpaceData:', userSpaceData);
+    
     if (!userSpaceData || !canManageSpace(userSpaceData.userType)) {
+      console.warn('⚠️ 권한 없음:', userSpaceData?.userType);
       alert('접근 권한이 없습니다. 매니저만 접근 가능합니다.');
       navigate('/');
       return;
     }
-  }, [user, currentSpace, navigate]);
+    
+    console.log('✅ 권한 확인 완료');
+  }, [user, selectedSpace, navigate]);
 
   // 멤버 목록 로드
   useEffect(() => {
-    if (!currentSpace?.id) return;
+    if (!selectedSpace?.id) return;
     loadMembers();
-  }, [currentSpace]);
+  }, [selectedSpace]);
 
   const loadMembers = async () => {
     try {
       setLoading(true);
-      const assignedUsersRef = collection(db, `spaces/${currentSpace.id}/assignedUsers`);
+      const spaceId = selectedSpace.id || selectedSpace.spaceId;
+      console.log('📋 멤버 목록 로드 시작:', spaceId);
+      
+      const assignedUsersRef = collection(db, `spaces/${spaceId}/assignedUsers`);
       const snapshot = await getDocs(assignedUsersRef);
       
       const memberList = [];
@@ -89,15 +105,16 @@ export default function SpaceManagePage() {
 
     try {
       setProcessing(true);
+      const spaceId = selectedSpace.id || selectedSpace.spaceId;
 
       // 1. spaces/{spaceId}/assignedUsers/{userId} 업데이트
-      const spaceUserRef = doc(db, `spaces/${currentSpace.id}/assignedUsers`, member.userId);
+      const spaceUserRef = doc(db, `spaces/${spaceId}/assignedUsers`, member.userId);
       await updateDoc(spaceUserRef, {
         userType: newUserType
       });
 
       // 2. users/{userId}/spaceAccess/{spaceId} 업데이트
-      const userSpaceRef = doc(db, `users/${member.userId}/spaceAccess`, currentSpace.id);
+      const userSpaceRef = doc(db, `users/${member.userId}/spaceAccess`, spaceId);
       await updateDoc(userSpaceRef, {
         userType: newUserType
       });
@@ -132,13 +149,14 @@ export default function SpaceManagePage() {
 
     try {
       setProcessing(true);
+      const spaceId = selectedSpace.id || selectedSpace.spaceId;
 
       // 1. spaces/{spaceId}/assignedUsers/{userId} 삭제
-      const spaceUserRef = doc(db, `spaces/${currentSpace.id}/assignedUsers`, member.userId);
+      const spaceUserRef = doc(db, `spaces/${spaceId}/assignedUsers`, member.userId);
       await deleteDoc(spaceUserRef);
 
       // 2. users/{userId}/spaceAccess/{spaceId} 삭제
-      const userSpaceRef = doc(db, `users/${member.userId}/spaceAccess`, currentSpace.id);
+      const userSpaceRef = doc(db, `users/${member.userId}/spaceAccess`, spaceId);
       await deleteDoc(userSpaceRef);
 
       alert('멤버가 내보내졌습니다.');
@@ -176,7 +194,7 @@ export default function SpaceManagePage() {
             </button>
             <div>
               <h1 className="text-xl font-bold text-white">멤버 관리</h1>
-              <p className="text-sm text-slate-300">{currentSpace?.spaceName || ''}</p>
+              <p className="text-sm text-slate-300">{selectedSpace?.spaceName || ''}</p>
             </div>
           </div>
         </div>

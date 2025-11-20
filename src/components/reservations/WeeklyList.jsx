@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, Check, X, Settings } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Plus, Check, X, Menu, Settings2, Share2, GripVertical } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useReservations } from '../../hooks/useReservations';
 import useStore from '../../store/useStore';
@@ -69,6 +69,11 @@ const WeeklyList = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [toast, setToast] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showHamburgerMenu, setShowHamburgerMenu] = useState(false);
+  const [showSpaceDropdown, setShowSpaceDropdown] = useState(false);
+  const [draggedSpaceIndex, setDraggedSpaceIndex] = useState(null);
+  const [touchStartY, setTouchStartY] = useState(null);
+  const [touchCurrentY, setTouchCurrentY] = useState(null);
   
   const { reservations, loading: reservationsLoading, createReservation } = useReservations(selectedSpace?.id, currentWeekStart);
   
@@ -121,6 +126,88 @@ const WeeklyList = () => {
     monday.setHours(0, 0, 0, 0);
     setCurrentWeekStart(monday);
     setShowDatePicker(false);
+  };
+  
+  // 스페이스 드래그 핸들러
+  const handleSpaceDragStart = (e, index) => {
+    setDraggedSpaceIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleSpaceDragOver = (e, index) => {
+    e.preventDefault();
+    if (draggedSpaceIndex === null || draggedSpaceIndex === index) return;
+
+    const newSpaces = [...userSpaces];
+    const draggedItem = newSpaces[draggedSpaceIndex];
+    newSpaces.splice(draggedSpaceIndex, 1);
+    newSpaces.splice(index, 0, draggedItem);
+
+    setUserSpaces(newSpaces);
+    setDraggedSpaceIndex(index);
+  };
+
+  const handleSpaceDragEnd = async () => {
+    if (draggedSpaceIndex !== null) {
+      const updatedSpaces = userSpaces.map((space, idx) => ({
+        ...space,
+        order: idx
+      }));
+      
+      await spaceService.updateSpaceOrder(user.id, updatedSpaces);
+      setUserSpaces(updatedSpaces);
+    }
+    setDraggedSpaceIndex(null);
+  };
+
+  // 터치 이벤트 핸들러
+  const handleSpaceTouchStart = (e, index) => {
+    const touch = e.touches[0];
+    setTouchStartY(touch.clientY);
+    setTouchCurrentY(touch.clientY);
+    setDraggedSpaceIndex(index);
+  };
+
+  const handleSpaceTouchMove = (e) => {
+    if (draggedSpaceIndex === null || touchStartY === null) return;
+    
+    e.preventDefault();
+    const touch = e.touches[0];
+    setTouchCurrentY(touch.clientY);
+    
+    const itemHeight = 60;
+    const diff = touch.clientY - touchStartY;
+    const steps = Math.round(diff / itemHeight);
+    
+    if (steps !== 0) {
+      const newIndex = Math.max(0, Math.min(userSpaces.length - 1, draggedSpaceIndex + steps));
+      
+      if (newIndex !== draggedSpaceIndex) {
+        const newSpaces = [...userSpaces];
+        const draggedItem = newSpaces[draggedSpaceIndex];
+        newSpaces.splice(draggedSpaceIndex, 1);
+        newSpaces.splice(newIndex, 0, draggedItem);
+        
+        setUserSpaces(newSpaces);
+        setDraggedSpaceIndex(newIndex);
+        setTouchStartY(touch.clientY);
+      }
+    }
+  };
+
+  const handleSpaceTouchEnd = async () => {
+    if (draggedSpaceIndex !== null) {
+      const updatedSpaces = userSpaces.map((space, idx) => ({
+        ...space,
+        order: idx
+      }));
+      
+      await spaceService.updateSpaceOrder(user.id, updatedSpaces);
+      setUserSpaces(updatedSpaces);
+    }
+    setDraggedSpaceIndex(null);
+    setTouchStartY(null);
+    setTouchCurrentY(null);
   };
   
   const weekDates = getWeekDates(currentWeekStart);
@@ -201,35 +288,168 @@ const WeeklyList = () => {
   
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 헤더 */}
-      <div className="bg-gradient-to-br from-blue-600 to-blue-700 text-white">
+      {/* 헤더 - sticky 추가 */}
+      <div className="bg-gradient-to-br from-blue-600 to-blue-700 text-white sticky top-0 z-30 shadow-lg">
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center justify-between p-4">
-            <div>
-              <h1 className="text-xl font-bold">{selectedSpace?.spaceName || '스페이스'}</h1>
-              <p className="text-sm text-blue-100 mt-1">
-                {selectedSpace?.userType === 'guest' ? '게스트' : '주주'}
-              </p>
+            {/* 좌측: 스페이스 선택 */}
+            <div className="relative">
+              <button
+                onClick={() => userSpaces.length > 1 && setShowSpaceDropdown(!showSpaceDropdown)}
+                className={`flex items-center gap-2 ${userSpaces.length > 1 ? 'hover:bg-white/10' : ''} px-3 py-2 rounded-lg transition-colors`}
+                disabled={userSpaces.length <= 1}
+              >
+                <h1 className="text-xl font-bold">{selectedSpace?.spaceName || '스페이스'}</h1>
+                {userSpaces.length > 1 && <ChevronDown className="w-5 h-5" />}
+              </button>
+              
+              {/* 스페이스 드롭다운 with 드래그 */}
+              {showSpaceDropdown && userSpaces.length > 1 && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-40" 
+                    onClick={() => setShowSpaceDropdown(false)}
+                  />
+                  <div className="absolute top-full left-0 mt-2 bg-white rounded-xl shadow-xl z-50 overflow-hidden min-w-[250px] max-h-[400px] overflow-y-auto">
+                    {userSpaces.map((space, index) => {
+                      const isDragging = draggedSpaceIndex === index;
+                      let translateY = 0;
+                      let scale = 1;
+                      let opacity = 1;
+                      
+                      if (isDragging && touchStartY && touchCurrentY) {
+                        translateY = touchCurrentY - touchStartY;
+                        scale = 1.05;
+                        opacity = 0.9;
+                      }
+                      
+                      return (
+                        <div
+                          key={space.id}
+                          draggable
+                          onDragStart={(e) => handleSpaceDragStart(e, index)}
+                          onDragOver={(e) => handleSpaceDragOver(e, index)}
+                          onDragEnd={handleSpaceDragEnd}
+                          onTouchStart={(e) => {
+                            if (e.target.closest('.drag-handle')) {
+                              handleSpaceTouchStart(e, index);
+                            }
+                          }}
+                          onTouchMove={handleSpaceTouchMove}
+                          onTouchEnd={handleSpaceTouchEnd}
+                          className={`flex items-center gap-3 px-4 py-3 ${
+                            selectedSpace?.id === space.id ? 'bg-blue-50' : isDragging ? 'bg-gray-100' : 'bg-white'
+                          } ${index < userSpaces.length - 1 ? 'border-b border-gray-100' : ''} hover:bg-gray-50 transition-colors`}
+                          style={{
+                            transform: `translateY(${translateY}px) scale(${scale})`,
+                            opacity: opacity,
+                            transition: isDragging ? 'none' : 'all 0.2s',
+                            cursor: isDragging ? 'grabbing' : 'pointer',
+                            userSelect: 'none',
+                            WebkitUserSelect: 'none',
+                            position: 'relative',
+                            zIndex: isDragging ? 100 : 1,
+                            boxShadow: isDragging ? '0 8px 16px rgba(0,0,0,0.15)' : 'none'
+                          }}
+                        >
+                          {/* 드래그 핸들 */}
+                          <div
+                            className="drag-handle"
+                            style={{
+                              cursor: isDragging ? 'grabbing' : 'grab',
+                              color: isDragging ? '#2563eb' : '#9ca3af',
+                              touchAction: 'none'
+                            }}
+                          >
+                            <GripVertical className="w-5 h-5" />
+                          </div>
+                          
+                          {/* 스페이스 정보 */}
+                          <div
+                            onClick={() => {
+                              if (!isDragging) {
+                                setSelectedSpace(space);
+                                setShowSpaceDropdown(false);
+                              }
+                            }}
+                            className="flex-1"
+                          >
+                            <div className={`font-semibold ${selectedSpace?.id === space.id ? 'text-blue-600' : 'text-gray-700'}`}>
+                              {space.spaceName}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-0.5">
+                              {space.userType === 'guest' ? '게스트' : space.userType === 'shareholder' ? '주주' : space.userType === 'manager' ? '매니저' : '부매니저'}
+                            </div>
+                          </div>
+                          
+                          {/* 선택 표시 */}
+                          {selectedSpace?.id === space.id && (
+                            <div className="w-2 h-2 rounded-full bg-blue-600" />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </div>
             
+            {/* 우측: 햄버거 + 프로필 */}
             <div className="flex items-center gap-3">
-              {/* 관리 버튼 (manager만) */}
-              {selectedSpace?.userType && canManageSpace(selectedSpace.userType) && (
+              {/* 햄버거 버튼 */}
+              <div className="relative">
                 <button
-                  onClick={() => navigate('/manage')}
+                  onClick={() => setShowHamburgerMenu(!showHamburgerMenu)}
                   className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/20 hover:bg-white/30 transition-colors"
-                  title="멤버 관리"
                 >
-                  <Settings className="w-5 h-5" />
+                  <Menu className="w-5 h-5" />
                 </button>
-              )}
+                
+                {/* 햄버거 메뉴 드롭다운 */}
+                {showHamburgerMenu && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-40" 
+                      onClick={() => setShowHamburgerMenu(false)}
+                    />
+                    <div className="absolute top-full right-0 mt-2 bg-white rounded-xl shadow-xl z-50 overflow-hidden min-w-[200px]">
+                      {/* 스페이스 관리 (manager만) */}
+                      {selectedSpace?.userType && canManageSpace(selectedSpace.userType) && (
+                        <button
+                          onClick={() => {
+                            setShowHamburgerMenu(false);
+                            navigate('/manage');
+                          }}
+                          className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors text-gray-700 flex items-center gap-3"
+                        >
+                          <Settings2 className="w-5 h-5 text-gray-500" />
+                          <span className="font-medium">스페이스 관리</span>
+                        </button>
+                      )}
+                      
+                      {/* 초대 코드 공유 */}
+                      <button
+                        onClick={() => {
+                          setShowHamburgerMenu(false);
+                          const spaceId = selectedSpace?.id || selectedSpace?.spaceId;
+                          const inviteLink = `${window.location.origin}/join/${spaceId}`;
+                          navigator.clipboard.writeText(inviteLink).then(() => {
+                            setToast({ message: '초대 코드가 복사되었습니다. 원하시는 분에게 공유해주세요!', type: 'success' });
+                          }).catch(() => {
+                            alert(`초대 링크: ${inviteLink}`);
+                          });
+                        }}
+                        className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors text-gray-700 flex items-center gap-3"
+                      >
+                        <Share2 className="w-5 h-5 text-gray-500" />
+                        <span className="font-medium">초대 코드 공유</span>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
               
-              <button
-                onClick={() => setShowDatePicker(true)}
-                className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/20 hover:bg-white/30"
-              >
-                <CalendarIcon className="w-5 h-5" />
-              </button>
+              {/* 프로필 */}
               {user?.profileImage && (
                 <img 
                   src={user.profileImage} 
@@ -258,21 +478,6 @@ const WeeklyList = () => {
               오늘
             </button>
           </div>
-          
-          {/* 스페이스 선택 */}
-          {userSpaces.length > 1 && (
-            <div className="px-4 pb-3">
-              <SpaceDropdown
-                spaces={userSpaces}
-                selectedSpace={selectedSpace}
-                onSelect={(space) => setSelectedSpace(space)}
-                onReorder={async (updatedSpaces) => {
-                  await spaceService.updateSpaceOrder(user.id, updatedSpaces);
-                  setUserSpaces(updatedSpaces);
-                }}
-              />
-            </div>
-          )}
         </div>
       </div>
       
@@ -417,15 +622,6 @@ const WeeklyList = () => {
         )}
       </div>
       
-      {/* 플로팅 버튼 */}
-      <button
-        onClick={() => setShowReservationModal(true)}
-        className="fixed right-4 bottom-4 px-6 py-4 bg-blue-600 text-white rounded-2xl shadow-xl hover:bg-blue-700 flex items-center gap-2 font-semibold"
-      >
-        <Plus className="w-5 h-5" />
-        예약하기
-      </button>
-      
       {/* 날짜 선택 모달 */}
       <Modal isOpen={showDatePicker} onClose={() => setShowDatePicker(false)} title="날짜 선택">
         <div className="space-y-4">
@@ -486,6 +682,19 @@ const WeeklyList = () => {
       
       {/* 로딩 */}
       {isSubmitting && <LoadingOverlay />}
+      
+      {/* 플로팅 예약 추가 버튼 */}
+      <button
+        onClick={() => setShowReservationModal(true)}
+        className="fixed bottom-6 right-6 z-50 px-5 py-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full shadow-lg flex items-center gap-2 text-white hover:shadow-xl transition-all hover:scale-105 active:scale-95"
+        style={{ 
+          bottom: 'calc(24px + env(safe-area-inset-bottom))',
+          right: 'max(24px, env(safe-area-inset-right))'
+        }}
+      >
+        <Plus className="w-5 h-5" />
+        <span className="font-semibold">예약하기</span>
+      </button>
     </div>
   );
 };
