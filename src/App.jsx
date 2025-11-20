@@ -4,6 +4,8 @@ import KakaoCallback from './components/auth/KakaoCallback';
 import SignupPage from './pages/SignupPage';
 import JoinSpacePage from './pages/JoinSpacePage';
 import SpaceManagePage from './pages/SpaceManagePage';
+import TermsOfServicePage from './pages/TermsOfServicePage';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 
 function App() {
   return (
@@ -16,6 +18,8 @@ function App() {
           <Route path="/join" element={<JoinSpacePage />} />
           <Route path="/join/:code" element={<JoinSpacePage />} />
           <Route path="/manage" element={<SpaceManagePage />} />
+          <Route path="/terms" element={<TermsOfServicePage />} />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
         </Routes>
       </div>
     </BrowserRouter>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, ChevronDown, Plus, Check, X, Menu, Settings2, Share2, GripVertical } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Plus, Check, X, Menu, Settings2, Share2, GripVertical, User, LogOut, FileText, Shield, UserCog, UserMinus } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useReservations } from '../../hooks/useReservations';
 import useStore from '../../store/useStore';
@@ -12,6 +12,7 @@ import ReservationModal from './ReservationModal';
 import SpaceDropdown from '../space/SpaceDropdown';
 import { formatDate, formatWeekDay, getWeekDates, isToday } from '../../utils/dateUtils';
 import { canManageSpace } from '../../utils/permissions';
+import { USER_TYPE_LABELS } from '../../utils/constants';
 
 // 토스트 알림 컴포넌트
 const Toast = ({ message, type = 'success', onClose }) => {
@@ -45,7 +46,7 @@ const LoadingOverlay = () => (
 
 const WeeklyList = () => {
   const navigate = useNavigate();
-  const { user, isLoggedIn } = useAuth();
+  const { user, isLoggedIn, logout } = useAuth();
   const { selectedSpace, setSelectedSpace, profiles } = useStore();
   const hasInitializedSpace = useRef(false);
   
@@ -74,6 +75,7 @@ const WeeklyList = () => {
   const [draggedSpaceIndex, setDraggedSpaceIndex] = useState(null);
   const [touchStartY, setTouchStartY] = useState(null);
   const [touchCurrentY, setTouchCurrentY] = useState(null);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   
   const { reservations, loading: reservationsLoading, createReservation } = useReservations(selectedSpace?.id, currentWeekStart);
   
@@ -449,14 +451,107 @@ const WeeklyList = () => {
                 )}
               </div>
               
-              {/* 프로필 */}
-              {user?.profileImage && (
-                <img 
-                  src={user.profileImage} 
-                  alt={user.name}
-                  className="w-9 h-9 rounded-full object-cover ring-2 ring-white/30"
-                />
-              )}
+              {/* 프로필 메뉴 */}
+              <div className="relative">
+                {user?.profileImage && (
+                  <>
+                    <button
+                      onClick={() => setShowProfileMenu(!showProfileMenu)}
+                      className="w-9 h-9 rounded-full ring-2 ring-white/30 hover:ring-white/50 transition-all"
+                    >
+                      <img 
+                        src={user.profileImage} 
+                        alt={user.name}
+                        className="w-full h-full rounded-full object-cover"
+                      />
+                    </button>
+
+                    {/* 프로필 드롭다운 */}
+                    {showProfileMenu && (
+                      <>
+                        <div 
+                          className="fixed inset-0 z-40" 
+                          onClick={() => setShowProfileMenu(false)}
+                        />
+                        <div className="absolute top-full right-0 mt-2 bg-white rounded-xl shadow-xl z-50 overflow-hidden min-w-[220px]">
+                          {/* 사용자 정보 */}
+                          <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
+                            <div className="font-semibold text-gray-900">{user.displayName}</div>
+                            <div className="text-xs text-gray-500 mt-0.5">
+                              {selectedSpace?.userType && USER_TYPE_LABELS[selectedSpace.userType]}
+                            </div>
+                          </div>
+
+                          {/* 메뉴 아이템 */}
+                          <div className="py-2">
+                            <button
+                              onClick={() => {
+                                setShowProfileMenu(false);
+                                alert('개인정보 수정 기능은 준비 중입니다.');
+                              }}
+                              className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors text-gray-700 flex items-center gap-3"
+                            >
+                              <UserCog className="w-5 h-5 text-gray-500" />
+                              <span className="font-medium">개인정보 수정</span>
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setShowProfileMenu(false);
+                                navigate('/terms');
+                              }}
+                              className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors text-gray-700 flex items-center gap-3"
+                            >
+                              <FileText className="w-5 h-5 text-gray-500" />
+                              <span className="font-medium">이용약관</span>
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setShowProfileMenu(false);
+                                navigate('/privacy');
+                              }}
+                              className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors text-gray-700 flex items-center gap-3"
+                            >
+                              <Shield className="w-5 h-5 text-gray-500" />
+                              <span className="font-medium">개인정보 처리방침</span>
+                            </button>
+
+                            <div className="border-t border-gray-100 my-2"></div>
+
+                            <button
+                              onClick={() => {
+                                setShowProfileMenu(false);
+                                if (window.confirm('정말 로그아웃 하시겠습니까?')) {
+                                  logout();
+                                  navigate('/');
+                                }
+                              }}
+                              className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors text-gray-700 flex items-center gap-3"
+                            >
+                              <LogOut className="w-5 h-5 text-gray-500" />
+                              <span className="font-medium">로그아웃</span>
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setShowProfileMenu(false);
+                                if (window.confirm('정말 회원 탈퇴하시겠습니까?\n모든 데이터가 삭제되며 복구할 수 없습니다.')) {
+                                  alert('회원 탈퇴 기능은 준비 중입니다.');
+                                }
+                              }}
+                              className="w-full px-4 py-3 text-left hover:bg-red-50 transition-colors text-red-600 flex items-center gap-3"
+                            >
+                              <UserMinus className="w-5 h-5" />
+                              <span className="font-medium">회원 탈퇴</span>
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
           </div>
           

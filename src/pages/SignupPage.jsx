@@ -28,8 +28,6 @@ const SignupPage = () => {
     privacy: false,
     personalInfo: false
   });
-  const [showTerms, setShowTerms] = useState(false);
-  const [showPrivacy, setShowPrivacy] = useState(false);
 
   useEffect(() => {
     // 카카오 정보 없이 직접 접근하면 로그인 페이지로
@@ -319,13 +317,14 @@ const SignupPage = () => {
                 </div>
                 <div className="ml-3 flex-1">
                   <span className="text-sm text-gray-700">[필수] 서비스 이용약관</span>
-                  <button
-                    type="button"
-                    onClick={() => setShowTerms(true)}
+                  <a
+                    href="/terms"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="text-xs text-blue-600 hover:underline ml-2"
                   >
                     보기
-                  </button>
+                  </a>
                 </div>
               </label>
 
@@ -340,13 +339,14 @@ const SignupPage = () => {
                 </div>
                 <div className="ml-3 flex-1">
                   <span className="text-sm text-gray-700">[필수] 개인정보 처리방침</span>
-                  <button
-                    type="button"
-                    onClick={() => setShowPrivacy(true)}
+                  <a
+                    href="/privacy"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="text-xs text-blue-600 hover:underline ml-2"
                   >
                     보기
-                  </button>
+                  </a>
                 </div>
               </label>
 
@@ -400,79 +400,6 @@ const SignupPage = () => {
           가입하시면 서비스 이용약관 및 개인정보 처리방침에 동의하게 됩니다.
         </p>
       </div>
-
-      {/* 이용약관 모달 */}
-      {showTerms && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[80vh] overflow-hidden">
-            <div className="p-6 border-b">
-              <h2 className="text-xl font-bold">서비스 이용약관</h2>
-            </div>
-            <div className="p-6 overflow-y-auto max-h-[60vh] text-sm text-gray-700 space-y-4">
-              <p><strong>제1조 (목적)</strong></p>
-              <p>본 약관은 게하 앱(이하 "서비스")의 이용과 관련하여 회사와 회원 간의 권리, 의무 및 책임사항을 규정함을 목적으로 합니다.</p>
-              
-              <p><strong>제2조 (회원가입)</strong></p>
-              <p>1. 이용자는 회사가 정한 양식에 따라 회원정보를 기입한 후 본 약관에 동의한다는 의사표시를 함으로써 회원가입을 신청합니다.</p>
-              <p>2. 회사는 제1항과 같이 회원으로 가입할 것을 신청한 이용자 중 다음 각 호에 해당하지 않는 한 회원으로 등록합니다.</p>
-              
-              <p><strong>제3조 (서비스의 제공)</strong></p>
-              <p>회사는 회원에게 숙박시설 예약 관리 서비스를 제공합니다.</p>
-              
-              <p><strong>제4조 (개인정보 보호)</strong></p>
-              <p>회사는 관련 법령이 정하는 바에 따라 회원의 개인정보를 보호하기 위해 노력합니다.</p>
-            </div>
-            <div className="p-6 border-t">
-              <button
-                onClick={() => setShowTerms(false)}
-                className="w-full py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700"
-              >
-                확인
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 개인정보 처리방침 모달 */}
-      {showPrivacy && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[80vh] overflow-hidden">
-            <div className="p-6 border-b">
-              <h2 className="text-xl font-bold">개인정보 처리방침</h2>
-            </div>
-            <div className="p-6 overflow-y-auto max-h-[60vh] text-sm text-gray-700 space-y-4">
-              <p><strong>1. 개인정보의 수집 및 이용목적</strong></p>
-              <p>회사는 다음의 목적을 위하여 개인정보를 처리합니다:</p>
-              <ul className="list-disc pl-5 space-y-1">
-                <li>회원 가입 및 관리</li>
-                <li>서비스 제공 및 예약 관리</li>
-                <li>민원 처리</li>
-              </ul>
-              
-              <p><strong>2. 수집하는 개인정보 항목</strong></p>
-              <p>필수항목: 이름, 성별, 출생년도, 카카오계정(이메일), 전화번호</p>
-              
-              <p><strong>3. 개인정보의 보유 및 이용기간</strong></p>
-              <p>회원 탈퇴 시까지 보유하며, 탈퇴 즉시 파기합니다.</p>
-              
-              <p><strong>4. 개인정보의 제3자 제공</strong></p>
-              <p>회사는 원칙적으로 이용자의 개인정보를 제3자에게 제공하지 않습니다.</p>
-              
-              <p><strong>5. 개인정보 보호책임자</strong></p>
-              <p>문의: reshw@naver.com</p>
-            </div>
-            <div className="p-6 border-t">
-              <button
-                onClick={() => setShowPrivacy(false)}
-                className="w-full py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700"
-              >
-                확인
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
