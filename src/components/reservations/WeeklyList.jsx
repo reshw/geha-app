@@ -644,20 +644,18 @@ const WeeklyList = () => {
           // 날짜별 예약 가져오기 (객체에서 직접 접근)
           const dateReservations = reservationsObj[dateStr] || [];
           
-          // 게스트는 본인 예약만
+          // 게스트는 본인 예약만 상세정보 표시
           const myReservations = dateReservations.filter(r => r.userId === user.id);
           
-          // 전체 예약 (주주용)
-          const totalReservations = isGuest
-            ? myReservations
-            : dateReservations.map(r => ({
-                ...r,
-                isCheckIn: formatDate(new Date(r.checkIn)) === dateStr,
-                hostDisplayName: profiles[r.hostId]?.displayName || r.hostId
-              }));
+          // 통계용 전체 예약 (게스트도 총 인원수는 봐야 함)
+          const allReservations = dateReservations.map(r => ({
+            ...r,
+            isCheckIn: formatDate(new Date(r.checkIn)) === dateStr,
+            hostDisplayName: profiles[r.hostId]?.displayName || r.hostId
+          }));
           
           const memberTypes = ['shareholder', 'manager', 'vice-manager'];
-          const stats = totalReservations.reduce((acc, r) => {
+          const stats = allReservations.reduce((acc, r) => {
             if (memberTypes.includes(r.type)) {
               acc.weekdayCount++;
             } else {
@@ -674,7 +672,7 @@ const WeeklyList = () => {
                 borderColor: isCurrentDay ? '#3b82f6' : '#e5e7eb',
                 borderWidth: isCurrentDay ? '2px' : '1px'
               }}
-              open={isCurrentDay || totalReservations.length > 0}
+              open={isCurrentDay || allReservations.length > 0}
             >
               <summary className="p-4 cursor-pointer hover:bg-gray-50 flex items-center justify-between">
                 {/* 날짜 */}
@@ -694,15 +692,13 @@ const WeeklyList = () => {
                 
                 {/* 인원수 */}
                 <div className="flex items-center gap-3">
-                  {totalReservations.length > 0 ? (
+                  {allReservations.length > 0 ? (
                     <>
-                      {!isGuest && (
-                        <div className="text-sm text-gray-600">
-                          주주 {stats.weekdayCount} · 게스트 {stats.guestCount}
-                        </div>
-                      )}
+                      <div className="text-sm text-gray-600">
+                        주주 {stats.weekdayCount} · 게스트 {stats.guestCount}
+                      </div>
                       <div className="text-2xl font-bold text-gray-900">
-                        {totalReservations.length}
+                        {allReservations.length}
                       </div>
                     </>
                   ) : (
@@ -737,11 +733,11 @@ const WeeklyList = () => {
                   )
                 ) : (
                   // 주주: 전체 예약 (프로필 사진 가로 나열)
-                  totalReservations.length > 0 ? (
+                  allReservations.length > 0 ? (
                     <div className="pt-3 space-y-3">
                       {/* 프로필 사진 가로 나열 */}
                       <div className="flex items-center gap-2 flex-wrap">
-                        {totalReservations.map((reservation) => {
+                        {allReservations.map((reservation) => {
                           const profile = profiles[reservation.userId];
                           const memberTypes = ['shareholder', 'manager', 'vice-manager'];
                           const isMember = memberTypes.includes(reservation.type);
