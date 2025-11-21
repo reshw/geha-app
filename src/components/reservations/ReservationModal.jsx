@@ -94,6 +94,10 @@ const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReserva
       setCheckOut(null);
     } else {
       // 두 번째 선택
+      if (date.getTime() === checkIn.getTime()) {
+      alert('체크아웃은 체크인과 같은 날짜로 선택할 수 없습니다.');
+       return;
+     }
       if (date > checkIn) {
         // 체크인과 체크아웃 사이에 예약 불가 날짜가 있는지 확인
         const hasDisabledInRange = checkDateRangeValid(checkIn, date);
