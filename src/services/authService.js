@@ -71,30 +71,44 @@ class AuthService {
   }
 
   // ----- 2) access_token으로 사용자 정보 조회 -----
-  async getKakaoUserInfoFromAccessToken(accessToken) {
-    if (!accessToken) {
-      throw new Error('access_token 이 없습니다.');
-    }
-    const meRes = await fetch(`${this.KAPI_BASE}/v2/user/me`, {
-      headers: { Authorization: `Bearer ${accessToken}` }
-    });
-    await this._assertOk(meRes, '카카오 사용자 정보 조회');
-    const data = await meRes.json();
-
-    const id = data?.id;
-    if (!id) {
-      throw new Error('카카오 응답에 사용자 ID가 없습니다.');
-    }
-
-    return {
-      id: String(id),
-      email: data?.kakao_account?.email ?? '',
-      displayName: data?.kakao_account?.profile?.nickname ?? '사용자',
-      phoneNumber: data?.kakao_account?.phone_number ?? '',
-      profileImage: data?.kakao_account?.profile?.profile_image_url ?? '',
-      kakaoRaw: data,
-    };
+  // ----- 2) access_token으로 사용자 정보 조회 -----
+async getKakaoUserInfoFromAccessToken(accessToken) {
+  if (!accessToken) {
+    throw new Error('access_token 이 없습니다.');
   }
+  const meRes = await fetch(`${this.KAPI_BASE}/v2/user/me`, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  await this._assertOk(meRes, '카카오 사용자 정보 조회');
+  const data = await meRes.json();
+
+  const id = data?.id;
+  if (!id) {
+    throw new Error('카카오 응답에 사용자 ID가 없습니다.');
+  }
+
+  const account = data?.kakao_account || {};
+  const profile = account?.profile || {};
+
+  // ✅ 카카오 실명/기본정보
+  const name = account?.name || '';
+  const gender = account?.gender || '';        // "male" | "female" (없을 수 있음)
+  const birthyear = account?.birthyear || '';  // "1990" (없을 수 있음)
+  const phone_number = account?.phone_number || ''; // "+82 10-1234-5678" 등
+
+  return {
+    id: String(id),
+    email: account?.email ?? '',
+    // ✅ 실명 우선, 없으면 nickname fallback
+    displayName: name || profile?.nickname || '사용자',
+    name,          // 필요하면 별도 참조 가능
+    gender,
+    birthyear,
+    phoneNumber: phone_number,
+    profileImage: profile?.profile_image_url ?? '',
+    kakaoRaw: data,
+  };
+}
 
   // ----- 3) Firestore: 사용자 존재 여부 -----
   async checkUserExists(userId) {
@@ -135,6 +149,18 @@ class AuthService {
     if (profileData.profileImage !== undefined) {
       updates.profileImage = profileData.profileImage;
     }
+      if (profileData.birthyear !== undefined) {
+   updates.birthyear = profileData.birthyear;
+ }
+ if (profileData.gender !== undefined) {
+   updates.gender = profileData.gender;
+ }
+ if (profileData.phoneNumber !== undefined) {
+   updates.phoneNumber = profileData.phoneNumber;
+ }
+ if (profileData.email !== undefined) {
+   updates.email = profileData.email;
+ }
     
     if (Object.keys(updates).length > 0) {
       await setDoc(doc(db, 'users', userId), updates, { merge: true });
