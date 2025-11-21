@@ -9,6 +9,7 @@ import LoginOverlay from '../auth/LoginOverlay';
 import Loading from '../common/Loading';
 import Modal from '../common/Modal';
 import ReservationModal from './ReservationModal';
+import CancelReservationModal from './CancelReservationModal';
 import SpaceDropdown from '../space/SpaceDropdown';
 import { formatDate, formatWeekDay, getWeekDates, isToday } from '../../utils/dateUtils';
 import { canManageSpace } from '../../utils/permissions';
@@ -108,8 +109,10 @@ const WeeklyList = () => {
   const [touchStartY, setTouchStartY] = useState(null);
   const [touchCurrentY, setTouchCurrentY] = useState(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [selectedReservationForCancel, setSelectedReservationForCancel] = useState(null);
   
-  const { reservations: reservationsObj, loading: reservationsLoading, createReservation } = useReservations(selectedSpace?.id, currentWeekStart);
+  const { reservations: reservationsObj, loading: reservationsLoading, createReservation, cancelReservation } = useReservations(selectedSpace?.id, currentWeekStart);
   
   // 🆕 스페이스 로드 및 없음 처리
   useEffect(() => {
@@ -307,6 +310,26 @@ const WeeklyList = () => {
       setToast({ message: '스페이스 나가기에 실패했습니다', type: 'error' });
     }
   };
+
+  // ✅ 예약 취소 확정
+ const handleCancelConfirm = async (reservation) => {
+   if (!cancelReservation) {
+     alert('예약 취소 기능이 아직 연결되지 않았습니다.');
+     return;
+   }
+   setIsSubmitting(true);
+   try {
+     await cancelReservation(reservation.id);
+     setShowCancelModal(false);
+     setSelectedReservationForCancel(null);
+     setToast({ message: '예약이 취소되었습니다', type: 'success' });
+   } catch (error) {
+     console.error('❌ 예약 취소 실패:', error);
+     setToast({ message: error.message || '예약 취소에 실패했습니다', type: 'error' });
+   } finally {
+     setIsSubmitting(false);
+   }
+ };
   
   // 로그인 안 됨
   if (!isLoggedIn) {
@@ -786,6 +809,7 @@ const WeeklyList = () => {
                       <div className="flex items-center gap-2 flex-wrap">
                         {myReservations.map((reservation) => {
                           const profile = profiles[reservation.userId];
+                          const isMine = String(reservation.userId) === String(user.id);
                           
                           return (
                             <div key={reservation.id} className="relative group">
@@ -793,12 +817,29 @@ const WeeklyList = () => {
                                 <img
                                   src={profile.profileImage}
                                   alt={reservation.name}
-                                  className="w-12 h-12 rounded-full object-cover ring-2 ring-blue-500"
+                                  className="w-12 h-12 rounded-full object-cover ring-2 ring-blue-500 cursor-pointer"
+          onClick={() => {
+            if (!isMine) return;
+            setSelectedReservationForCancel(reservation);
+            setShowCancelModal(true);}}
                                 />
                               ) : (
                                 <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold ring-2 ring-blue-500 bg-blue-500">
                                   {reservation.name?.[0]}
                                 </div>
+                              )}
+                              {/* ✅ 내 예약이면 X 배지 */}
+                              {isMine && (
+                                <button
+                                  onClick={() => {
+                                    setSelectedReservationForCancel(reservation);
+                                    setShowCancelModal(true);
+                                  }}
+                                  className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center text-xs font-bold shadow-md hover:bg-red-600"
+                                  aria-label="예약 취소"
+                                >
+                                  ×
+                                </button>
                               )}
                               {/* 호버시 이름 + 초대자 표시 */}
                               <div className="absolute bottom-full left-0 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap">
@@ -836,6 +877,7 @@ const WeeklyList = () => {
                           const profile = profiles[reservation.userId];
                           const memberTypes = ['shareholder', 'manager', 'vice-manager'];
                           const isMember = memberTypes.includes(reservation.type);
+                          const isMine = String(reservation.userId) === String(user.id);
                           
                           return (
                             <div key={reservation.id} className="relative group">
@@ -846,6 +888,11 @@ const WeeklyList = () => {
                                   className="w-12 h-12 rounded-full object-cover ring-2"
                                   style={{
                                     ringColor: isMember ? '#3b82f6' : '#f59e0b'
+                                  }}
+                                  onClick={() => {
+                                    if (!isMine) return;
+                                    setSelectedReservationForCancel(reservation);
+                                    setShowCancelModal(true);
                                   }}
                                 />
                               ) : (
@@ -858,6 +905,19 @@ const WeeklyList = () => {
                                 >
                                   {reservation.name?.[0]}
                                 </div>
+                              )}
+                              {/* ✅ 내 예약이면 X 배지 */}
+                              {isMine && (
+                                <button
+                                  onClick={() => {
+                                    setSelectedReservationForCancel(reservation);
+                                    setShowCancelModal(true);
+                                  }}
+                                  className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center text-xs font-bold shadow-md hover:bg-red-600"
+                                  aria-label="예약 취소"
+                                >
+                                  ×
+                                </button>
                               )}
                               {/* 호버시 이름 + 초대자 표시 */}
                               <div className="absolute bottom-full left-0 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap">
@@ -939,6 +999,16 @@ const WeeklyList = () => {
         user={user}
         selectedSpace={selectedSpace}
       />
+      + {/* ✅ 예약 취소 모달 */}
+ <CancelReservationModal
+   isOpen={showCancelModal}
+   onClose={() => {
+     setShowCancelModal(false);
+     setSelectedReservationForCancel(null);
+   }}
+   reservation={selectedReservationForCancel}
+   onConfirm={handleCancelConfirm}
+ />
       
       {/* 토스트 */}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}

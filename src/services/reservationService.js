@@ -176,7 +176,12 @@ class ReservationService {
   }
   
   async cancelReservation(spaceId, reservationId) {
-    await deleteDoc(doc(db, `spaces/${spaceId}/reserves`, reservationId));
+  if (!spaceId || !reservationId) {
+    throw new Error('spaceId 또는 reservationId가 없습니다.');
+  }
+
+  const reserveRef = doc(db, 'spaces', spaceId, 'reserves', reservationId);
+  await deleteDoc(reserveRef);
   }
 }
 
