@@ -526,29 +526,47 @@ const SignInPage = () => {
                   </span>
                 </label>
 
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={agreements.privacy}
-                    onChange={() => handleAgreementChange('privacy')}
-                    className="w-4 h-4 rounded"
-                  />
-                  <span className="text-gray-300 text-sm">
-                    <span className="text-red-400">*</span> 개인정보 처리방침 동의
-                  </span>
-                </label>
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-3 cursor-pointer flex-1">
+                    <input
+                      type="checkbox"
+                      checked={agreements.privacy}
+                      onChange={() => handleAgreementChange('privacy')}
+                      className="w-4 h-4 rounded"
+                    />
+                    <span className="text-gray-300 text-sm">
+                      <span className="text-red-400">*</span> 개인정보 처리방침 동의
+                    </span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/privacy')}
+                    className="text-blue-400 hover:text-blue-300 text-xs underline whitespace-nowrap"
+                  >
+                    전문보기
+                  </button>
+                </div>
 
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={agreements.personalInfo}
-                    onChange={() => handleAgreementChange('personalInfo')}
-                    className="w-4 h-4 rounded"
-                  />
-                  <span className="text-gray-300 text-sm">
-                    <span className="text-red-400">*</span> 개인정보 수집 및 이용 동의
-                  </span>
-                </label>
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-3 cursor-pointer flex-1">
+                    <input
+                      type="checkbox"
+                      checked={agreements.personalInfo}
+                      onChange={() => handleAgreementChange('personalInfo')}
+                      className="w-4 h-4 rounded"
+                    />
+                    <span className="text-gray-300 text-sm">
+                      <span className="text-red-400">*</span> 개인정보 수집 및 이용 동의
+                    </span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/privacy')}
+                    className="text-blue-400 hover:text-blue-300 text-xs underline whitespace-nowrap"
+                  >
+                    내용보기
+                  </button>
+                </div>
 
                 <label className="flex items-center gap-3 cursor-pointer">
                   <input
@@ -573,12 +591,22 @@ const SignInPage = () => {
 
             {/* 수집 정보 안내 */}
             <div className="bg-blue-500/20 border border-blue-400/30 rounded-lg p-4">
-              <h3 className="text-white font-semibold mb-2 text-sm">수집하는 개인정보</h3>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-white font-semibold text-sm">개인정보 수집 및 이용 안내</h3>
+                <button
+                  type="button"
+                  onClick={() => navigate('/privacy')}
+                  className="text-blue-400 hover:text-blue-300 text-xs underline"
+                >
+                  자세히 보기
+                </button>
+              </div>
               <ul className="text-gray-300 text-xs space-y-1">
-                <li>• <span className="text-red-300">필수 항목:</span> 아이디, 이름, 이메일, 비밀번호, 휴대폰 번호, 출생연도, 성별</li>
-                <li>• <span className="text-yellow-300">선택 항목:</span> 마케팅 정보 수신 동의</li>
-                <li>• <span className="text-green-300">수집 목적:</span> 회원가입, 본인 확인, 서비스 제공, 고객 지원</li>
+                <li>• <span className="text-red-300">수집 목적:</span> 회원가입 및 본인확인</li>
+                <li>• <span className="text-yellow-300">필수 항목:</span> 이름, 성별, 출생연도, 카카오계정(전화번호)</li>
+                <li>• <span className="text-green-300">선택 항목:</span> 마케팅 정보 수신 동의</li>
                 <li>• <span className="text-purple-300">보유 기간:</span> 회원 탈퇴 시까지</li>
+                <li className="text-xs text-gray-400 pt-1">※ 개인정보 제공에 동의하지 않을 권리가 있으며, 동의 거부 시 회원가입이 제한됩니다.</li>
               </ul>
             </div>
 

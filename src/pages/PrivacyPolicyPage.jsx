@@ -52,20 +52,43 @@ const PrivacyPolicyPage = () => {
                     <tr className="border-b border-white/20">
                       <th className="text-left py-3 px-2 text-white font-semibold">수집 및 이용 목적</th>
                       <th className="text-left py-3 px-2 text-white font-semibold">수집 및 이용 항목</th>
+                      <th className="text-left py-3 px-2 text-white font-semibold">수집 조건</th>
                       <th className="text-left py-3 px-2 text-white font-semibold">보유ㆍ이용기간</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr className="border-b border-white/10">
                       <td className="py-3 px-2 text-gray-300 align-top">
-                        회원가입 및 서비스 이용 식별
+                        회원가입 및 본인확인
                       </td>
                       <td className="py-3 px-2 text-gray-300 align-top">
                         <div className="space-y-1">
-                          <div>• 카카오 계정 정보 (이메일, 이름)</div>
-                          <div>• 프로필 이미지 (선택)</div>
-                          <div>• 카카오 고유 ID</div>
+                          <div>• 이름 (필수)</div>
+                          <div>• 성별 (필수)</div>
+                          <div>• 출생연도 (필수)</div>
+                          <div>• 카카오계정(전화번호) (필수)</div>
                         </div>
+                      </td>
+                      <td className="py-3 px-2 text-gray-300 align-top">
+                        필수
+                      </td>
+                      <td className="py-3 px-2 text-gray-300 align-top">
+                        회원 탈퇴 시까지
+                      </td>
+                    </tr>
+                    <tr className="border-b border-white/10">
+                      <td className="py-3 px-2 text-gray-300 align-top">
+                        서비스 이용 식별
+                      </td>
+                      <td className="py-3 px-2 text-gray-300 align-top">
+                        <div className="space-y-1">
+                          <div>• 카카오 계정 정보 (이메일, 이름) (필수)</div>
+                          <div>• 프로필 이미지 (선택)</div>
+                          <div>• 카카오 고유 ID (필수)</div>
+                        </div>
+                      </td>
+                      <td className="py-3 px-2 text-gray-300 align-top">
+                        필수/선택
                       </td>
                       <td className="py-3 px-2 text-gray-300 align-top">
                         회원 탈퇴 시까지
@@ -77,13 +100,16 @@ const PrivacyPolicyPage = () => {
                       </td>
                       <td className="py-3 px-2 text-gray-300 align-top">
                         <div className="space-y-1">
-                          <div>• 이름</div>
-                          <div>• 휴대폰 번호</div>
-                          <div>• 성별</div>
-                          <div>• 출생연도</div>
-                          <div>• 체크인/체크아웃 일자</div>
+                          <div>• 이름 (필수)</div>
+                          <div>• 휴대폰 번호 (필수)</div>
+                          <div>• 성별 (필수)</div>
+                          <div>• 출생연도 (필수)</div>
+                          <div>• 체크인/체크아웃 일자 (필수)</div>
                           <div>• 예약 메모 (선택)</div>
                         </div>
+                      </td>
+                      <td className="py-3 px-2 text-gray-300 align-top">
+                        필수/선택
                       </td>
                       <td className="py-3 px-2 text-gray-300 align-top">
                         예약 종료 후 3개월
@@ -95,9 +121,12 @@ const PrivacyPolicyPage = () => {
                       </td>
                       <td className="py-3 px-2 text-gray-300 align-top">
                         <div className="space-y-1">
-                          <div>• 휴대폰 번호 (알림톡/SMS)</div>
-                          <div>• 이메일 주소</div>
+                          <div>• 휴대폰 번호 (알림톡/SMS) (필수)</div>
+                          <div>• 이메일 주소 (필수)</div>
                         </div>
+                      </td>
+                      <td className="py-3 px-2 text-gray-300 align-top">
+                        필수
                       </td>
                       <td className="py-3 px-2 text-gray-300 align-top">
                         회원 탈퇴 시까지
@@ -136,7 +165,7 @@ const PrivacyPolicyPage = () => {
                     <div className="text-gray-400">제공 항목: 카카오 계정 정보</div>
                   </div>
                   <div>
-                    <div className="font-semibold text-white">알리고 (Aligo)</div>
+                    <div className="font-semibold text-white">솔라피 (Solapi)</div>
                     <div className="text-gray-400">제공 목적: 알림톡/SMS 발송</div>
                     <div className="text-gray-400">제공 항목: 휴대폰 번호, 예약 정보</div>
                   </div>
@@ -172,20 +201,9 @@ const PrivacyPolicyPage = () => {
                 <div>
                   <h3 className="text-xl font-semibold text-white mb-2">파기 방법</h3>
                   <ul className="list-disc pl-6 text-gray-300 space-y-1">
-                    <li>전자적 파일 형태의 정보는 기술적 방법을 사용하여 복구 불가능하게 영구 삭제</li>
-                    <li>종이에 출력된 개인정보는 분쇄기로 분쇄하거나 소각</li>
+                    <li>전자적 파일 형태: 복구 및 재생이 불가능한 기술적 방법을 사용하여 삭제</li>
+                    <li>종이 문서: 분쇄기로 분쇄하거나 소각</li>
                   </ul>
-                </div>
-
-                <div>
-                  <h3 className="text-xl font-semibold text-white mb-2">법령에 따른 보관</h3>
-                  <div className="bg-white/5 rounded-lg p-4 text-sm">
-                    <ul className="space-y-2 text-gray-300">
-                      <li>• 계약 또는 청약철회 등에 관한 기록: 5년 (전자상거래법)</li>
-                      <li>• 대금결제 및 재화 등의 공급에 관한 기록: 5년 (전자상거래법)</li>
-                      <li>• 소비자 불만 또는 분쟁처리에 관한 기록: 3년 (전자상거래법)</li>
-                    </ul>
-                  </div>
                 </div>
               </div>
             </section>
@@ -193,28 +211,27 @@ const PrivacyPolicyPage = () => {
             {/* 제4조 */}
             <section className="space-y-4">
               <h2 className="text-2xl font-bold text-white border-b border-white/20 pb-3">
-                제4조 (이용자의 권리와 의무 및 행사방법)
+                제4조 (정보주체의 권리·의무 및 행사방법)
               </h2>
+              
               <div className="space-y-4">
                 <div>
-                  <h3 className="text-xl font-semibold text-white mb-2">이용자의 권리</h3>
-                  <ul className="list-disc pl-6 text-gray-300 space-y-2">
-                    <li>개인정보 수집・이용・제공에 대해 동의하신 내용을 언제든지 철회할 수 있습니다.</li>
-                    <li>개인정보의 열람을 요구할 수 있습니다.</li>
-                    <li>개인정보의 정정을 요구할 수 있습니다.</li>
-                    <li>개인정보의 삭제를 요구할 수 있습니다.</li>
-                    <li>개인정보의 처리정지를 요구할 수 있습니다.</li>
+                  <h3 className="text-xl font-semibold text-white mb-2">행사 가능한 권리</h3>
+                  <p className="text-gray-300 mb-2">
+                    이용자는 회사에 대해 언제든지 다음 각 호의 개인정보 보호 관련 권리를 행사할 수 있습니다:
+                  </p>
+                  <ul className="list-disc pl-6 text-gray-300 space-y-1">
+                    <li>개인정보 열람 요구</li>
+                    <li>오류 등이 있을 경우 정정 요구</li>
+                    <li>삭제 요구</li>
+                    <li>처리정지 요구</li>
                   </ul>
                 </div>
 
                 <div>
                   <h3 className="text-xl font-semibold text-white mb-2">권리 행사 방법</h3>
-                  <p className="text-gray-300 mb-2">
-                    위의 권리 행사는 회사에 대해 다음의 방법으로 하실 수 있습니다:
-                  </p>
                   <div className="bg-white/5 rounded-lg p-4">
-                    <ul className="space-y-2 text-gray-300">
-                      <li>• 이메일: reshw@naver.com</li>
+                    <ul className="text-gray-300 space-y-1 text-sm">
                       <li>• 서비스 내 설정 메뉴</li>
                       <li>• 개인정보 보호책임자에게 직접 연락</li>
                     </ul>
