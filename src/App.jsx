@@ -7,6 +7,8 @@ import JoinSpacePage from './pages/JoinSpacePage';
 import SpaceManagePage from './pages/SpaceManagePage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import ExpenseListPage from './pages/ExpenseListPage';
+import ExpenseRequestPage from './pages/ExpenseRequestPage';
 
 function App() {
   return (
@@ -20,6 +22,8 @@ function App() {
           <Route path="/join" element={<JoinSpacePage />} />
           <Route path="/join/:code" element={<JoinSpacePage />} />
           <Route path="/manage" element={<SpaceManagePage />} />
+          <Route path="/expenses" element={<ExpenseListPage />} />
+          <Route path="/expenses/request" element={<ExpenseRequestPage />} />
           <Route path="/terms" element={<TermsOfServicePage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
         </Routes>

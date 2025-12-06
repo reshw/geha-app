@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, ChevronDown, Plus, Check, X, Menu, Settings2, Share2, GripVertical, User, LogOut, FileText, Shield, UserCog, UserMinus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Plus, Check, X, Menu, Settings2, Share2, GripVertical, User, LogOut, FileText, Shield, UserCog, UserMinus, Wallet } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useReservations } from '../../hooks/useReservations';
 import useStore from '../../store/useStore';
@@ -511,6 +511,18 @@ const WeeklyList = () => {
                           <span className="font-medium">스페이스 관리</span>
                         </button>
                       )}
+                      
+                      {/* 공용 운영비 */}
+                      <button
+                        onClick={() => {
+                          setShowHamburgerMenu(false);
+                          navigate('/expenses');
+                        }}
+                        className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors text-gray-700 flex items-center gap-3"
+                      >
+                        <Wallet className="w-5 h-5 text-gray-500" />
+                        <span className="font-medium">공용 운영비</span>
+                      </button>
                       
                       {/* 초대 코드 공유 */}
                       <button
