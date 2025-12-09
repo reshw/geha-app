@@ -48,7 +48,7 @@ const JoinSpacePage = () => {
       
       if (alreadyJoined) {
         // 이미 가입된 방이면 메인으로 이동
-        alert('이미 가입된 방입니다');
+        
         navigate('/', { replace: true });
         return;
       }
