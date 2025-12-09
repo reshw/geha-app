@@ -1,94 +1,260 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, CheckCircle, Clock, XCircle, Filter } from 'lucide-react';
+import { Plus, Calendar, User, CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, Filter, Settings, X, ArrowLeft } from 'lucide-react';
+import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
+import { db } from '../config/firebase';
 import { useAuth } from '../hooks/useAuth';
 import useStore from '../store/useStore';
-import { canManageSpace } from '../utils/permissions';
 import expenseService from '../services/expenseService';
 import ExpenseDetailModal from '../components/expenses/ExpenseDetailModal';
+import { canManageSpace } from '../utils/permissions';
 
 const ExpenseListPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { selectedSpace } = useStore();
-  const [expenseGroups, setExpenseGroups] = useState([]); // groupId 기준으로 그룹핑된 데이터
+  
+  const [expenses, setExpenses] = useState([]);
+  const [filteredExpenses, setFilteredExpenses] = useState([]);
+  const [selectedExpense, setSelectedExpense] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // all, pending, approved, rejected
-  const [loading, setLoading] = useState(true);
-  const [selectedGroup, setSelectedGroup] = useState(null); // 상세보기 선택된 그룹
+  const [expandedId, setExpandedId] = useState(null); // 하나만 열리도록
+  
+  // 날짜 필터
+  const [showDateFilter, setShowDateFilter] = useState(false);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  
+  // 기본 필터 설정 (매니저 이상)
+  const [showDefaultSettings, setShowDefaultSettings] = useState(false);
+  const [defaultFilter, setDefaultFilter] = useState('all');
+  const [defaultDateRange, setDefaultDateRange] = useState('all'); // all, month, week, custom
+  const [defaultStartDate, setDefaultStartDate] = useState('');
+  const [defaultEndDate, setDefaultEndDate] = useState('');
   
   const isManager = selectedSpace?.userType && canManageSpace(selectedSpace.userType);
   
-  // Firebase에서 실제 데이터 로드
+  // 운영비 목록 조회
   useEffect(() => {
-    const loadExpenses = async () => {
-      if (!selectedSpace?.id) {
-        setLoading(false);
-        return;
+    if (selectedSpace?.id) {
+      loadExpenses();
+      loadDefaultSettings();
+    }
+  }, [selectedSpace]);
+  
+  // 필터링
+  useEffect(() => {
+    applyFilter();
+  }, [expenses, filter, startDate, endDate]);
+  
+  const loadExpenses = async () => {
+    setIsLoading(true);
+    try {
+      const data = await expenseService.getExpenses(selectedSpace.id);
+      setExpenses(data);
+    } catch (error) {
+      console.error('운영비 조회 실패:', error);
+      alert('운영비 목록을 불러오는데 실패했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const loadDefaultSettings = async () => {
+    try {
+      // Firebase에서 스페이스별 기본 설정 불러오기
+      const settingsRef = doc(db, 'spaces', selectedSpace.id, 'settings', 'expenseList');
+      const settingsSnap = await getDoc(settingsRef);
+      
+      if (settingsSnap.exists()) {
+        const settings = settingsSnap.data();
+        setDefaultFilter(settings.defaultFilter || 'all');
+        setDefaultDateRange(settings.defaultDateRange || 'all');
+        setDefaultStartDate(settings.defaultStartDate || '');
+        setDefaultEndDate(settings.defaultEndDate || '');
+        
+        // 기본 필터 적용
+        setFilter(settings.defaultFilter || 'all');
+        
+        // 기본 날짜 범위 적용
+        if (settings.defaultDateRange === 'month') {
+          const today = new Date();
+          const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+          setStartDate(firstDay.toISOString().split('T')[0]);
+          setEndDate(new Date().toISOString().split('T')[0]);
+        } else if (settings.defaultDateRange === 'week') {
+          const today = new Date();
+          const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+          setStartDate(weekAgo.toISOString().split('T')[0]);
+          setEndDate(today.toISOString().split('T')[0]);
+        } else if (settings.defaultDateRange === 'custom') {
+          setStartDate(settings.defaultStartDate || '');
+          setEndDate(settings.defaultEndDate || '');
+        }
       }
-
-      try {
-        setLoading(true);
-        console.log('💰 운영비 데이터 로드 시작:', selectedSpace.id);
-        
-        const expenses = await expenseService.getExpenses(selectedSpace.id);
-        console.log('📦 로드된 운영비:', expenses);
-        
-        // groupId 기준으로 그룹핑
-        const groupMap = new Map();
-        
-        expenses.forEach(expense => {
-          const groupId = expense.groupId;
-          
-          if (!groupMap.has(groupId)) {
-            groupMap.set(groupId, {
-              groupId,
-              items: [],
-              totalAmount: 0,
-              userName: expense.userName,
-              UserId: expense.UserId,
-              createdAt: expense.createdAt,
-              usedAt: expense.usedAt,
-              memo: expense.memo,
-              status: expense.status, // pending, approved, rejected
-              approved: expense.approved,
-              approvedAt: expense.approvedAt,
-              approvedBy: expense.approvedBy,
-              approvedByName: expense.approvedByName,
-              rejectedAt: expense.rejectedAt,
-              rejectedBy: expense.rejectedBy,
-              rejectedByName: expense.rejectedByName,
-              rejectionReason: expense.rejectionReason,
-            });
-          }
-          
-          const group = groupMap.get(groupId);
-          group.items.push(expense);
-          group.totalAmount += expense.total;
-        });
-        
-        const groups = Array.from(groupMap.values());
-        // 최신순 정렬
-        groups.sort((a, b) => b.createdAt - a.createdAt);
-        
-        setExpenseGroups(groups);
-        console.log('✅ 그룹핑 완료:', groups.length);
-      } catch (error) {
-        console.error('❌ 운영비 로드 실패:', error);
-        alert('운영비 내역을 불러오는데 실패했습니다.');
-      } finally {
-        setLoading(false);
+    } catch (error) {
+      console.log('기본 설정 불러오기 실패 (설정 없음):', error);
+    }
+  };
+  
+  const saveDefaultSettings = async () => {
+    try {
+      // custom 날짜 범위 선택 시 유효성 검사
+      if (defaultDateRange === 'custom') {
+        if (!defaultStartDate || !defaultEndDate) {
+          alert('시작일과 종료일을 모두 입력해주세요.');
+          return;
+        }
+        if (new Date(defaultStartDate) > new Date(defaultEndDate)) {
+          alert('시작일은 종료일보다 이전이어야 합니다.');
+          return;
+        }
       }
-    };
+      
+      const settingsRef = doc(db, 'spaces', selectedSpace.id, 'settings', 'expenseList');
+      await setDoc(settingsRef, {
+        defaultFilter: defaultFilter,
+        defaultDateRange: defaultDateRange,
+        defaultStartDate: defaultStartDate,
+        defaultEndDate: defaultEndDate,
+        updatedBy: user.displayName || user.name,
+        updatedAt: Timestamp.fromDate(new Date()),
+      });
+      
+      alert('기본 설정이 저장되었습니다!\n모든 사용자에게 적용됩니다.');
+      setShowDefaultSettings(false);
+      
+      // 즉시 적용
+      setFilter(defaultFilter);
+      if (defaultDateRange === 'month') {
+        const today = new Date();
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        setStartDate(firstDay.toISOString().split('T')[0]);
+        setEndDate(new Date().toISOString().split('T')[0]);
+      } else if (defaultDateRange === 'week') {
+        const today = new Date();
+        const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+        setStartDate(weekAgo.toISOString().split('T')[0]);
+        setEndDate(today.toISOString().split('T')[0]);
+      } else if (defaultDateRange === 'custom') {
+        setStartDate(defaultStartDate);
+        setEndDate(defaultEndDate);
+      } else {
+        setStartDate('');
+        setEndDate('');
+      }
+    } catch (error) {
+      console.error('기본 설정 저장 실패:', error);
+      alert('설정 저장에 실패했습니다.');
+    }
+  };
+  
+  const applyFilter = () => {
+    let filtered = expenses;
     
-    loadExpenses();
-  }, [selectedSpace?.id]); // ✅ selectedSpace 전체가 아닌 id만 의존성으로
+    // 상태 필터
+    if (filter === 'pending') {
+      filtered = filtered.filter(e => e.status === 'pending');
+    } else if (filter === 'approved') {
+      filtered = filtered.filter(e => e.status === 'approved');
+    } else if (filter === 'rejected') {
+      filtered = filtered.filter(e => e.status === 'rejected');
+    }
+    
+    // 날짜 필터
+    if (startDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      filtered = filtered.filter(e => {
+        const usedDate = new Date(e.usedAt);
+        usedDate.setHours(0, 0, 0, 0);
+        return usedDate >= start;
+      });
+    }
+    
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      filtered = filtered.filter(e => {
+        const usedDate = new Date(e.usedAt);
+        return usedDate <= end;
+      });
+    }
+    
+    setFilteredExpenses(filtered);
+  };
   
-  const filteredExpenses = expenseGroups.filter(group => {
-    if (filter === 'all') return true;
-    return group.status === filter;
-  });
+  const clearDateFilter = () => {
+    setStartDate('');
+    setEndDate('');
+  };
   
-  const pendingCount = expenseGroups.filter(g => g.status === 'pending').length;
+  const handleApprove = async (expenseId) => {
+    try {
+      await expenseService.approveExpense(
+        selectedSpace.id,
+        expenseId,
+        {
+          approverId: user.id,
+          approverName: user.displayName || user.name,
+        }
+      );
+      
+      alert('승인이 완료되었습니다!');
+      await loadExpenses();
+      setSelectedExpense(null);
+    } catch (error) {
+      console.error('승인 실패:', error);
+      throw error;
+    }
+  };
+  
+  const handleReject = async (expenseId, reason) => {
+    try {
+      await expenseService.rejectExpense(
+        selectedSpace.id,
+        expenseId,
+        {
+          rejecterId: user.id,
+          rejecterName: user.displayName || user.name,
+        },
+        reason
+      );
+      
+      alert('거부가 완료되었습니다!');
+      await loadExpenses();
+      setSelectedExpense(null);
+    } catch (error) {
+      console.error('거부 실패:', error);
+      throw error;
+    }
+  };
+  
+  const toggleExpand = (id) => {
+    // 같은 거 클릭하면 닫기, 다른 거 클릭하면 그것만 열기
+    setExpandedId(expandedId === id ? null : id);
+  };
+  
+  const formatCurrency = (amount) => {
+    return amount.toLocaleString('ko-KR') + '원';
+  };
+  
+  const formatDate = (date) => {
+    if (!date) return '-';
+    return new Date(date).toLocaleDateString('ko-KR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+  
+  const getItemsSummary = (items) => {
+    if (!items || items.length === 0) return '항목 없음';
+    if (items.length === 1) return items[0].itemName;
+    if (items.length === 2) return `${items[0].itemName}, ${items[1].itemName}`;
+    return `${items[0].itemName}, ${items[1].itemName} 외 ${items.length - 2}개`;
+  };
   
   const getStatusBadge = (status) => {
     switch (status) {
@@ -103,14 +269,14 @@ const ExpenseListPage = () => {
         return (
           <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
             <CheckCircle className="w-3 h-3" />
-            승인됨
+            승인
           </span>
         );
       case 'rejected':
         return (
           <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-semibold">
             <XCircle className="w-3 h-3" />
-            거부됨
+            거부
           </span>
         );
       default:
@@ -118,32 +284,44 @@ const ExpenseListPage = () => {
     }
   };
   
-  const formatCurrency = (amount) => {
-    return amount.toLocaleString('ko-KR') + '원';
-  };
-  
-  const formatDate = (date) => {
-    return new Date(date).toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-  
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full" />
-      </div>
-    );
-  }
+  const counts = useMemo(() => {
+    // 날짜 필터가 적용된 expenses를 기준으로 카운트
+    let dateFiltered = expenses;
+    
+    // 날짜 필터 적용
+    if (startDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      dateFiltered = dateFiltered.filter(e => {
+        const usedDate = new Date(e.usedAt);
+        usedDate.setHours(0, 0, 0, 0);
+        return usedDate >= start;
+      });
+    }
+    
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      dateFiltered = dateFiltered.filter(e => {
+        const usedDate = new Date(e.usedAt);
+        return usedDate <= end;
+      });
+    }
+    
+    return {
+      all: dateFiltered.length,
+      pending: dateFiltered.filter(e => e.status === 'pending').length,
+      approved: dateFiltered.filter(e => e.status === 'approved').length,
+      rejected: dateFiltered.filter(e => e.status === 'rejected').length,
+    };
+  }, [expenses, startDate, endDate]);
   
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-24">
       {/* 헤더 */}
       <div className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
         <div className="max-w-2xl mx-auto px-4 py-6">
-          <div className="flex items-center gap-4 mb-6">
+          <div className="flex items-center gap-4 mb-3">
             <button
               onClick={() => navigate('/')}
               className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/20 hover:bg-white/30 transition-colors"
@@ -151,267 +329,389 @@ const ExpenseListPage = () => {
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div className="flex-1">
-              <h1 className="text-2xl font-bold">공용 운영비</h1>
+              <h1 className="text-2xl font-bold">💰 공용 운영비</h1>
               <p className="text-white/80 text-sm mt-1">
-                {selectedSpace?.spaceName || '스페이스'} 운영비 내역
+                {selectedSpace?.spaceName || '스페이스'} 운영비 관리
               </p>
             </div>
           </div>
-          
-          {/* 필터 탭 */}
-          <div className="flex gap-2 overflow-x-auto pb-2">
+          <div className="flex gap-2">
             <button
-              onClick={() => setFilter('all')}
-              className={`px-4 py-2 rounded-lg font-semibold whitespace-nowrap transition-all ${
-                filter === 'all'
-                  ? 'bg-white text-blue-600'
-                  : 'bg-white/20 text-white hover:bg-white/30'
+              onClick={() => setShowDateFilter(!showDateFilter)}
+              className={`p-2 rounded-lg transition-colors ${
+                showDateFilter || startDate || endDate
+                  ? 'bg-white/30'
+                  : 'bg-white/10 hover:bg-white/20'
               }`}
             >
-              전체 ({expenseGroups.length})
+              <Filter className="w-5 h-5" />
+            </button>
+            {isManager && (
+              <button
+                onClick={() => setShowDefaultSettings(true)}
+                className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+      
+      {/* 날짜 필터 */}
+      {showDateFilter && (
+        <div className="bg-white border-b border-gray-200 p-4">
+          <div className="max-w-2xl mx-auto space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-gray-900">📅 기간 필터</h3>
+              {(startDate || endDate) && (
+                <button
+                  onClick={clearDateFilter}
+                  className="text-sm text-blue-600 hover:text-blue-700 font-semibold"
+                >
+                  초기화
+                </button>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">시작일</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">종료일</label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            {(startDate || endDate) && (
+              <div className="text-sm text-gray-600 text-center">
+                {startDate && endDate
+                  ? `${startDate} ~ ${endDate}`
+                  : startDate
+                  ? `${startDate} 이후`
+                  : `${endDate} 이전`
+                }
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      
+      {/* 필터 탭 */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+        <div className="max-w-2xl mx-auto px-4">
+          <div className="flex gap-1 overflow-x-auto">
+            <button
+              onClick={() => setFilter('all')}
+              className={`flex-1 min-w-[80px] px-4 py-3 font-semibold transition-colors ${
+                filter === 'all'
+                  ? 'text-blue-600 border-b-2 border-blue-600'
+                  : 'text-gray-600'
+              }`}
+            >
+              전체 ({counts.all})
             </button>
             <button
               onClick={() => setFilter('pending')}
-              className={`px-4 py-2 rounded-lg font-semibold whitespace-nowrap transition-all ${
+              className={`flex-1 min-w-[80px] px-4 py-3 font-semibold transition-colors ${
                 filter === 'pending'
-                  ? 'bg-white text-blue-600'
-                  : 'bg-white/20 text-white hover:bg-white/30'
+                  ? 'text-yellow-600 border-b-2 border-yellow-600'
+                  : 'text-gray-600'
               }`}
             >
-              대기중 ({pendingCount})
+              대기중 ({counts.pending})
             </button>
             <button
               onClick={() => setFilter('approved')}
-              className={`px-4 py-2 rounded-lg font-semibold whitespace-nowrap transition-all ${
+              className={`flex-1 min-w-[80px] px-4 py-3 font-semibold transition-colors ${
                 filter === 'approved'
-                  ? 'bg-white text-blue-600'
-                  : 'bg-white/20 text-white hover:bg-white/30'
+                  ? 'text-green-600 border-b-2 border-green-600'
+                  : 'text-gray-600'
               }`}
             >
-              승인됨 ({expenseGroups.filter(g => g.status === 'approved').length})
+              승인 ({counts.approved})
             </button>
             <button
               onClick={() => setFilter('rejected')}
-              className={`px-4 py-2 rounded-lg font-semibold whitespace-nowrap transition-all ${
+              className={`flex-1 min-w-[80px] px-4 py-3 font-semibold transition-colors ${
                 filter === 'rejected'
-                  ? 'bg-white text-blue-600'
-                  : 'bg-white/20 text-white hover:bg-white/30'
+                  ? 'text-red-600 border-b-2 border-red-600'
+                  : 'text-gray-600'
               }`}
             >
-              거부됨 ({expenseGroups.filter(g => g.status === 'rejected').length})
+              거부 ({counts.rejected})
             </button>
           </div>
         </div>
       </div>
       
-      {/* 내역 리스트 */}
-      <div className="max-w-2xl mx-auto p-4 pb-32">
-        {filteredExpenses.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-            <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
-              <Filter className="w-8 h-8 text-gray-400" />
-            </div>
+      {/* 목록 */}
+      <div className="max-w-2xl mx-auto p-4 space-y-3">
+        {isLoading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="text-gray-500 mt-4">로딩 중...</p>
+          </div>
+        ) : filteredExpenses.length === 0 ? (
+          <div className="bg-white rounded-xl p-12 text-center">
             <p className="text-gray-500">
-              {filter === 'all' ? '아직 운영비 내역이 없습니다' : `${filter === 'pending' ? '대기중인' : filter === 'approved' ? '승인된' : '거부된'} 항목이 없습니다`}
+              {filter === 'all' 
+                ? (startDate || endDate ? '해당 기간에 운영비 내역이 없습니다.' : '운영비 내역이 없습니다.')
+                : `${filter === 'pending' ? '대기중인' : filter === 'approved' ? '승인된' : '거부된'} 청구가 없습니다.`
+              }
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {filteredExpenses.map((group) => (
+          filteredExpenses.map((expense) => {
+            const isExpanded = expandedId === expense.id;
+            
+            return (
               <div
-                key={group.groupId}
-                className="bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => setSelectedGroup(group)}
+                key={expense.id}
+                className={`bg-white rounded-xl shadow-sm overflow-hidden transition-all ${
+                  isExpanded ? 'ring-2 ring-blue-500 shadow-lg' : ''
+                }`}
               >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-bold text-gray-900">{group.userName}</span>
-                      {getStatusBadge(group.status)}
+                {/* 헤더 */}
+                <div
+                  className={`p-4 cursor-pointer transition-colors ${
+                    isExpanded ? 'bg-blue-50' : 'hover:bg-gray-50'
+                  }`}
+                  onClick={() => toggleExpand(expense.id)}
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-gray-400" />
+                      <span className="font-semibold text-gray-900">
+                        {expense.userName}
+                      </span>
                     </div>
-                    <div className="text-sm text-gray-500">{formatDate(group.createdAt)}</div>
+                    {getStatusBadge(expense.status)}
                   </div>
-                  <div className="text-right">
-                    <div className="text-xl font-bold text-gray-900">
-                      {formatCurrency(group.totalAmount)}
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      {group.items.length}개 항목
+                  
+                  <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+                    <Calendar className="w-4 h-4" />
+                    사용일: {formatDate(expense.usedAt)}
+                  </div>
+                  
+                  {/* 품목 요약 */}
+                  <div className="text-sm text-gray-700 mb-2 line-clamp-1">
+                    {getItemsSummary(expense.items)}
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500">
+                      {expense.items.length}개 품목
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl font-bold text-blue-600">
+                        {formatCurrency(expense.totalAmount)}
+                      </span>
+                      {isExpanded ? (
+                        <ChevronUp className="w-5 h-5 text-blue-600" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5 text-gray-400" />
+                      )}
                     </div>
                   </div>
                 </div>
                 
-                {/* 항목 요약 */}
-                <div className="text-sm text-gray-600 space-y-1">
-                  {group.items.slice(0, 2).map((item, idx) => {
-                    const name = item.itemName || '항목명 없음';
-                    const spec = item.itemSpec || '';
-                    const qty = item.itemQty || 0;
-                    const amount = item.total || 0;
-                    
-                    return (
-                      <div key={idx} className="flex justify-between">
-                        <span>
-                          {name}
-                          {spec && ` (${spec})`}
-                          {qty > 0 && ` x ${qty}`}
-                        </span>
-                        <span>{formatCurrency(amount)}</span>
+                {/* 상세 (접혔다 펼쳐짐) */}
+                {isExpanded && (
+                  <div className="border-t-2 border-blue-200 p-4 bg-blue-50/50 space-y-3 animate-fadeIn">
+                    {/* 품목 내역 */}
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                        📋 품목 내역
+                      </h4>
+                      <div className="space-y-2">
+                        {expense.items.map((item, idx) => (
+                          <div key={idx} className="bg-white rounded-lg p-3 flex justify-between shadow-sm">
+                            <div>
+                              <div className="font-medium text-gray-900">
+                                {item.itemName}
+                                {item.itemSpec && (
+                                  <span className="text-gray-500 text-sm ml-1">({item.itemSpec})</span>
+                                )}
+                              </div>
+                              <div className="text-sm text-gray-600 mt-1">
+                                {formatCurrency(item.itemPrice)} × {item.itemQty}
+                              </div>
+                            </div>
+                            <div className="font-bold text-gray-900 text-lg">
+                              {formatCurrency(item.total)}
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    );
-                  })}
-                  {group.items.length > 2 && (
-                    <div className="text-gray-400">외 {group.items.length - 2}개 항목</div>
-                  )}
-                </div>
-                
-                {/* 메모 */}
-                {group.memo && (
-                  <div className="mt-2 pt-2 border-t border-gray-100">
-                    <p className="text-sm text-gray-500">{group.memo}</p>
-                  </div>
-                )}
-                
-                {/* 승인 정보 */}
-                {group.status === 'approved' && group.approvedByName && (
-                  <div className="mt-2 pt-2 border-t border-gray-100">
-                    <p className="text-sm text-green-600">
-                      승인자: {group.approvedByName} · {formatDate(group.approvedAt)}
-                    </p>
-                  </div>
-                )}
-                
-                {/* 거부 사유 */}
-                {group.status === 'rejected' && group.rejectionReason && (
-                  <div className="mt-2 pt-2 border-t border-gray-100">
-                    <p className="text-sm text-red-600">
-                      거부 사유: {group.rejectionReason}
-                    </p>
-                    {group.rejectedByName && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        거부자: {group.rejectedByName} · {formatDate(group.rejectedAt)}
-                      </p>
+                    </div>
+                    
+                    {/* 메모 */}
+                    {expense.memo && (
+                      <div className="bg-white rounded-lg p-3 shadow-sm">
+                        <h4 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                          📝 메모
+                        </h4>
+                        <p className="text-sm text-gray-700">{expense.memo}</p>
+                      </div>
                     )}
+                    
+                    {/* 상세보기 버튼 */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedExpense(expense);
+                      }}
+                      className="w-full py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-sm"
+                    >
+                      상세보기 및 승인/거부
+                    </button>
                   </div>
                 )}
               </div>
-            ))}
-          </div>
+            );
+          })
         )}
       </div>
       
-      {/* 플로팅 버튼들 */}
-      <div className="fixed right-6 flex flex-col gap-3"
-        style={{
-          bottom: 'max(24px, env(safe-area-inset-bottom, 24px))'
-        }}
+      {/* 플로팅 버튼 */}
+      <button
+        onClick={() => navigate('/expenses/request')}
+        className="fixed right-4 bottom-20 w-14 h-14 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center hover:scale-110"
+        style={{ bottom: 'calc(70px + env(safe-area-inset-bottom))' }}
       >
-        {/* 관리자만: 승인 대기 버튼 */}
-        {isManager && pendingCount > 0 && (
-          <button
-            onClick={() => navigate('/expenses/approval')}
-            className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-full shadow-xl hover:shadow-2xl transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-semibold"
-          >
-            <CheckCircle className="w-5 h-5" />
-            승인 대기 {pendingCount}건
-          </button>
-        )}
-        
-        {/* 모든 사용자: 청구하기 버튼 */}
-        <button
-          onClick={() => navigate('/expenses/request')}
-          className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-full shadow-xl hover:shadow-2xl transition-all hover:scale-105 active:scale-95 flex items-center justify-center"
-        >
-          <Plus className="w-6 h-6" />
-        </button>
-      </div>
+        <Plus className="w-6 h-6" />
+      </button>
+      
+      {/* 기본 설정 모달 (매니저 전용) */}
+      {showDefaultSettings && (
+        <>
+          <div 
+            className="fixed inset-0 bg-black/50 z-[100]"
+            onClick={() => setShowDefaultSettings(false)}
+          />
+          <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 bg-white rounded-xl shadow-xl z-[101] max-w-md mx-auto p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900">⚙️ 기본 설정</h3>
+              <button
+                onClick={() => setShowDefaultSettings(false)}
+                className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+              <p className="text-sm text-blue-900">
+                💡 <strong>매니저 전용:</strong> 모든 사용자가 페이지를 열 때 표시될 초기 필터를 설정합니다.
+              </p>
+            </div>
+            
+            <div className="space-y-4">
+              {/* 기본 상태 필터 */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  기본 상태 필터
+                </label>
+                <select
+                  value={defaultFilter}
+                  onChange={(e) => setDefaultFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">전체</option>
+                  <option value="pending">대기중만 표시</option>
+                  <option value="approved">승인만 표시</option>
+                  <option value="rejected">거부만 표시</option>
+                </select>
+              </div>
+              
+              {/* 기본 날짜 범위 */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  기본 날짜 범위
+                </label>
+                <select
+                  value={defaultDateRange}
+                  onChange={(e) => setDefaultDateRange(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">전체 기간</option>
+                  <option value="week">최근 1주일</option>
+                  <option value="month">이번 달</option>
+                  <option value="custom">날짜 직접 지정</option>
+                </select>
+              </div>
+              
+              {/* 날짜 직접 지정 */}
+              {defaultDateRange === 'custom' && (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">
+                      시작일
+                    </label>
+                    <input
+                      type="date"
+                      value={defaultStartDate}
+                      onChange={(e) => setDefaultStartDate(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">
+                      종료일
+                    </label>
+                    <input
+                      type="date"
+                      value={defaultEndDate}
+                      onChange={(e) => setDefaultEndDate(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  {defaultStartDate && defaultEndDate && (
+                    <p className="text-xs text-center text-gray-600">
+                      📅 {defaultStartDate} ~ {defaultEndDate}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowDefaultSettings(false)}
+                className="flex-1 py-2 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={saveDefaultSettings}
+                className="flex-1 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+              >
+                저장
+              </button>
+            </div>
+          </div>
+        </>
+      )}
       
       {/* 상세보기 모달 */}
-      {selectedGroup && (
+      {selectedExpense && (
         <ExpenseDetailModal
-          group={selectedGroup}
+          expense={selectedExpense}
           selectedSpace={selectedSpace}
-          onClose={() => setSelectedGroup(null)}
-          onApprove={async (groupId) => {
-            await expenseService.approveGroup(
-              selectedSpace.id,
-              groupId,
-              {
-                approverId: user.id,
-                approverName: user.displayName || user.name
-              }
-            );
-            // 데이터 새로고침
-            const expenses = await expenseService.getExpenses(selectedSpace.id);
-            const groupMap = new Map();
-            expenses.forEach(expense => {
-              const gId = expense.groupId;
-              if (!groupMap.has(gId)) {
-                groupMap.set(gId, {
-                  groupId: gId,
-                  items: [],
-                  totalAmount: 0,
-                  userName: expense.userName,
-                  UserId: expense.UserId,
-                  createdAt: expense.createdAt,
-                  usedAt: expense.usedAt,
-                  memo: expense.memo,
-                  status: expense.status,
-                  approved: expense.approved,
-                  approvedAt: expense.approvedAt,
-                  approvedBy: expense.approvedBy,
-                  approvedByName: expense.approvedByName,
-                });
-              }
-              const grp = groupMap.get(gId);
-              grp.items.push(expense);
-              grp.totalAmount += expense.total;
-            });
-            const groups = Array.from(groupMap.values());
-            groups.sort((a, b) => b.createdAt - a.createdAt);
-            setExpenseGroups(groups);
-          }}
-          onReject={async (groupId, reason) => {
-            await expenseService.rejectGroup(
-              selectedSpace.id,
-              groupId,
-              {
-                rejecterId: user.id,
-                rejecterName: user.displayName || user.name
-              },
-              reason
-            );
-            // 데이터 새로고침
-            const expenses = await expenseService.getExpenses(selectedSpace.id);
-            const groupMap = new Map();
-            expenses.forEach(expense => {
-              const gId = expense.groupId;
-              if (!groupMap.has(gId)) {
-                groupMap.set(gId, {
-                  groupId: gId,
-                  items: [],
-                  totalAmount: 0,
-                  userName: expense.userName,
-                  UserId: expense.UserId,
-                  createdAt: expense.createdAt,
-                  usedAt: expense.usedAt,
-                  memo: expense.memo,
-                  status: expense.status,
-                  approved: expense.approved,
-                  rejectedAt: expense.rejectedAt,
-                  rejectedBy: expense.rejectedBy,
-                  rejectedByName: expense.rejectedByName,
-                  rejectionReason: expense.rejectionReason,
-                });
-              }
-              const grp = groupMap.get(gId);
-              grp.items.push(expense);
-              grp.totalAmount += expense.total;
-            });
-            const groups = Array.from(groupMap.values());
-            groups.sort((a, b) => b.createdAt - a.createdAt);
-            setExpenseGroups(groups);
-          }}
+          onClose={() => setSelectedExpense(null)}
+          onApprove={handleApprove}
+          onReject={handleReject}
         />
       )}
     </div>

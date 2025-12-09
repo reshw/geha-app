@@ -3,40 +3,21 @@ import {
   doc, 
   getDocs, 
   getDoc,
-  addDoc,
+  setDoc,
   updateDoc,
   query, 
   where,
   orderBy,
-  Timestamp,
-  writeBatch
+  Timestamp
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 /**
- * Expense ID 생성
- * 형식: YYYY-MM-DDTHHMM_XXXX
- * 예: 2025-01-20T0549_0001
- */
-const generateExpenseId = (date = new Date()) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  
-  // 랜덤 4자리
-  const random = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
-  
-  return `${year}-${month}-${day}T${hours}${minutes}_${random}`;
-};
-
-/**
- * Group ID 생성 (같은 청구 묶음용)
+ * Expense ID 생성 (타임스탬프 기반)
  * 형식: YYYY-MM-DDTHHMM
  * 예: 2025-01-20T0549
  */
-const generateGroupId = (date = new Date()) => {
+const generateExpenseId = (date = new Date()) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
@@ -79,49 +60,45 @@ const expenseService = {
   },
 
   /**
-   * 특정 groupId의 항목들 조회
+   * 특정 운영비 상세 조회
    */
-  async getExpensesByGroup(spaceId, groupId) {
+  async getExpense(spaceId, expenseId) {
     try {
-      console.log('📦 그룹 항목 조회:', { spaceId, groupId });
+      console.log('💰 운영비 상세 조회:', { spaceId, expenseId });
       
-      const expenseRef = collection(db, 'spaces', spaceId, 'Expense');
-      const q = query(
-        expenseRef, 
-        where('groupId', '==', groupId),
-        orderBy('createdAt', 'asc')
-      );
-      const snapshot = await getDocs(q);
+      const expenseRef = doc(db, 'spaces', spaceId, 'Expense', expenseId);
+      const snapshot = await getDoc(expenseRef);
       
-      const items = [];
-      snapshot.forEach((doc) => {
-        items.push({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate(),
-          usedAt: doc.data().usedAt?.toDate(),
-          approvedAt: doc.data().approvedAt?.toDate(),
-          rejectedAt: doc.data().rejectedAt?.toDate(),
-        });
-      });
+      if (!snapshot.exists()) {
+        throw new Error('운영비 내역을 찾을 수 없습니다.');
+      }
       
-      console.log('✅ 그룹 항목 조회 완료:', items.length);
-      return items;
+      const data = {
+        id: snapshot.id,
+        ...snapshot.data(),
+        createdAt: snapshot.data().createdAt?.toDate(),
+        usedAt: snapshot.data().usedAt?.toDate(),
+        approvedAt: snapshot.data().approvedAt?.toDate(),
+        rejectedAt: snapshot.data().rejectedAt?.toDate(),
+      };
+      
+      console.log('✅ 운영비 상세 조회 완료');
+      return data;
     } catch (error) {
-      console.error('❌ 그룹 항목 조회 실패:', error);
+      console.error('❌ 운영비 상세 조회 실패:', error);
       throw error;
     }
   },
 
   /**
-   * 운영비 청구 생성 (여러 항목을 한번에)
+   * 운영비 청구 생성
    * @param {string} spaceId - 스페이스 ID
    * @param {Object} requestData - 청구 데이터
    * @param {string} requestData.userId - 청구자 ID
    * @param {string} requestData.userName - 청구자 이름
    * @param {Date} requestData.usedAt - 사용일자
    * @param {string} requestData.memo - 청구 사유/메모
-   * @param {string} requestData.imageUrl - 전체 청구의 증빙 이미지 URL (모든 항목에 동일하게 적용)
+   * @param {string} requestData.imageUrl - 증빙 이미지 URL
    * @param {Array} requestData.items - 항목 배열
    * @param {string} requestData.items[].itemName - 품목명
    * @param {number} requestData.items[].itemPrice - 단가
@@ -134,50 +111,49 @@ const expenseService = {
       
       const { userId, userName, usedAt, memo, items, imageUrl } = requestData;
       
-      // groupId 생성 (현재 시각 기준)
+      // ID 생성 (현재 시각 기준)
       const now = new Date();
-      const groupId = generateGroupId(now);
+      const expenseId = generateExpenseId(now);
       const createdAt = Timestamp.fromDate(now);
       const usedAtTimestamp = Timestamp.fromDate(usedAt);
       
-      const batch = writeBatch(db);
-      const expenseRef = collection(db, 'spaces', spaceId, 'Expense');
+      // 총액 계산
+      const totalAmount = items.reduce((sum, item) => {
+        return sum + (item.itemPrice * item.itemQty);
+      }, 0);
       
-      // 각 항목을 개별 문서로 생성
-      // 모든 항목에 동일한 imageUrl 적용
-      const createdIds = [];
-      for (const item of items) {
-        const expenseId = generateExpenseId(now);
-        const docRef = doc(expenseRef, expenseId);
-        
-        const expenseData = {
-          UserId: userId,
-          userName: userName,
+      // 단일 문서로 생성
+      const expenseRef = doc(db, 'spaces', spaceId, 'Expense', expenseId);
+      const expenseData = {
+        userId: userId,
+        userName: userName,
+        usedAt: usedAtTimestamp,
+        createdAt: createdAt,
+        memo: memo || '',
+        imageUrl: imageUrl || '',
+        items: items.map(item => ({
           itemName: item.itemName,
           itemPrice: item.itemPrice,
           itemQty: item.itemQty,
           itemSpec: item.itemSpec || '',
           total: item.itemPrice * item.itemQty,
-          imageUrl: imageUrl || '',  // 전체 청구의 증빙 이미지
-          groupId: groupId,
-          createdAt: createdAt,
-          usedAt: usedAtTimestamp,
-          approved: false,  // 초기 상태: 대기중
-          status: 'pending',
-          memo: memo || '',
-        };
-        
-        batch.set(docRef, expenseData);
-        createdIds.push(expenseId);
-        
-        // 같은 시간에 여러 항목 생성 시 ID 충돌 방지
-        await new Promise(resolve => setTimeout(resolve, 10));
-      }
+        })),
+        totalAmount: totalAmount,
+        approved: false,
+        status: 'pending',
+        approvedAt: null,
+        approvedBy: null,
+        approvedByName: null,
+        rejectedAt: null,
+        rejectedBy: null,
+        rejectedByName: null,
+        rejectionReason: null,
+      };
       
-      await batch.commit();
+      await setDoc(expenseRef, expenseData);
       
-      console.log('✅ 운영비 청구 생성 완료:', { groupId, items: createdIds.length });
-      return { groupId, items: createdIds };
+      console.log('✅ 운영비 청구 생성 완료:', expenseId);
+      return { id: expenseId, ...expenseData };
     } catch (error) {
       console.error('❌ 운영비 청구 생성 실패:', error);
       throw error;
@@ -236,124 +212,102 @@ const expenseService = {
   },
 
   /**
-   * 그룹 전체 승인 (같은 groupId의 모든 항목)
+   * 대기중인 청구 목록 조회
    */
-  async approveGroup(spaceId, groupId, approverData) {
-    try {
-      console.log('✅ 그룹 전체 승인:', { spaceId, groupId });
-      
-      const items = await this.getExpensesByGroup(spaceId, groupId);
-      const batch = writeBatch(db);
-      
-      const now = Timestamp.fromDate(new Date());
-      
-      items.forEach(item => {
-        const expenseRef = doc(db, 'spaces', spaceId, 'Expense', item.id);
-        batch.update(expenseRef, {
-          approved: true,
-          status: 'approved',
-          approvedAt: now,
-          approvedBy: approverData.approverId,
-          approvedByName: approverData.approverName,
-        });
-      });
-      
-      await batch.commit();
-      
-      console.log('✅ 그룹 전체 승인 완료:', items.length);
-      return true;
-    } catch (error) {
-      console.error('❌ 그룹 전체 승인 실패:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * 그룹 전체 거부
-   */
-  async rejectGroup(spaceId, groupId, rejecterData, reason) {
-    try {
-      console.log('❌ 그룹 전체 거부:', { spaceId, groupId });
-      
-      const items = await this.getExpensesByGroup(spaceId, groupId);
-      const batch = writeBatch(db);
-      
-      const now = Timestamp.fromDate(new Date());
-      
-      items.forEach(item => {
-        const expenseRef = doc(db, 'spaces', spaceId, 'Expense', item.id);
-        batch.update(expenseRef, {
-          approved: false,
-          status: 'rejected',
-          rejectedAt: now,
-          rejectedBy: rejecterData.rejecterId,
-          rejectedByName: rejecterData.rejecterName,
-          rejectionReason: reason || '사유 없음',
-        });
-      });
-      
-      await batch.commit();
-      
-      console.log('✅ 그룹 전체 거부 완료:', items.length);
-      return true;
-    } catch (error) {
-      console.error('❌ 그룹 전체 거부 실패:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * 대기중인 청구 그룹 목록 조회
-   */
-  async getPendingGroups(spaceId) {
+  async getPendingExpenses(spaceId) {
     try {
       console.log('⏳ 대기중인 청구 조회:', spaceId);
       
       const expenseRef = collection(db, 'spaces', spaceId, 'Expense');
       const q = query(
         expenseRef,
-        where('approved', '==', false),
         where('status', '==', 'pending'),
         orderBy('createdAt', 'desc')
       );
       const snapshot = await getDocs(q);
       
-      const groupMap = new Map();
-      
+      const expenses = [];
       snapshot.forEach((doc) => {
-        const data = {
+        expenses.push({
           id: doc.id,
           ...doc.data(),
           createdAt: doc.data().createdAt?.toDate(),
           usedAt: doc.data().usedAt?.toDate(),
-        };
-        
-        const groupId = data.groupId;
-        if (!groupMap.has(groupId)) {
-          groupMap.set(groupId, {
-            groupId,
-            items: [],
-            totalAmount: 0,
-            userName: data.userName,
-            UserId: data.UserId,
-            createdAt: data.createdAt,
-            usedAt: data.usedAt,
-            memo: data.memo,
-            imageUrl: data.imageUrl,  // 첫 번째 항목의 imageUrl (그룹 내 모두 동일)
-          });
-        }
-        
-        const group = groupMap.get(groupId);
-        group.items.push(data);
-        group.totalAmount += data.total;
+        });
       });
       
-      const groups = Array.from(groupMap.values());
-      console.log('✅ 대기중인 청구 조회 완료:', groups.length);
-      
-      return groups;
+      console.log('✅ 대기중인 청구 조회 완료:', expenses.length);
+      return expenses;
     } catch (error) {
       console.error('❌ 대기중인 청구 조회 실패:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 승인된 청구 목록 조회
+   */
+  async getApprovedExpenses(spaceId) {
+    try {
+      console.log('✅ 승인된 청구 조회:', spaceId);
+      
+      const expenseRef = collection(db, 'spaces', spaceId, 'Expense');
+      const q = query(
+        expenseRef,
+        where('status', '==', 'approved'),
+        orderBy('approvedAt', 'desc')
+      );
+      const snapshot = await getDocs(q);
+      
+      const expenses = [];
+      snapshot.forEach((doc) => {
+        expenses.push({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate(),
+          usedAt: doc.data().usedAt?.toDate(),
+          approvedAt: doc.data().approvedAt?.toDate(),
+        });
+      });
+      
+      console.log('✅ 승인된 청구 조회 완료:', expenses.length);
+      return expenses;
+    } catch (error) {
+      console.error('❌ 승인된 청구 조회 실패:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 거부된 청구 목록 조회
+   */
+  async getRejectedExpenses(spaceId) {
+    try {
+      console.log('❌ 거부된 청구 조회:', spaceId);
+      
+      const expenseRef = collection(db, 'spaces', spaceId, 'Expense');
+      const q = query(
+        expenseRef,
+        where('status', '==', 'rejected'),
+        orderBy('rejectedAt', 'desc')
+      );
+      const snapshot = await getDocs(q);
+      
+      const expenses = [];
+      snapshot.forEach((doc) => {
+        expenses.push({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate(),
+          usedAt: doc.data().usedAt?.toDate(),
+          rejectedAt: doc.data().rejectedAt?.toDate(),
+        });
+      });
+      
+      console.log('✅ 거부된 청구 조회 완료:', expenses.length);
+      return expenses;
+    } catch (error) {
+      console.error('❌ 거부된 청구 조회 실패:', error);
       throw error;
     }
   },

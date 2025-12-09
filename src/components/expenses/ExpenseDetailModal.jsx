@@ -2,14 +2,14 @@ import { useState } from 'react';
 import { X, CheckCircle, XCircle, Calendar, User, ImageIcon } from 'lucide-react';
 import { canManageSpace } from '../../utils/permissions';
 
-const ExpenseDetailModal = ({ group, selectedSpace, onClose, onApprove, onReject }) => {
+const ExpenseDetailModal = ({ expense, selectedSpace, onClose, onApprove, onReject }) => {
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
   const [showRejectInput, setShowRejectInput] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   
   const isManager = selectedSpace?.userType && canManageSpace(selectedSpace.userType);
-  const isPending = group.status === 'pending';
+  const isPending = expense.status === 'pending';
   const canApproveOrReject = isManager && isPending;
   
   const formatCurrency = (amount) => {
@@ -69,7 +69,7 @@ const ExpenseDetailModal = ({ group, selectedSpace, onClose, onApprove, onReject
     
     setIsApproving(true);
     try {
-      await onApprove(group.groupId);
+      await onApprove(expense.id);
       onClose();
     } catch (error) {
       alert('승인 처리 중 오류가 발생했습니다.');
@@ -88,7 +88,7 @@ const ExpenseDetailModal = ({ group, selectedSpace, onClose, onApprove, onReject
     
     setIsRejecting(true);
     try {
-      await onReject(group.groupId, rejectReason);
+      await onReject(expense.id, rejectReason);
       onClose();
     } catch (error) {
       alert('거부 처리 중 오류가 발생했습니다.');
@@ -135,57 +135,75 @@ const ExpenseDetailModal = ({ group, selectedSpace, onClose, onApprove, onReject
                 <div className="flex items-center gap-2 text-gray-700">
                   <User className="w-5 h-5 text-gray-400" />
                   <span className="font-medium">청구자:</span>
-                  <span className="font-bold">{group.userName}</span>
+                  <span className="font-bold">{expense.userName}</span>
                 </div>
-                {getStatusBadge(group.status)}
+                {getStatusBadge(expense.status)}
               </div>
               
               <div className="flex items-center gap-2 text-gray-700">
                 <Calendar className="w-5 h-5 text-gray-400" />
                 <span className="font-medium">사용일:</span>
-                <span>{formatDate(group.usedAt)}</span>
+                <span>{formatDate(expense.usedAt)}</span>
               </div>
               
               <div className="text-sm text-gray-500">
-                청구일: {formatDateTime(group.createdAt)}
+                청구일: {formatDateTime(expense.createdAt)}
               </div>
             </div>
             
             {/* 승인/거부 정보 */}
-            {group.status === 'approved' && group.approvedByName && (
+            {expense.status === 'approved' && expense.approvedByName && (
               <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                 <div className="text-sm font-semibold text-green-800 mb-1">
                   ✅ 승인됨
                 </div>
                 <div className="text-sm text-green-700">
-                  승인자: {group.approvedByName}
+                  승인자: {expense.approvedByName}
                 </div>
                 <div className="text-xs text-green-600 mt-1">
-                  {formatDateTime(group.approvedAt)}
+                  {formatDateTime(expense.approvedAt)}
                 </div>
               </div>
             )}
             
-            {group.status === 'rejected' && (
+            {expense.status === 'rejected' && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-3">
                 <div className="text-sm font-semibold text-red-800 mb-1">
                   ❌ 거부됨
                 </div>
-                {group.rejectedByName && (
+                {expense.rejectedByName && (
                   <div className="text-sm text-red-700">
-                    거부자: {group.rejectedByName}
+                    거부자: {expense.rejectedByName}
                   </div>
                 )}
-                {group.rejectionReason && (
+                {expense.rejectionReason && (
                   <div className="text-sm text-red-600 mt-2">
-                    사유: {group.rejectionReason}
+                    사유: {expense.rejectionReason}
                   </div>
                 )}
-                {group.rejectedAt && (
+                {expense.rejectedAt && (
                   <div className="text-xs text-red-500 mt-1">
-                    {formatDateTime(group.rejectedAt)}
+                    {formatDateTime(expense.rejectedAt)}
                   </div>
                 )}
+              </div>
+            )}
+            
+            {/* 증빙 이미지 - 품목 내역보다 먼저 표시 */}
+            {expense.imageUrl && (
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 mb-3">📷 증빙 이미지</h3>
+                <div className="relative">
+                  <img 
+                    src={expense.imageUrl} 
+                    alt="영수증"
+                    className="w-full rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => window.open(expense.imageUrl, '_blank')}
+                  />
+                  <div className="absolute top-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-xs">
+                    클릭하여 크게 보기
+                  </div>
+                </div>
               </div>
             )}
             
@@ -193,7 +211,7 @@ const ExpenseDetailModal = ({ group, selectedSpace, onClose, onApprove, onReject
             <div>
               <h3 className="text-lg font-bold text-gray-900 mb-3">📋 품목 내역</h3>
               <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                {group.items.map((item, idx) => (
+                {expense.items.map((item, idx) => (
                   <div key={idx} className="flex justify-between items-start">
                     <div className="flex-1">
                       <div className="font-medium text-gray-900">
@@ -219,49 +237,21 @@ const ExpenseDetailModal = ({ group, selectedSpace, onClose, onApprove, onReject
                 <div className="border-t border-gray-300 pt-3 mt-3 flex justify-between items-center">
                   <span className="font-bold text-gray-900">총액</span>
                   <span className="text-2xl font-bold text-blue-600">
-                    {formatCurrency(group.totalAmount)}
+                    {formatCurrency(expense.totalAmount)}
                   </span>
                 </div>
               </div>
             </div>
             
             {/* 메모 */}
-            {group.memo && (
+            {expense.memo && (
               <div>
                 <h3 className="text-lg font-bold text-gray-900 mb-2">📝 메모</h3>
                 <div className="bg-gray-50 rounded-lg p-4 text-gray-700">
-                  {group.memo}
+                  {expense.memo}
                 </div>
               </div>
             )}
-            
-            {/* 영수증 이미지 */}
-            <div>
-              <h3 className="text-lg font-bold text-gray-900 mb-3">📷 영수증 이미지</h3>
-              <div className="space-y-3">
-                {group.items.map((item, idx) => (
-                  item.imageUrl && (
-                    <div key={idx} className="relative">
-                      <img 
-                        src={item.imageUrl} 
-                        alt={`영수증 ${idx + 1}`}
-                        className="w-full rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
-                        onClick={() => window.open(item.imageUrl, '_blank')}
-                      />
-                      <div className="absolute top-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-xs">
-                        클릭하여 크게 보기
-                      </div>
-                    </div>
-                  )
-                ))}
-                {group.items.every(item => !item.imageUrl) && (
-                  <div className="bg-gray-50 rounded-lg p-8 text-center text-gray-500">
-                    <ImageIcon className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                    영수증 이미지가 없습니다
-                  </div>
-                )}
-              </div>
-            </div>
           </div>
           
           {/* 하단 버튼 (고정) */}

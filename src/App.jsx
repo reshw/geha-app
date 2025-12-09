@@ -9,6 +9,7 @@ import TermsOfServicePage from './pages/TermsOfServicePage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import ExpenseListPage from './pages/ExpenseListPage';
 import ExpenseRequestPage from './pages/ExpenseRequestPage';
+import MigrationPage from './pages/MigrationPage';
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
           <Route path="/expenses/request" element={<ExpenseRequestPage />} />
           <Route path="/terms" element={<TermsOfServicePage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/migration" element={<MigrationPage />} />
         </Routes>
       </div>
     </BrowserRouter>
