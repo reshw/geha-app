@@ -19,13 +19,11 @@ const ExpenseRequestPage = () => {
       itemPrice: '',
       itemQty: 1,
       itemSpec: '',
-      imageFile: null,
-      imagePreview: null,
-      imageUrl: '',
     }
   ]);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [uploadingIndex, setUploadingIndex] = useState(null);
   
   // 항목 추가
   const addItem = () => {
@@ -34,9 +32,6 @@ const ExpenseRequestPage = () => {
       itemPrice: '',
       itemQty: 1,
       itemSpec: '',
-      imageFile: null,
-      imagePreview: null,
-      imageUrl: '',
     }]);
   };
   
@@ -45,11 +40,6 @@ const ExpenseRequestPage = () => {
     if (items.length === 1) {
       alert('최소 1개 항목은 필요합니다.');
       return;
-    }
-    
-    // 이미지 프리뷰 URL 해제
-    if (items[index].imagePreview) {
-      revokePreviewUrl(items[index].imagePreview);
     }
     
     const newItems = items.filter((_, i) => i !== index);
@@ -64,7 +54,7 @@ const ExpenseRequestPage = () => {
   };
   
   // 이미지 선택
-  const handleImageChange = async (index, e) => {
+  const handleImageChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     
@@ -73,28 +63,27 @@ const ExpenseRequestPage = () => {
       validateImage(file, 5); // 최대 5MB
       
       // 기존 프리뷰 해제
-      if (items[index].imagePreview) {
-        revokePreviewUrl(items[index].imagePreview);
+      if (imagePreview) {
+        revokePreviewUrl(imagePreview);
       }
       
       // 프리뷰 생성
       const previewUrl = createPreviewUrl(file);
       
-      updateItem(index, 'imageFile', file);
-      updateItem(index, 'imagePreview', previewUrl);
+      setImageFile(file);
+      setImagePreview(previewUrl);
     } catch (error) {
       alert(error.message);
     }
   };
   
   // 이미지 삭제
-  const removeImage = (index) => {
-    if (items[index].imagePreview) {
-      revokePreviewUrl(items[index].imagePreview);
+  const removeImage = () => {
+    if (imagePreview) {
+      revokePreviewUrl(imagePreview);
     }
-    updateItem(index, 'imageFile', null);
-    updateItem(index, 'imagePreview', null);
-    updateItem(index, 'imageUrl', '');
+    setImageFile(null);
+    setImagePreview(null);
   };
   
   // 총액 계산
@@ -148,32 +137,21 @@ const ExpenseRequestPage = () => {
     try {
       console.log('💰 운영비 청구 시작');
       
-      // 이미지 업로드
-      const itemsWithImages = await Promise.all(
-        items.map(async (item, index) => {
-          if (item.imageFile) {
-            setUploadingIndex(index);
-            const imageUrl = await uploadImage(item.imageFile, selectedSpace.id);
-            return {
-              itemName: item.itemName.trim(),
-              itemPrice: parseFloat(item.itemPrice),
-              itemQty: parseInt(item.itemQty),
-              itemSpec: item.itemSpec.trim(),
-              imageUrl: imageUrl,
-            };
-          } else {
-            return {
-              itemName: item.itemName.trim(),
-              itemPrice: parseFloat(item.itemPrice),
-              itemQty: parseInt(item.itemQty),
-              itemSpec: item.itemSpec.trim(),
-              imageUrl: '',
-            };
-          }
-        })
-      );
+      // 이미지 업로드 (있는 경우만)
+      let imageUrl = '';
+      if (imageFile) {
+        console.log('📤 이미지 업로드 중...');
+        imageUrl = await uploadImage(imageFile, selectedSpace.id);
+        console.log('✅ 이미지 업로드 완료:', imageUrl);
+      }
       
-      setUploadingIndex(null);
+      // 항목 데이터 정리
+      const cleanedItems = items.map(item => ({
+        itemName: item.itemName.trim(),
+        itemPrice: parseFloat(item.itemPrice),
+        itemQty: parseInt(item.itemQty),
+        itemSpec: item.itemSpec.trim(),
+      }));
       
       // Firebase에 저장
       const requestData = {
@@ -181,7 +159,8 @@ const ExpenseRequestPage = () => {
         userName: user.displayName || user.name,
         usedAt: new Date(usedAt),
         memo: memo.trim(),
-        items: itemsWithImages,
+        items: cleanedItems,
+        imageUrl: imageUrl,
       };
       
       console.log('📤 청구 데이터:', requestData);
@@ -192,11 +171,9 @@ const ExpenseRequestPage = () => {
       alert('운영비 청구가 완료되었습니다!');
       
       // 이미지 프리뷰 정리
-      items.forEach(item => {
-        if (item.imagePreview) {
-          revokePreviewUrl(item.imagePreview);
-        }
-      });
+      if (imagePreview) {
+        revokePreviewUrl(imagePreview);
+      }
       
       navigate('/expenses');
     } catch (error) {
@@ -204,7 +181,6 @@ const ExpenseRequestPage = () => {
       alert('청구 처리 중 오류가 발생했습니다.');
     } finally {
       setIsSubmitting(false);
-      setUploadingIndex(null);
     }
   };
   
@@ -249,6 +225,48 @@ const ExpenseRequestPage = () => {
             max={new Date().toISOString().split('T')[0]}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+        </div>
+        
+        {/* 증빙 이미지 (전체 청구에 대한 하나의 이미지) */}
+        <div className="bg-white rounded-xl shadow-sm p-4">
+          <label className="flex items-center gap-2 text-gray-700 font-semibold mb-3">
+            <ImageIcon className="w-5 h-5 text-blue-600" />
+            증빙 이미지 (선택)
+          </label>
+          
+          {imagePreview ? (
+            <div className="relative">
+              <img 
+                src={imagePreview} 
+                alt="영수증 미리보기"
+                className="w-full rounded-lg border border-gray-300"
+              />
+              <button
+                onClick={removeImage}
+                className="absolute top-2 right-2 w-8 h-8 bg-red-600 text-white rounded-full flex items-center justify-center hover:bg-red-700 transition-colors shadow-lg"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <label className="block cursor-pointer">
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-500 transition-colors">
+                <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                <p className="text-sm text-gray-600">
+                  클릭하여 영수증 이미지 선택
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  최대 5MB (JPG, PNG, GIF, WEBP)
+                </p>
+              </div>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="hidden"
+              />
+            </label>
+          )}
         </div>
         
         {/* 품목 리스트 */}
@@ -343,47 +361,6 @@ const ExpenseRequestPage = () => {
                   {formatCurrency((parseFloat(item.itemPrice) || 0) * (parseInt(item.itemQty) || 0))}
                 </span>
               </div>
-              
-              {/* 이미지 업로드 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  영수증 이미지 (선택)
-                </label>
-                
-                {item.imagePreview ? (
-                  <div className="relative">
-                    <img 
-                      src={item.imagePreview} 
-                      alt="미리보기"
-                      className="w-full rounded-lg border border-gray-300"
-                    />
-                    <button
-                      onClick={() => removeImage(index)}
-                      className="absolute top-2 right-2 w-8 h-8 bg-red-600 text-white rounded-full flex items-center justify-center hover:bg-red-700 transition-colors shadow-lg"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <label className="block cursor-pointer">
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-500 transition-colors">
-                      <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                      <p className="text-sm text-gray-600">
-                        클릭하여 이미지 선택
-                      </p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        최대 5MB (JPG, PNG, GIF, WEBP)
-                      </p>
-                    </div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleImageChange(index, e)}
-                      className="hidden"
-                    />
-                  </label>
-                )}
-              </div>
             </div>
           ))}
         </div>
@@ -415,13 +392,11 @@ const ExpenseRequestPage = () => {
         {/* 제출 버튼 */}
         <button
           onClick={handleSubmit}
-          disabled={isSubmitting || uploadingIndex !== null}
+          disabled={isSubmitting}
           className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-bold text-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSubmitting 
-            ? uploadingIndex !== null 
-              ? `이미지 업로드 중... (${uploadingIndex + 1}/${items.length})`
-              : '청구 처리 중...'
+            ? '청구 처리 중...'
             : '청구하기'
           }
         </button>

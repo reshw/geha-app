@@ -121,18 +121,18 @@ const expenseService = {
    * @param {string} requestData.userName - 청구자 이름
    * @param {Date} requestData.usedAt - 사용일자
    * @param {string} requestData.memo - 청구 사유/메모
+   * @param {string} requestData.imageUrl - 전체 청구의 증빙 이미지 URL (모든 항목에 동일하게 적용)
    * @param {Array} requestData.items - 항목 배열
    * @param {string} requestData.items[].itemName - 품목명
    * @param {number} requestData.items[].itemPrice - 단가
    * @param {number} requestData.items[].itemQty - 수량
    * @param {string} requestData.items[].itemSpec - 규격
-   * @param {string} requestData.items[].imageUrl - 증빙 이미지 URL
    */
   async createExpense(spaceId, requestData) {
     try {
       console.log('💰 운영비 청구 생성:', { spaceId, requestData });
       
-      const { userId, userName, usedAt, memo, items } = requestData;
+      const { userId, userName, usedAt, memo, items, imageUrl } = requestData;
       
       // groupId 생성 (현재 시각 기준)
       const now = new Date();
@@ -144,6 +144,7 @@ const expenseService = {
       const expenseRef = collection(db, 'spaces', spaceId, 'Expense');
       
       // 각 항목을 개별 문서로 생성
+      // 모든 항목에 동일한 imageUrl 적용
       const createdIds = [];
       for (const item of items) {
         const expenseId = generateExpenseId(now);
@@ -157,7 +158,7 @@ const expenseService = {
           itemQty: item.itemQty,
           itemSpec: item.itemSpec || '',
           total: item.itemPrice * item.itemQty,
-          imageUrl: item.imageUrl || '',
+          imageUrl: imageUrl || '',  // 전체 청구의 증빙 이미지
           groupId: groupId,
           createdAt: createdAt,
           usedAt: usedAtTimestamp,
@@ -338,6 +339,7 @@ const expenseService = {
             createdAt: data.createdAt,
             usedAt: data.usedAt,
             memo: data.memo,
+            imageUrl: data.imageUrl,  // 첫 번째 항목의 imageUrl (그룹 내 모두 동일)
           });
         }
         
