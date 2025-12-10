@@ -59,9 +59,10 @@ const KakaoCallback = () => {
 
         console.log('👤 기존 사용자 - 로그인 처리');
 
-        // ✅ 기존 유저도 카카오 최신값(4개 필드 포함)으로 merge 업데이트
+        // ✅ 기존 유저도 카카오 최신값(모든 필드 포함)으로 merge 업데이트
         await authService.updateUserProfile(userInfo.id, {
-          displayName: userInfo.displayName,
+          displayName: userInfo.displayName,     // 실명
+          nickname: userInfo.nickname || '',      // ✅ 카카오 닉네임
           profileImage: userInfo.profileImage,
           birthyear: userInfo.birthyear || '',
           gender: userInfo.gender || '',
