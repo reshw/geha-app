@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { X, CheckCircle, XCircle, Calendar, User, ImageIcon } from 'lucide-react';
-import { canManageSpace } from '../../utils/permissions';
+import { canManageReservations } from '../../utils/permissions';
 
 const ExpenseDetailModal = ({ expense, selectedSpace, onClose, onApprove, onReject }) => {
   const [isApproving, setIsApproving] = useState(false);
@@ -8,7 +8,7 @@ const ExpenseDetailModal = ({ expense, selectedSpace, onClose, onApprove, onReje
   const [showRejectInput, setShowRejectInput] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   
-  const isManager = selectedSpace?.userType && canManageSpace(selectedSpace.userType);
+  const isManager = selectedSpace?.userType && canManageReservations(selectedSpace.userType);
   const isPending = expense.status === 'pending';
   const canApproveOrReject = isManager && isPending;
   
