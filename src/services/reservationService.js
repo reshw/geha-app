@@ -1,7 +1,7 @@
 import { collection, getDocs, addDoc, deleteDoc, doc, setDoc, getDoc, query, where, Timestamp, orderBy } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { formatDate } from '../utils/dateUtils';
-import notificationService from './notificationService';
+import * as notificationService from './notificationService';  // ✅ named import로 변경
 
 class ReservationService {
   async getReservations(spaceId, currentWeekStart) {
@@ -140,20 +140,19 @@ class ReservationService {
         const alimtalkData = alimtalkDoc.exists() ? alimtalkDoc.data() : {};
         const alimtalkEnabled = alimtalkData.enabled === true; // enabled 필드 확인
         
-        // 스페이스 이름 가져오기
+        // 스페이스 정보 가져오기 (이름, 계좌번호)
         const spaceDocRef = doc(db, 'spaces', spaceId);
         const spaceDoc = await getDoc(spaceDocRef);
         const spaceData = spaceDoc.exists() ? spaceDoc.data() : {};
         
         console.log('알림톡 활성화 여부:', alimtalkEnabled);
         console.log('알림톡 설정 데이터:', alimtalkData);
-        
-        console.log('알림톡 활성화 여부:', alimtalkEnabled);
-        console.log('알림톡 설정 데이터:', alimtalkData);
+        console.log('스페이스 데이터:', spaceData);
         
         const notificationData = {
           ...reservationData,
           spaceName: spaceData.name || '조강308호',
+          accountInfo: spaceData.accountInfo || '카카오뱅크 7942-24-38529 이수진',  // ← 추가
           hostDisplayName: reservationData.hostDisplayName || ''
         };
         
