@@ -3,26 +3,47 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+
+    <!-- Font -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net" />
     <link
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css"
       rel="stylesheet"
     />
+
     <title>게하 앱 - 예약 관리</title>
 
-    <!-- Eruda: 환경변수 기반 조건 로드 -->
+    <!-- =====================================================
+         Eruda (mobile debugger)
+         - local dev : VITE_ENABLE_ERUDA=true  → ON
+         - prod      : VITE_ENABLE_ERUDA=false → OFF
+         ===================================================== -->
     <script>
-      if ('%VITE_ENABLE_ERUDA%' === 'false') {
-        const s = document.createElement('script')
-        s.src = 'https://cdn.jsdelivr.net/npm/eruda'
-        s.onload = () => window.eruda && window.eruda.init()
-        document.head.appendChild(s)
-      }
+      (function () {
+        // ⚠️ Vite는 build 시 %VITE_ENABLE_ERUDA% 를 문자열로 치환함
+        // 예)
+        //  - dev  : 'true'
+        //  - prod : 'false'
+        if ('%VITE_ENABLE_ERUDA%' !== 'true') return;
+
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/eruda';
+        s.onload = function () {
+          if (window.eruda) window.eruda.init();
+        };
+        document.head.appendChild(s);
+      })();
     </script>
   </head>
+
   <body>
     <div id="root"></div>
+
+    <!-- Vite entry -->
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
