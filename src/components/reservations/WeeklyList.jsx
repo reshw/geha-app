@@ -1011,7 +1011,7 @@ const WeeklyList = () => {
         user={user}
         selectedSpace={selectedSpace}
       />
-      + {/* ✅ 예약 취소 모달 */}
+      {/* ✅ 예약 취소 모달 */}
  <CancelReservationModal
    isOpen={showCancelModal}
    onClose={() => {
@@ -1034,7 +1034,7 @@ const WeeklyList = () => {
           onClick={() => setShowReservationModal(true)}
           className="fixed bottom-6 right-6 z-40 px-5 py-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full shadow-lg flex items-center gap-2 text-white hover:shadow-xl transition-all hover:scale-105 active:scale-95"
           style={{ 
-            bottom: 'calc(24px + env(safe-area-inset-bottom))',
+            bottom: 'calc(5rem + env(safe-area-inset-bottom))',
             right: 'max(24px, env(safe-area-inset-right))'
           }}
         >
