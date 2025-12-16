@@ -69,8 +69,10 @@ export async function sendGuestConfirmation(reservationData) {
     // 라운지명 (전달받거나 기본값)
     const loungeName = reservationData.spaceName || '조강308호';
 
-    // 계좌 정보 (전달받거나 기본값)
-    const accountInfo = reservationData.accountInfo || '카카오뱅크 7942-24-38529 이수진';
+    // 계좌 정보 (분리된 필드로 전달받거나 기본값)
+    const accountBank = reservationData.accountBank || '카카오뱅크';
+    const accountNumber = reservationData.accountNumber || '7942-24-38529';
+    const accountHolder = reservationData.accountHolder || '이수진';
 
     // 현관번호 = 휴대폰 뒷자리 4자리
     // 예: 010-1234-5678 → "5678" 전달 → 템플릿에서 "567811*" 표시
@@ -85,7 +87,9 @@ export async function sendGuestConfirmation(reservationData) {
       nights,
       days,
       cost,
-      accountInfo,
+      accountBank,
+      accountNumber,
+      accountHolder,
       doorNumber,
     });
 
@@ -106,7 +110,9 @@ export async function sendGuestConfirmation(reservationData) {
           nights,
           days,
           cost,
-          accountInfo,
+          accountBank,      // 변경
+          accountNumber,    // 추가
+          accountHolder,    // 추가
           doorNumber,
         },
       }),
