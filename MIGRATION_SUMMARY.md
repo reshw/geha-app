@@ -16,7 +16,7 @@
   - ✅ 날짜/비용 자동계산
   - ✅ alimtalkEnabled 플래그로 알림톡 제어
 
-#### `netlify/functions/send-email.js` (업데이트)323
+#### `netlify/functions/send-email.js` (업데이트)
 - PHP의 이메일 HTML 템플릿 완전 이식
 - reshw@naver.com으로 관리자 알림 발송
 
