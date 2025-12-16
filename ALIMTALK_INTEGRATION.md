@@ -12,7 +12,7 @@ PHP 기반 외부 호스팅을 Netlify Functions로 완전히 내재화했습니
 └── 앱에서 외부 URL 호출
 ```
 
-### 새로운 구조 (Netlify Functions)
+### 새로운 구조 (Netlify Functions)11231
 ```
 Netlify Functions
 ├── send-notification.js (통합: 이메일 + 알림톡)
