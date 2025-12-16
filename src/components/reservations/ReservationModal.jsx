@@ -147,6 +147,11 @@ const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReserva
 
   console.log('✅ [ReservationModal] 예약 확정 - type:', memberType);
   console.log('✅ [ReservationModal] selectedHost:', selectedHost);
+  console.log('✅ [ReservationModal] 계좌정보:', {
+    accountBank: selectedSpace?.accountBank,
+    accountNumber: selectedSpace?.accountNumber,
+    accountHolder: selectedSpace?.accountHolder,
+  });
 
   onConfirm({
     userId: user?.id,
@@ -158,11 +163,11 @@ const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReserva
     phone: user?.phoneNumber || '',
     hostId: selectedHost?.id || null,
     hostDisplayName: selectedHost?.displayName || null,
+    spaceName: selectedSpace?.name,
     // 계좌 정보 추가
     accountBank: selectedSpace?.accountBank,
     accountNumber: selectedSpace?.accountNumber,
     accountHolder: selectedSpace?.accountHolder,
-    spaceName: selectedSpace?.name, // 라운지명도 함께
   });
 
   // 초기화

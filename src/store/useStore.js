@@ -1,4 +1,3 @@
-// useStore.js
 import { create } from 'zustand';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
@@ -13,20 +12,24 @@ const useStore = create((set, get) => ({
   // 스페이스
   selectedSpace: null,
   setSelectedSpace: async (space) => {
-    // 계좌 정보 로드
     if (space?.id) {
       try {
-        const accountDocRef = doc(db, 'spaces', space.id, 'settings', 'account');
-        const accountDoc = await getDoc(accountDocRef);
+        const spaceDocRef = doc(db, 'spaces', space.id);
+        const spaceDoc = await getDoc(spaceDocRef);
         
-        if (accountDoc.exists()) {
-          const accountData = accountDoc.data();
-          space.accountBank = accountData.accountBank;
-          space.accountNumber = accountData.accountNumber;
-          space.accountHolder = accountData.accountHolder;
+        if (spaceDoc.exists()) {
+          const spaceData = spaceDoc.data();
+          space.accountBank = spaceData.accountBank;
+          space.accountNumber = spaceData.accountNumber;
+          space.accountHolder = spaceData.accountHolder;
+          console.log('✅ 계좌 정보 로드 완료:', {
+            accountBank: spaceData.accountBank,
+            accountNumber: spaceData.accountNumber,
+            accountHolder: spaceData.accountHolder,
+          });
         }
       } catch (error) {
-        console.warn('⚠️ 계좌 정보 로드 실패 (기본값 사용):', error);
+        console.error('❌ 계좌 정보 로드 실패:', error);
       }
     }
     
