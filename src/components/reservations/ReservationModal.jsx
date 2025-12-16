@@ -133,38 +133,48 @@ const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReserva
     return Math.ceil(diff / (1000 * 60 * 60 * 24));
   };
 
+  // ReservationModal.jsx의 handleConfirm 함수
   const handleConfirm = () => {
-    if (!checkIn || !checkOut) {
-      alert('체크인/체크아웃 날짜를 모두 선택해주세요.');
-      return;
-    }
+  if (!checkIn || !checkOut) {
+    alert('체크인/체크아웃 날짜를 모두 선택해주세요.');
+    return;
+  }
 
-    // 게스트인 경우 초대자 필수
-    if (isGuest && !selectedHost) {
-      alert('초대해주신 주주님을 선택해주세요.');
-      return;
-    }
+  if (isGuest && !selectedHost) {
+    alert('초대해주신 주주님을 선택해주세요.');
+    return;
+  }
 
-    console.log('✅ [ReservationModal] 예약 확정 - type:', memberType);
-    console.log('✅ [ReservationModal] selectedHost:', selectedHost);
+  console.log('✅ [ReservationModal] 예약 확정 - type:', memberType);
+  console.log('✅ [ReservationModal] selectedHost:', selectedHost);
+  console.log('✅ [ReservationModal] 계좌정보:', {
+    accountBank: selectedSpace?.accountBank,
+    accountNumber: selectedSpace?.accountNumber,
+    accountHolder: selectedSpace?.accountHolder,
+  });
 
-    onConfirm({
-      userId: user?.id,
-      checkIn,
-      checkOut,
-      name: userName,
-      type: memberType,
-      nights: getNights(),
-      phone: user?.phoneNumber || '',
-      hostId: selectedHost?.id || null,
-      hostDisplayName: selectedHost?.displayName || null
-    });
+  onConfirm({
+    userId: user?.id,
+    checkIn,
+    checkOut,
+    name: userName,
+    type: memberType,
+    nights: getNights(),
+    phone: user?.phoneNumber || '',
+    hostId: selectedHost?.id || null,
+    hostDisplayName: selectedHost?.displayName || null,
+    spaceName: selectedSpace?.name,
+    // 계좌 정보 추가
+    accountBank: selectedSpace?.accountBank,
+    accountNumber: selectedSpace?.accountNumber,
+    accountHolder: selectedSpace?.accountHolder,
+  });
 
-    // 초기화
-    setCheckIn(null);
-    setCheckOut(null);
-    setSelectedHost(null);
-  };
+  // 초기화
+  setCheckIn(null);
+  setCheckOut(null);
+  setSelectedHost(null);
+};
 
   const handleClose = () => {
     setCheckIn(null);

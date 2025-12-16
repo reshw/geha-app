@@ -94,47 +94,66 @@ class SpaceService {
     }
   }
 
-  // ----- 4) 사용자의 모든 스페이스 목록 가져오기 -----
+  // ----- 4) 사용자의 모든 스페이스 목록 가져오기 (계좌 정보 포함) -----
   async getUserSpaces(userId) {
     try {
       const spaceAccessRef = collection(db, `users/${userId}/spaceAccess`);
       const snapshot = await getDocs(spaceAccessRef);
       
-      const spaces = [];
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        console.log('📦 spaceAccess 문서:', doc.id, data);
+      // 각 스페이스의 상세 정보를 병렬로 가져오기
+      const spacePromises = [];
+      
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        const spaceId = docSnap.id;
         
-        // Timestamp를 Date로 변환
-        const joinedAt = data.joinedAt && typeof data.joinedAt.toDate === 'function' 
-          ? data.joinedAt.toDate() 
-          : null;
-        const updatedAt = data.updatedAt && typeof data.updatedAt.toDate === 'function'
-          ? data.updatedAt.toDate()
-          : null;
-        
-        spaces.push({
-          id: doc.id, // spaceId
-          spaceId: doc.id, // 호환성을 위해 둘 다 추가
-          spaceName: data.spaceName || '',
-          userType: data.userType || 'guest',
-          order: data.order || 0,
-          status: data.status || 'active',
-          joinedAt: joinedAt,
-          updatedAt: updatedAt
+        // 스페이스 문서에서 계좌 정보 포함한 상세 정보 가져오기
+        const spacePromise = getDoc(doc(db, 'spaces', spaceId)).then(spaceDoc => {
+          const spaceData = spaceDoc.exists() ? spaceDoc.data() : {};
+          
+          console.log('📦 [getUserSpaces] 스페이스 상세 정보:', spaceId, spaceData);
+          
+          // Timestamp를 Date로 변환
+          const joinedAt = data.joinedAt && typeof data.joinedAt.toDate === 'function' 
+            ? data.joinedAt.toDate() 
+            : null;
+          const updatedAt = data.updatedAt && typeof data.updatedAt.toDate === 'function'
+            ? data.updatedAt.toDate()
+            : null;
+          
+          return {
+            id: spaceId,
+            spaceId: spaceId, // 호환성을 위해 둘 다 추가
+            spaceName: data.spaceName || spaceData.name || '',
+            name: spaceData.name || data.spaceName || '', // 스페이스 이름
+            userType: data.userType || 'guest',
+            order: data.order || 0,
+            status: data.status || 'active',
+            joinedAt: joinedAt,
+            updatedAt: updatedAt,
+            // 계좌 정보 추가 (spaces/{spaceId} 문서의 필드)
+            accountBank: spaceData.accountBank,
+            accountNumber: spaceData.accountNumber,
+            accountHolder: spaceData.accountHolder,
+          };
         });
+        
+        spacePromises.push(spacePromise);
       });
+      
+      const spaces = await Promise.all(spacePromises);
       
       // order 기준으로 정렬
       spaces.sort((a, b) => (a.order || 0) - (b.order || 0));
       
-      console.log('✅ getUserSpaces 결과:', spaces);
+      console.log('✅ [getUserSpaces] 결과 (계좌 정보 포함):', spaces);
       return spaces;
     } catch (error) {
       console.error('[SpaceService] getUserSpaces 실패:', error);
       return [];
     }
   }
+
   // ----- 5) 스페이스 순서 업데이트 -----
   async updateSpaceOrder(userId, spaces) {
     try {
