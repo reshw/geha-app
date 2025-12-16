@@ -153,7 +153,9 @@ function createGuestConfirmationParams(data) {
     nights, 
     days, 
     cost, 
-    accountInfo,
+    accountBank,      // 변경: accountInfo → accountBank
+    accountNumber,    // 추가
+    accountHolder,    // 추가
     doorNumber  // 전화번호 뒷자리 4자리
   } = data;
 
@@ -166,7 +168,9 @@ function createGuestConfirmationParams(data) {
     '박수': String(nights),
     '일수': String(days),
     '비용': cost.toLocaleString(),
-    '어카운트번호': accountInfo,
+    '은행명': accountBank,        // 변경
+    '계좌번호': accountNumber,    // 추가
+    '예금주': accountHolder,      // 추가
     '도어번호': doorNumber,  // 예: "8626" → 템플릿에서 "862611*" 표시
   };
 
