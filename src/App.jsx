@@ -17,6 +17,7 @@ import SpaceManagePage from './pages/SpaceManagePage';
 import SpaceSettingsPage from './pages/SpaceSettingsPage';
 import MemberManagePage from './pages/MemberManagePage';
 import AlimtalkSettingsPage from './pages/AlimtalkSettingsPage';
+import TransferManagerPage from './pages/TransferManagerPage';
 
 function App() {
   return (
@@ -46,6 +47,7 @@ function App() {
           <Route path="/space/settings" element={<SpaceSettingsPage />} />
           <Route path="/space/members" element={<MemberManagePage />} />
           <Route path="/space/alimtalk" element={<AlimtalkSettingsPage />} />
+          <Route path="/space/transfer-manager" element={<TransferManagerPage />} />
         </Routes>
       </div>
     </BrowserRouter>

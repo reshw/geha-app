@@ -5,7 +5,7 @@ import { db } from '../config/firebase';
 import useStore from '../store/useStore';
 import { USER_TYPES, USER_TYPE_LABELS, USER_TYPE_LEVEL } from '../utils/constants';
 import { canManageSpace } from '../utils/permissions';
-import { ArrowLeft, UserMinus, Shield, Users } from 'lucide-react';
+import { ArrowLeft, UserMinus, Shield, Users, Search, X } from 'lucide-react';
 
 export default function MemberManagePage() {
   const navigate = useNavigate();
@@ -13,6 +13,8 @@ export default function MemberManagePage() {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredMembers, setFilteredMembers] = useState([]);
 
   // 권한 체크
   useEffect(() => {
@@ -75,6 +77,7 @@ export default function MemberManagePage() {
       });
 
       setMembers(memberList);
+      setFilteredMembers(memberList); // 초기에는 전체 목록
     } catch (error) {
       console.error('멤버 목록 로드 실패:', error);
       alert('멤버 목록을 불러오는데 실패했습니다.');
@@ -82,6 +85,23 @@ export default function MemberManagePage() {
       setLoading(false);
     }
   };
+
+  // 검색 필터링
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredMembers(members);
+      return;
+    }
+
+    const query = searchQuery.toLowerCase();
+    const filtered = members.filter(member => 
+      member.displayName.toLowerCase().includes(query) ||
+      member.email.toLowerCase().includes(query) ||
+      USER_TYPE_LABELS[member.userType].toLowerCase().includes(query)
+    );
+
+    setFilteredMembers(filtered);
+  }, [searchQuery, members]);
 
   // 권한 변경
   const handleChangeUserType = async (member, newUserType) => {
@@ -195,15 +215,61 @@ export default function MemberManagePage() {
 
       {/* 멤버 목록 */}
       <div className="max-w-2xl mx-auto px-4 py-6">
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-slate-300">
-            <Users className="w-5 h-5" />
-            <span className="font-medium">전체 멤버 {members.length}명</span>
+        {/* 검색 바 */}
+        <div className="mb-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="이름, 이메일, 권한으로 검색..."
+              className="w-full pl-10 pr-10 py-3 bg-slate-800/50 border border-slate-600/30 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 hover:bg-slate-700/50 rounded transition-colors"
+              >
+                <X className="w-4 h-4 text-slate-400" />
+              </button>
+            )}
           </div>
         </div>
 
+        {/* 멤버 카운트 */}
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-slate-300">
+            <Users className="w-5 h-5" />
+            <span className="font-medium">
+              {searchQuery 
+                ? `검색 결과 ${filteredMembers.length}명 / 전체 ${members.length}명`
+                : `전체 멤버 ${members.length}명`
+              }
+            </span>
+          </div>
+        </div>
+
+        {/* 검색 결과 없음 */}
+        {searchQuery && filteredMembers.length === 0 && (
+          <div className="bg-slate-800/50 border border-slate-600/30 rounded-xl p-8 text-center">
+            <Search className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+            <p className="text-slate-300 font-medium">검색 결과가 없습니다</p>
+            <p className="text-sm text-slate-400 mt-2">
+              "{searchQuery}"와(과) 일치하는 멤버가 없습니다
+            </p>
+            <button
+              onClick={() => setSearchQuery('')}
+              className="mt-4 px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded-lg transition-colors"
+            >
+              검색 초기화
+            </button>
+          </div>
+        )}
+
+        {/* 멤버 리스트 */}
         <div className="space-y-3">
-          {members.map(member => {
+          {filteredMembers.map(member => {
             const isCurrentUser = member.userId === user.id;
             const joinedDate = member.joinedAt?.toDate?.() || null;
 

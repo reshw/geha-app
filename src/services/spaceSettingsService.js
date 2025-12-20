@@ -1,4 +1,4 @@
-import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, setDoc, collection, getDocs, writeBatch } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 /**
@@ -8,7 +8,7 @@ const spaceSettingsService = {
   /**
    * 스페이스 이름 업데이트
    * spaces/{spaceId} 문서의 name 필드와
-   * users/{userId}/spaceAccess/{spaceId} 문서의 spaceName 필드를 동기화
+   * 모든 멤버의 users/{userId}/spaceAccess/{spaceId} 문서의 spaceName 필드를 동기화
    */
   async updateSpaceName(spaceId, newName, userId) {
     try {
@@ -24,18 +24,25 @@ const spaceSettingsService = {
 
       console.log('✅ spaces 문서 업데이트 완료');
 
-      // 2. 모든 멤버의 spaceAccess 업데이트를 위해 assignedUsers 조회
-      const assignedUsersRef = doc(db, `spaces/${spaceId}/assignedUsers`);
-      // 실제로는 collection을 조회해야 하지만, 여기서는 간단히 현재 사용자만 업데이트
+      // 2. 모든 멤버의 spaceAccess 업데이트
+      const assignedUsersRef = collection(db, `spaces/${spaceId}/assignedUsers`);
+      const snapshot = await getDocs(assignedUsersRef);
       
-      // 3. users/{userId}/spaceAccess/{spaceId} 업데이트
-      const userSpaceRef = doc(db, `users/${userId}/spaceAccess`, spaceId);
-      await updateDoc(userSpaceRef, {
-        spaceName: newName,
-        updatedAt: new Date().toISOString()
+      console.log(`📋 ${snapshot.size}명의 멤버 spaceAccess 업데이트 시작`);
+
+      // Batch로 모든 멤버의 spaceAccess 동시 업데이트
+      const batch = writeBatch(db);
+      
+      snapshot.forEach((userDoc) => {
+        const userSpaceRef = doc(db, `users/${userDoc.id}/spaceAccess`, spaceId);
+        batch.update(userSpaceRef, {
+          spaceName: newName,
+          updatedAt: new Date().toISOString()
+        });
       });
 
-      console.log('✅ userSpaceAccess 업데이트 완료');
+      await batch.commit();
+      console.log('✅ 모든 멤버의 spaceAccess 업데이트 완료');
 
       return { success: true };
     } catch (error) {

@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import useStore from '../store/useStore';
-import { ArrowLeft, Settings, Users, Bell, Info } from 'lucide-react';
+import { ArrowLeft, Settings, Users, Bell, Info, Crown } from 'lucide-react';
 import { canManageSpace } from '../utils/permissions';
+import { USER_TYPES } from '../utils/constants';
 import { useEffect } from 'react';
 
 export default function SpaceManagePage() {
@@ -56,6 +57,15 @@ export default function SpaceManagePage() {
       icon: Bell,
       color: 'from-green-500 to-green-600',
       path: '/space/alimtalk'
+    },
+    {
+      id: 'transfer-manager',
+      title: '매니저 권한 양도',
+      description: '다른 멤버에게 매니저 권한 이전',
+      icon: Crown,
+      color: 'from-red-500 to-red-600',
+      path: '/space/transfer-manager',
+      managerOnly: true // 매니저만 표시
     }
   ];
 
@@ -82,7 +92,17 @@ export default function SpaceManagePage() {
       {/* 메뉴 카드 */}
       <div className="max-w-2xl mx-auto px-4 py-6">
         <div className="space-y-4">
-          {menuItems.map((item) => {
+          {menuItems
+            .filter(item => {
+              // managerOnly 플래그가 있으면 매니저만 표시
+              if (item.managerOnly) {
+                const spaceId = selectedSpace.id || selectedSpace.spaceId;
+                const userSpaceData = user.spaceAccess?.find(s => s.spaceId === spaceId);
+                return userSpaceData?.userType === USER_TYPES.MANAGER;
+              }
+              return true;
+            })
+            .map((item) => {
             const Icon = item.icon;
             return (
               <button
