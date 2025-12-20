@@ -18,6 +18,7 @@ import SpaceSettingsPage from './pages/SpaceSettingsPage';
 import MemberManagePage from './pages/MemberManagePage';
 import AlimtalkSettingsPage from './pages/AlimtalkSettingsPage';
 import TransferManagerPage from './pages/TransferManagerPage';
+import SuperAdminPage from './pages/SuperAdminPage';
 
 function App() {
   return (
@@ -48,6 +49,9 @@ function App() {
           <Route path="/space/members" element={<MemberManagePage />} />
           <Route path="/space/alimtalk" element={<AlimtalkSettingsPage />} />
           <Route path="/space/transfer-manager" element={<TransferManagerPage />} />
+          
+          {/* 슈퍼 어드민 */}
+          <Route path="/super-admin" element={<SuperAdminPage />} />
         </Routes>
       </div>
     </BrowserRouter>
