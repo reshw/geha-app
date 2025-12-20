@@ -6,12 +6,17 @@ import KakaoCallback from './components/auth/KakaoCallback';
 import SignupPage from './pages/SignupPage';
 import SignupDemoPage from './pages/SignupDemoPage';
 import JoinSpacePage from './pages/JoinSpacePage';
-import SpaceManagePage from './pages/SpaceManagePage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import ExpenseListPage from './pages/ExpenseListPage';
 import ExpenseRequestPage from './pages/ExpenseRequestPage';
 import MigrationPage from './pages/MigrationPage';
+
+// 스페이스 관리 페이지들
+import SpaceManagePage from './pages/SpaceManagePage';
+import SpaceSettingsPage from './pages/SpaceSettingsPage';
+import MemberManagePage from './pages/MemberManagePage';
+import AlimtalkSettingsPage from './pages/AlimtalkSettingsPage';
 
 function App() {
   return (
@@ -31,11 +36,16 @@ function App() {
           <Route path="/signin" element={<SignupDemoPage />} />
           <Route path="/join" element={<JoinSpacePage />} />
           <Route path="/join/:code" element={<JoinSpacePage />} />
-          <Route path="/manage" element={<SpaceManagePage />} />
           <Route path="/expenses/request" element={<ExpenseRequestPage />} />
           <Route path="/terms" element={<TermsOfServicePage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/migration" element={<MigrationPage />} />
+          
+          {/* 스페이스 관리 */}
+          <Route path="/space/manage" element={<SpaceManagePage />} />
+          <Route path="/space/settings" element={<SpaceSettingsPage />} />
+          <Route path="/space/members" element={<MemberManagePage />} />
+          <Route path="/space/alimtalk" element={<AlimtalkSettingsPage />} />
         </Routes>
       </div>
     </BrowserRouter>
