@@ -25,7 +25,7 @@ export default function SlopesPage() {
             </div>
             
             <a
-              href="https://phoenixhnr.co.kr/m/static/pyeongchang/snowpark/slope-lift?tabId=2"
+              href="https://phoenixhnr.co.kr/m/static/pyeongchang/snowpark/slope-lift?tabId=3"
               target="_blank"
               rel="noopener noreferrer"
               className="px-3 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors flex items-center gap-1"
@@ -40,7 +40,7 @@ export default function SlopesPage() {
       {/* iframe */}
       <div className="max-w-[720px] mx-auto">
         <iframe
-          src="https://phoenixhnr.co.kr/m/static/pyeongchang/snowpark/slope-lift?tabId=2"
+          src="https://phoenixhnr.co.kr/m/static/pyeongchang/snowpark/slope-lift?tabId=3"
           className="w-full border-0"
           style={{ height: 'calc(100vh - 140px)' }}
           title="휘닉스 파크 슬로프 현황"
