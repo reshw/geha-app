@@ -14,7 +14,7 @@ import MigrationPage from './pages/MigrationPage';
 
 // 스페이스 관리 페이지들
 import SpaceManagePage from './pages/SpaceManagePage';
-import SpaceSettingsPage from './pages/Spacesettingspage';
+import SpaceSettingsPage from './pages/SpaceSettingsPage';
 import MemberManagePage from './pages/MemberManagePage';
 import AlimtalkSettingsPage from './pages/AlimtalkSettingsPage';
 import TransferManagerPage from './pages/TransferManagerPage';
