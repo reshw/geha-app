@@ -14,11 +14,13 @@ import MigrationPage from './pages/MigrationPage';
 
 // 스페이스 관리 페이지들
 import SpaceManagePage from './pages/SpaceManagePage';
-import SpaceSettingsPage from './pages/SpaceSettingsPage';
+import SpaceSettingsPage from './pages/Spacesettingspage';
 import MemberManagePage from './pages/MemberManagePage';
 import AlimtalkSettingsPage from './pages/AlimtalkSettingsPage';
 import TransferManagerPage from './pages/TransferManagerPage';
 import SuperAdminPage from './pages/SuperAdminPage';
+import SlopesPage from './pages/SlopesPage';
+
 
 function App() {
   return (
@@ -30,6 +32,7 @@ function App() {
             <Route path="/" element={<WeeklyList />} />
             <Route path="/praise" element={<PraisePage />} />
             <Route path="/expenses" element={<ExpenseListPage />} />
+            <Route path="/slopes" element={<SlopesPage />} />
           </Route>
 
           {/* 하단 네비게이션이 없는 독립 페이지들 */}

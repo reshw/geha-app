@@ -12,6 +12,7 @@
   "dependencies": {
     "node-fetch": "^2.7.0",
     "openai": "^6.10.0",
+    "puppeteer": "^24.34.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "resend": "^6.4.2",
