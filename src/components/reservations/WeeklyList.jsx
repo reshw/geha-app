@@ -126,10 +126,20 @@ const WeeklyList = () => {
         
         setUserSpaces(spaces);
         
-        // 스페이스가 있으면 order가 0인 것 선택 (또는 첫 번째)
+        // 스페이스가 있으면 마지막 선택 공간 복원 또는 기본값 선택
         if (spaces.length > 0 && !hasInitializedSpace.current) {
-          const defaultSpace = spaces.find(s => s.order === 0) || spaces[0];
-          setSelectedSpace(defaultSpace);
+          // localStorage에서 마지막 선택 공간 ID 가져오기
+          const lastSelectedId = localStorage.getItem('lastSelectedSpaceId');
+          console.log('💾 마지막 선택 공간 ID:' , lastSelectedId);
+          
+          // 마지막 선택 공간이 현재 스페이스 목록에 있는지 확인
+          const lastSpace = spaces.find(s => s.id === lastSelectedId);
+          
+          // 마지막 선택 공간이 있으면 복원, 없으면 order 0 또는 첫 번째 공간 선택
+          const spaceToSelect = lastSpace || spaces.find(s => s.order === 0) || spaces[0];
+          
+          console.log('✅ 선택된 공간:' , spaceToSelect.spaceName, '(ID:' , spaceToSelect.id, ')' );
+          setSelectedSpace(spaceToSelect);
           hasInitializedSpace.current = true;
         }
         // 스페이스가 없으면 selectedSpace를 null로 설정

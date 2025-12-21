@@ -9,7 +9,15 @@ const useStore = create((set) => ({
   
   // 스페이스
   selectedSpace: null,
-  setSelectedSpace: (space) => set({ selectedSpace: space }),
+  setSelectedSpace: (space) => {
+    // localStorage에 마지막 선택 공간 ID 저장
+    if (space?.id) {
+      localStorage.setItem('lastSelectedSpaceId', space.id);
+    } else {
+      localStorage.removeItem('lastSelectedSpaceId');
+    }
+    set({ selectedSpace: space });
+  },
   
   // 예약
   reservations: {},
