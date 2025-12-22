@@ -1,7 +1,7 @@
 // src/pages/SettlementPage.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Receipt, Plus, TrendingUp, TrendingDown, Users, Calendar, User } from 'lucide-react';
+import { Receipt, Plus, TrendingUp, TrendingDown, Users, Calendar, User, CheckCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import useStore from '../store/useStore';
 import settlementService from '../services/settlementService';
@@ -9,6 +9,7 @@ import authService from '../services/authService';
 import LoginOverlay from '../components/auth/LoginOverlay';
 import ReceiptDetailModal from '../components/settlement/ReceiptDetailModal';
 import ParticipantDetailModal from '../components/settlement/ParticipantDetailModal';
+import { canManageSpace } from '../utils/permissions';
 
 const SettlementPage = () => {
   const navigate = useNavigate();
@@ -158,6 +159,58 @@ const SettlementPage = () => {
     setShowParticipantModal(true);
   };
 
+  // 정산 완료 핸들러 (매니저만)
+  const handleCompleteSettlement = async () => {
+    if (!settlement?.weekId) return;
+
+    console.log('💰 정산 완료 버튼 클릭:', {
+      spaceId: selectedSpace.id,
+      weekId: settlement.weekId,
+      participantCount: Object.keys(settlement.participants || {}).length
+    });
+
+    const confirmed = window.confirm(
+      '정산을 완료하시겠습니까?\n\n완료 시 모든 참여자에게 정산 결과 알림톡이 발송됩니다.'
+    );
+    if (!confirmed) return;
+
+    try {
+      setLoading(true);
+      console.log('🔄 settlementService.settleWeek 호출 중...');
+
+      const result = await settlementService.settleWeek(selectedSpace.id, settlement.weekId);
+
+      console.log('✅ settleWeek 완료:', result);
+
+      // 알림 발송 결과에 따라 메시지 변경
+      if (result.notificationResult?.skipped) {
+        alert('정산이 완료되었습니다.\n\n알림톡이 비활성화되어 있어 알림이 발송되지 않았습니다.');
+      } else if (result.notificationSent) {
+        const { sentCount, errorCount } = result.notificationResult || {};
+        let message = '정산이 완료되었습니다!';
+        if (sentCount > 0) {
+          message += `\n\n✅ ${sentCount}명에게 알림톡 발송 완료`;
+        }
+        if (errorCount > 0) {
+          message += `\n⚠️ ${errorCount}명 발송 실패 (브라우저 콘솔 확인)`;
+        }
+        alert(message);
+      } else {
+        alert('정산이 완료되었습니다.\n\n알림 발송 중 오류가 발생했습니다. (브라우저 콘솔 확인)');
+      }
+
+      await loadSettlement();
+    } catch (error) {
+      console.error('❌ 정산 완료 실패:', error);
+      alert('정산 완료에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 매니저 권한 체크
+  const isManager = selectedSpace?.userType && canManageSpace(selectedSpace.userType);
+
   if (!isLoggedIn) {
     return <LoginOverlay />;
   }
@@ -190,17 +243,31 @@ const SettlementPage = () => {
       {/* 헤더 */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="px-4 py-4">
-          <h1 className="text-2xl font-bold text-gray-900">💰 정산</h1>
-          <p className="text-sm text-gray-600 mt-1">
-            {settlement?.weekStart && settlement?.weekEnd && (
-              <>
-                {formatDate(settlement.weekStart)} ~ {formatDate(settlement.weekEnd)}
-                {settlement.status === 'settled' && (
-                  <span className="ml-2 text-green-600 font-semibold">✓ 정산완료</span>
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <h1 className="text-2xl font-bold text-gray-900">💰 정산</h1>
+              <p className="text-sm text-gray-600 mt-1">
+                {settlement?.weekStart && settlement?.weekEnd && (
+                  <>
+                    {formatDate(settlement.weekStart)} ~ {formatDate(settlement.weekEnd)}
+                    {settlement.status === 'settled' && (
+                      <span className="ml-2 text-green-600 font-semibold">✓ 정산완료</span>
+                    )}
+                  </>
                 )}
-              </>
+              </p>
+            </div>
+            {/* 정산 완료 버튼 (매니저만, active 상태일 때만) */}
+            {isManager && settlement?.status === 'active' && (
+              <button
+                onClick={handleCompleteSettlement}
+                className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transition-all flex items-center gap-2"
+              >
+                <CheckCircle className="w-4 h-4" />
+                <span>정산완료</span>
+              </button>
             )}
-          </p>
+          </div>
         </div>
       </div>
 

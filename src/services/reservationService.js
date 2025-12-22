@@ -151,10 +151,8 @@ class ReservationService {
         
         const notificationData = {
           ...reservationData,
-          spaceName: spaceData.name || '조강308호',          
-          accountBank: spaceData.accountBank || '카카오뱅크 7942-24-38529 이수진',  // ← 추가
-          accountNumber: spaceData.accountNumber || '카카오뱅크 7942-24-38529 이수진',  // ← 추가
-          accountHolder: spaceData.accountHolder || '카카오뱅크 7942-24-38529 이수진',  // ← 추가
+          spaceId: spaceId,  // ← notificationService에서 게스트 정책 조회에 필요
+          spaceName: spaceData.name || '조강308호',
           hostDisplayName: reservationData.hostDisplayName || ''
         };
         

@@ -13,6 +13,7 @@ import {
   Timestamp
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import * as notificationService from './notificationService';
 
 /**
  * 주차 ID 생성 (ISO Week)
@@ -314,15 +315,125 @@ const settlementService = {
   async settleWeek(spaceId, weekId) {
     try {
       console.log('💰 주간 정산 확정:', { spaceId, weekId });
-      
+
+      // 1. 정산 상태 업데이트
       const settlementRef = doc(db, 'spaces', spaceId, 'settlement', weekId);
       await updateDoc(settlementRef, {
         status: 'settled',
         settledAt: Timestamp.now(),
       });
-      
+
       console.log('✅ 정산 확정 완료');
-      return true;
+
+      // 2. 정산 결과 가져오기
+      const settlementDoc = await getDoc(settlementRef);
+      if (!settlementDoc.exists()) {
+        console.warn('정산 문서를 찾을 수 없습니다.');
+        return { success: true, notificationSent: false };
+      }
+
+      const settlementData = settlementDoc.data();
+      let notificationResult = null;
+
+      // 3. 알림톡 활성화 여부 확인 및 스페이스 정보 가져오기
+      try {
+        const alimtalkDocRef = doc(db, 'spaces', spaceId, 'settings', 'alimtalk');
+        const alimtalkDoc = await getDoc(alimtalkDocRef);
+        const alimtalkData = alimtalkDoc.exists() ? alimtalkDoc.data() : {};
+        const alimtalkEnabled = alimtalkData.enabled === true;
+
+        // 스페이스 정보 가져오기 (라운지명)
+        const spaceDocRef = doc(db, 'spaces', spaceId);
+        const spaceDoc = await getDoc(spaceDocRef);
+        const spaceData = spaceDoc.exists() ? spaceDoc.data() : {};
+
+        // 매니저 전화번호 찾기 (MANAGER 권한 가진 사람)
+        let managerPhone = null;
+        try {
+          const membersRef = collection(db, 'spaces', spaceId, 'assignedUsers');
+          const membersSnap = await getDocs(membersRef);
+
+          console.log('👥 assignedUsers 조회:', {
+            spaceId,
+            memberCount: membersSnap.size
+          });
+
+          let managerUserId = null;
+          membersSnap.forEach((memberDoc) => {
+            const memberData = memberDoc.data();
+            console.log('👤 멤버 확인:', {
+              userId: memberDoc.id,
+              userType: memberData.userType,
+              displayName: memberData.displayName
+            });
+
+            if (memberData.userType === 'manager') {
+              managerUserId = memberDoc.id;
+              console.log('✅ manager 발견:', managerUserId);
+            }
+          });
+
+          if (managerUserId) {
+            console.log('📞 users 문서 조회 시작:', managerUserId);
+            const userDocRef = doc(db, 'users', managerUserId);
+            const userDoc = await getDoc(userDocRef);
+
+            if (userDoc.exists()) {
+              const userData = userDoc.data();
+              console.log('📋 users 문서 데이터:', {
+                hasPhoneNumber: !!userData.phoneNumber,
+                phoneNumber: userData.phoneNumber,
+                allFields: Object.keys(userData)
+              });
+              managerPhone = userData.phoneNumber || null;
+            } else {
+              console.warn('❌ users 문서가 존재하지 않음:', managerUserId);
+            }
+          } else {
+            console.warn('❌ MANAGER 권한을 가진 사용자를 찾을 수 없음');
+          }
+
+          console.log('👤 매니저 전화번호 최종:', managerPhone ? `✅ ${managerPhone}` : '❌ 없음');
+        } catch (error) {
+          console.error('⚠️ 매니저 전화번호 조회 실패:', error);
+        }
+
+        console.log('📋 알림 발송 준비:', {
+          alimtalkEnabled,
+          spaceName: spaceData.name,
+          participantCount: Object.keys(settlementData.participants || {}).length,
+          managerPhone: managerPhone ? '✅' : '❌'
+        });
+
+        // 4. 참여자들에게 정산 완료 알림 발송
+        if (settlementData.participants && Object.keys(settlementData.participants).length > 0) {
+          notificationResult = await notificationService.sendSettlementComplete(
+            {
+              spaceId,
+              weekId,
+              spaceName: spaceData.name,
+              participants: settlementData.participants,
+              managerPhone,
+            },
+            {
+              alimtalkEnabled,
+              spaceData
+            }
+          );
+
+          console.log('📬 정산 완료 알림 발송 결과:', notificationResult);
+        }
+      } catch (notifyError) {
+        // 알림 실패해도 정산 확정은 성공으로 처리
+        console.error('⚠️ 정산 완료 알림 발송 실패 (정산은 완료됨):', notifyError);
+        notificationResult = { success: false, error: notifyError.message };
+      }
+
+      return {
+        success: true,
+        notificationSent: notificationResult?.success || false,
+        notificationResult
+      };
     } catch (error) {
       console.error('❌ settleWeek 실패:', error);
       throw error;

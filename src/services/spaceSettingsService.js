@@ -368,6 +368,66 @@ const spaceSettingsService = {
       console.error('❌ 슈퍼 어드민 알림톡 비활성화 실패:', error);
       throw error;
     }
+  },
+
+  /**
+   * 게스트 정책 조회
+   */
+  async getGuestPolicy(spaceId) {
+    try {
+      console.log('📋 게스트 정책 조회:', spaceId);
+
+      const spaceRef = doc(db, 'spaces', spaceId);
+      const spaceDoc = await getDoc(spaceRef);
+
+      if (!spaceDoc.exists()) {
+        throw new Error('스페이스를 찾을 수 없습니다.');
+      }
+
+      const data = spaceDoc.data();
+
+      return {
+        accountBank: data.accountBank || '',
+        accountNumber: data.accountNumber || '',
+        accountHolder: data.accountHolder || '',
+        guestPricePerNight: data.guestPricePerNight || 30000,
+      };
+    } catch (error) {
+      console.error('❌ 게스트 정책 조회 실패:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 게스트 정책 업데이트
+   */
+  async updateGuestPolicy(spaceId, policyData, userId, userName) {
+    try {
+      console.log('💾 게스트 정책 업데이트:', { spaceId, policyData });
+
+      const spaceRef = doc(db, 'spaces', spaceId);
+
+      const updateData = {
+        accountBank: policyData.accountBank,
+        accountNumber: policyData.accountNumber,
+        accountHolder: policyData.accountHolder,
+        guestPricePerNight: policyData.guestPricePerNight,
+        guestPolicyUpdatedAt: new Date(),
+        guestPolicyUpdatedBy: {
+          id: userId,
+          displayName: userName
+        }
+      };
+
+      await updateDoc(spaceRef, updateData);
+
+      console.log('✅ 게스트 정책 업데이트 완료');
+
+      return { success: true };
+    } catch (error) {
+      console.error('❌ 게스트 정책 업데이트 실패:', error);
+      throw error;
+    }
   }
 };
 
