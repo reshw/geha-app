@@ -4,12 +4,14 @@ import useStore from '../store/useStore';
 import spaceSettingsService from '../services/spaceSettingsService';
 import { canManageSpace } from '../utils/permissions';
 import { ArrowLeft, Save, AlertCircle } from 'lucide-react';
+import EmailNotificationSettings from '../components/settings/EmailNotificationSettings';
 
 export default function SpaceSettingsPage() {
   const navigate = useNavigate();
   const { user, selectedSpace, setSelectedSpace } = useStore();
   const [spaceName, setSpaceName] = useState('');
   const [originalName, setOriginalName] = useState('');
+  const [emailSettings, setEmailSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -43,17 +45,29 @@ export default function SpaceSettingsPage() {
     try {
       setLoading(true);
       const spaceId = selectedSpace.id || selectedSpace.spaceId;
+
+      // 스페이스 기본 설정
       const settings = await spaceSettingsService.getSpaceSettings(spaceId);
-      
       const currentName = settings.name || selectedSpace.spaceName || '';
       setSpaceName(currentName);
       setOriginalName(currentName);
+
+      // 이메일 알림 설정
+      const emailSettingsData = await spaceSettingsService.getEmailSettings(spaceId);
+      setEmailSettings(emailSettingsData);
     } catch (error) {
       console.error('설정 로드 실패:', error);
       alert('설정을 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
     }
+  };
+
+  // 이메일 설정 저장 핸들러
+  const handleEmailSettingsSave = async (newSettings) => {
+    const spaceId = selectedSpace.id || selectedSpace.spaceId;
+    await spaceSettingsService.updateEmailSettings(spaceId, newSettings, user.id);
+    setEmailSettings(newSettings);
   };
 
   const handleSave = async () => {
@@ -208,6 +222,17 @@ export default function SpaceSettingsPage() {
           </div>
         </div>
 
+        {/* 이메일 알림 설정 */}
+        {emailSettings && (
+          <div className="mt-6 bg-gradient-to-br from-slate-800/80 to-slate-700/50 backdrop-blur-sm border border-slate-600/30 rounded-xl p-6 shadow-lg">
+            <EmailNotificationSettings
+              spaceId={selectedSpace.id || selectedSpace.spaceId}
+              settings={emailSettings}
+              onSave={handleEmailSettingsSave}
+            />
+          </div>
+        )}
+
         {/* 안내 메시지 */}
         <div className="mt-6 bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
           <div className="text-sm text-blue-300">
@@ -216,6 +241,7 @@ export default function SpaceSettingsPage() {
               <li>• 스페이스 이름은 앱 상단과 예약 목록에 표시됩니다.</li>
               <li>• 변경 즉시 모든 멤버에게 반영됩니다.</li>
               <li>• 50자 이내로 간결하게 작성하는 것을 권장합니다.</li>
+              <li>• 이메일 알림 설정에서 각 알림 유형별로 수신자를 관리할 수 있습니다.</li>
             </ul>
           </div>
         </div>

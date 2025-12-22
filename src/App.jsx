@@ -25,6 +25,7 @@ import GuestPolicySettingsPage from './pages/GuestPolicySettingsPage';
 import TransferManagerPage from './pages/TransferManagerPage';
 import SuperAdminPage from './pages/SuperAdminPage';
 import SlopesPage from './pages/SlopesPage';
+import EmailTestPage from './pages/EmailTestPage';
 
 
 function App() {
@@ -63,6 +64,9 @@ function App() {
           
           {/* 슈퍼 어드민 */}
           <Route path="/super-admin" element={<SuperAdminPage />} />
+
+          {/* 이메일 테스트 */}
+          <Route path="/email-test" element={<EmailTestPage />} />
         </Routes>
       </div>
     </BrowserRouter>

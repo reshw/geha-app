@@ -476,7 +476,7 @@ const SettlementSubmitPage = () => {
 
         {/* 메모 */}
         <div className="bg-white rounded-xl p-4 shadow-sm">
-          <h3 className="font-bold text-gray-900 mb-3">메모 (선택)</h3>
+          <h3 className="font-bold text-gray-900 mb-3">사용처</h3>
           <input
             type="text"
             value={memo}

@@ -1,4 +1,4 @@
-import { doc, getDoc, updateDoc, setDoc, collection, addDoc, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, setDoc, collection, addDoc, query, where, getDocs, orderBy, writeBatch } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 /**
@@ -426,6 +426,72 @@ const spaceSettingsService = {
       return { success: true };
     } catch (error) {
       console.error('❌ 게스트 정책 업데이트 실패:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 이메일 알림 설정 조회
+   */
+  async getEmailSettings(spaceId) {
+    try {
+      console.log('📧 이메일 알림 설정 조회:', spaceId);
+
+      const emailRef = doc(db, `spaces/${spaceId}/settings`, 'email');
+      const emailDoc = await getDoc(emailRef);
+
+      if (!emailDoc.exists()) {
+        // 기본값 반환 (모두 비활성화)
+        return {
+          reservation: {
+            enabled: false,
+            types: [],
+            recipients: []
+          },
+          settlement: {
+            enabled: false,
+            recipients: []
+          },
+          praise: {
+            enabled: false,
+            recipients: []
+          },
+          expense: {
+            enabled: false,
+            recipients: []
+          }
+        };
+      }
+
+      return emailDoc.data();
+    } catch (error) {
+      console.error('❌ 이메일 알림 설정 조회 실패:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 이메일 알림 설정 업데이트
+   */
+  async updateEmailSettings(spaceId, settings, userId) {
+    try {
+      console.log('💾 이메일 알림 설정 업데이트:', { spaceId, settings });
+
+      const emailRef = doc(db, `spaces/${spaceId}/settings`, 'email');
+
+      const updateData = {
+        ...settings,
+        updatedAt: new Date(),
+        updatedBy: userId
+      };
+
+      await setDoc(emailRef, updateData);
+
+      console.log('✅ 이메일 알림 설정 업데이트 완료');
+
+      return { success: true };
+    } catch (error) {
+      console.error('❌ 이메일 알림 설정 업데이트 실패:', error);
       throw error;
     }
   }

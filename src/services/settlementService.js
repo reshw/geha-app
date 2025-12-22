@@ -173,7 +173,50 @@ const settlementService = {
       
       // Settlement 문서 업데이트 (참여자 목록, 총액)
       await this.updateSettlementCalculation(spaceId, weekId);
-      
+
+      // 이메일 알림 발송
+      try {
+        const emailSettingsRef = doc(db, `spaces/${spaceId}/settings`, 'email');
+        const emailSettingsDoc = await getDoc(emailSettingsRef);
+        const emailSettings = emailSettingsDoc.exists() ? emailSettingsDoc.data() : null;
+
+        if (emailSettings?.settlement?.enabled && emailSettings.settlement.recipients.length > 0) {
+          console.log('📧 영수증 제출 이메일 발송 시작');
+
+          // 스페이스 정보 가져오기
+          const spaceDocRef = doc(db, 'spaces', spaceId);
+          const spaceDoc = await getDoc(spaceDocRef);
+          const spaceData = spaceDoc.exists() ? spaceDoc.data() : {};
+
+          const emailResponse = await fetch('/.netlify/functions/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'settlement',
+              paidByName,
+              submittedByName,
+              submittedAt: now,
+              totalAmount,
+              items: processedItems,
+              memo,
+              imageUrl,
+              spaceName: spaceData.name || '라운지',
+              recipients: {
+                to: emailSettings.settlement.recipients[0],
+                cc: emailSettings.settlement.recipients.slice(1)
+              }
+            })
+          });
+
+          const emailResult = await emailResponse.json();
+          console.log('✅ 영수증 제출 이메일 발송 결과:', emailResult);
+        } else {
+          console.log('ℹ️ 영수증 제출 이메일 알림이 비활성화되어 있거나 수신자 없음');
+        }
+      } catch (emailError) {
+        console.error('⚠️ 영수증 제출 이메일 발송 실패 (영수증 등록은 완료됨):', emailError);
+      }
+
       console.log('✅ 영수증 제출 완료:', receiptId);
       return { id: receiptId, ...receipt };
     } catch (error) {

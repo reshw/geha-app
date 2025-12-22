@@ -1,17 +1,17 @@
 // services/praiseService.js
-import { 
-  collection, 
-  doc, 
-  setDoc, 
+import {
+  collection,
+  doc,
+  setDoc,
   getDocs,
   getDoc,
   updateDoc,
   deleteDoc,
-  query, 
-  where, 
+  query,
+  where,
   orderBy,
   serverTimestamp,
-  Timestamp 
+  Timestamp
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
@@ -62,7 +62,50 @@ const praiseService = {
 
       await setDoc(docRef, praiseData);
       console.log('✅ 칭찬 문서 생성:', id);
-      
+
+      // 이메일 알림 발송
+      try {
+        const emailSettingsRef = doc(db, `spaces/${spaceId}/settings`, 'email');
+        const emailSettingsDoc = await getDoc(emailSettingsRef);
+        const emailSettings = emailSettingsDoc.exists() ? emailSettingsDoc.data() : null;
+
+        if (emailSettings?.praise?.enabled && emailSettings.praise.recipients.length > 0) {
+          console.log('📧 칭찬 접수 이메일 발송 시작');
+
+          // 스페이스 정보 가져오기
+          const spaceDocRef = doc(db, 'spaces', spaceId);
+          const spaceDoc = await getDoc(spaceDocRef);
+          const spaceData = spaceDoc.exists() ? spaceDoc.data() : {};
+
+          const emailResponse = await fetch('/.netlify/functions/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'praise',
+              userName: data.userName,
+              category: data.category,
+              itemName: data.itemName,
+              originalText: data.originalText,
+              refinedText: data.refinedText,
+              imageUrl: data.imageUrl,
+              eventDate: data.eventDate,
+              spaceName: spaceData.name || '라운지',
+              recipients: {
+                to: emailSettings.praise.recipients[0],
+                cc: emailSettings.praise.recipients.slice(1)
+              }
+            })
+          });
+
+          const emailResult = await emailResponse.json();
+          console.log('✅ 칭찬 이메일 발송 결과:', emailResult);
+        } else {
+          console.log('ℹ️ 칭찬 이메일 알림이 비활성화되어 있거나 수신자 없음');
+        }
+      } catch (emailError) {
+        console.error('⚠️ 칭찬 이메일 발송 실패 (칭찬 등록은 완료됨):', emailError);
+      }
+
       return id;
     } catch (error) {
       console.error('❌ 칭찬 생성 실패:', error);

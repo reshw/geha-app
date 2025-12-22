@@ -1,7 +1,7 @@
 // src/pages/SettlementPage.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Receipt, Plus, TrendingUp, TrendingDown, Users, Calendar, User, CheckCircle } from 'lucide-react';
+import { Receipt, Plus, TrendingUp, TrendingDown, Users, Calendar, User, CheckCircle, Table, LayoutGrid } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import useStore from '../store/useStore';
 import settlementService from '../services/settlementService';
@@ -9,6 +9,7 @@ import authService from '../services/authService';
 import LoginOverlay from '../components/auth/LoginOverlay';
 import ReceiptDetailModal from '../components/settlement/ReceiptDetailModal';
 import ParticipantDetailModal from '../components/settlement/ParticipantDetailModal';
+import SettlementTableView from '../components/settlement/SettlementTableView';
 import { canManageSpace } from '../utils/permissions';
 
 const SettlementPage = () => {
@@ -27,6 +28,7 @@ const SettlementPage = () => {
   const [selectedParticipant, setSelectedParticipant] = useState(null);
   const [selectedParticipantId, setSelectedParticipantId] = useState(null);
   const [showParticipantModal, setShowParticipantModal] = useState(false);
+  const [viewMode, setViewMode] = useState('card'); // 'card' | 'table'
 
   useEffect(() => {
     if (selectedSpace?.id && user?.id) {
@@ -257,23 +259,54 @@ const SettlementPage = () => {
                 )}
               </p>
             </div>
-            {/* 정산 완료 버튼 (매니저만, active 상태일 때만) - 데스크톱 전용 */}
-            {isManager && settlement?.status === 'active' && (
-              <button
-                onClick={handleCompleteSettlement}
-                className="hidden md:flex px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transition-all items-center gap-2"
-              >
-                <CheckCircle className="w-4 h-4" />
-                <span>정산완료</span>
-              </button>
-            )}
+
+            <div className="flex items-center gap-2">
+              {/* 뷰 모드 토글 버튼 */}
+              <div className="flex bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode('card')}
+                  className={`px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5 ${
+                    viewMode === 'card'
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                  <span className="text-sm font-medium hidden sm:inline">카드</span>
+                </button>
+                <button
+                  onClick={() => setViewMode('table')}
+                  className={`px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5 ${
+                    viewMode === 'table'
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <Table className="w-4 h-4" />
+                  <span className="text-sm font-medium hidden sm:inline">테이블</span>
+                </button>
+              </div>
+
+              {/* 정산 완료 버튼 (매니저만, active 상태일 때만) */}
+              {isManager && settlement?.status === 'active' && (
+                <button
+                  onClick={handleCompleteSettlement}
+                  className="flex px-3 py-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transition-all items-center gap-1.5 sm:gap-2"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  <span className="text-sm sm:text-base">정산완료</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       <div className="p-4 space-y-4">
-        {/* 내 정산 현황 카드 */}
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg">
+        {viewMode === 'card' ? (
+          <>
+            {/* 내 정산 현황 카드 */}
+            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Users className="w-5 h-5" />
@@ -489,31 +522,60 @@ const SettlementPage = () => {
             </div>
           )}
         </div>
-      </div>
+          </>
+        ) : (
+          /* 테이블 뷰 */
+          <div className="space-y-4">
+            {/* 내 정산 현황 요약 (테이블 뷰용 간소화) */}
+            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white shadow-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm opacity-90 mb-1">내 정산 결과</p>
+                  <div className="flex items-center gap-2">
+                    {myBalance?.balance > 0 ? (
+                      <>
+                        <TrendingUp className="w-5 h-5 text-green-300" />
+                        <span className="text-2xl font-bold text-green-300">
+                          +{formatCurrency(myBalance.balance)}
+                        </span>
+                      </>
+                    ) : myBalance?.balance < 0 ? (
+                      <>
+                        <TrendingDown className="w-5 h-5 text-red-300" />
+                        <span className="text-2xl font-bold text-red-300">
+                          {formatCurrency(myBalance.balance)}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-2xl font-bold">0원</span>
+                    )}
+                  </div>
+                </div>
+                <div className="text-right text-sm opacity-90">
+                  <p>낸 금액: {formatCurrency(myBalance?.totalPaid || 0)}</p>
+                  <p>부담액: {formatCurrency(myBalance?.totalOwed || 0)}</p>
+                </div>
+              </div>
+            </div>
 
-      {/* 모바일 정산완료 버튼 (매니저만, active 상태일 때만) */}
-      {isManager && settlement?.status === 'active' && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 md:hidden z-50">
-          <button
-            onClick={handleCompleteSettlement}
-            className="w-full py-4 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2"
-          >
-            <CheckCircle className="w-5 h-5" />
-            <span>정산완료</span>
-          </button>
-        </div>
-      )}
+            {/* 엑셀 스타일 테이블 */}
+            <SettlementTableView
+              receipts={receipts}
+              participants={settlement?.participants || {}}
+              userProfiles={userProfiles}
+              formatCurrency={formatCurrency}
+              formatDate={formatDate}
+              weekId={settlement?.weekId}
+            />
+          </div>
+        )}
+      </div>
 
       {/* 플로팅 영수증 제출 버튼 */}
       {settlement?.status === 'active' && receipts.length > 0 && (
         <button
           onClick={() => navigate('/settlement/submit')}
-          className="fixed right-4 w-14 h-14 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center transition-all active:scale-95 z-40"
-          style={{
-            bottom: isManager
-              ? 'calc(5rem + 5rem + env(safe-area-inset-bottom))' // 모바일: 정산완료 버튼 위
-              : 'calc(5rem + env(safe-area-inset-bottom))' // 기본 위치
-          }}
+          className="fixed right-4 bottom-20 w-14 h-14 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center transition-all active:scale-95 z-40"
         >
           <Plus size={24} />
         </button>
