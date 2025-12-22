@@ -8,6 +8,7 @@ import settlementService from '../services/settlementService';
 import authService from '../services/authService';
 import LoginOverlay from '../components/auth/LoginOverlay';
 import ReceiptDetailModal from '../components/settlement/ReceiptDetailModal';
+import ParticipantDetailModal from '../components/settlement/ParticipantDetailModal';
 
 const SettlementPage = () => {
   const navigate = useNavigate();
@@ -22,6 +23,9 @@ const SettlementPage = () => {
   const [userProfiles, setUserProfiles] = useState({}); // userId -> {displayName, profileImage}
   const [selectedReceipt, setSelectedReceipt] = useState(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [selectedParticipant, setSelectedParticipant] = useState(null);
+  const [selectedParticipantId, setSelectedParticipantId] = useState(null);
+  const [showParticipantModal, setShowParticipantModal] = useState(false);
 
   useEffect(() => {
     if (selectedSpace?.id && user?.id) {
@@ -118,6 +122,40 @@ const SettlementPage = () => {
     setShowReceiptModal(false);
     // TODO: 영수증 수정 페이지로 이동 (나중에 구현)
     alert('영수증 수정 기능은 준비 중입니다.');
+  };
+
+  // 영수증 삭제 핸들러
+  const handleReceiptDelete = async () => {
+    if (!selectedReceipt || !settlement?.weekId) return;
+
+    try {
+      setShowReceiptModal(false);
+      setLoading(true);
+
+      await settlementService.deleteReceipt(
+        selectedSpace.id,
+        settlement.weekId,
+        selectedReceipt.id
+      );
+
+      // 정산 정보 다시 로드
+      await loadSettlement();
+
+      alert('영수증이 삭제되었습니다.');
+      setSelectedReceipt(null);
+    } catch (error) {
+      console.error('영수증 삭제 실패:', error);
+      alert('영수증 삭제에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 참여자 클릭 핸들러
+  const handleParticipantClick = (userId, participant) => {
+    setSelectedParticipantId(userId);
+    setSelectedParticipant(participant);
+    setShowParticipantModal(true);
   };
 
   if (!isLoggedIn) {
@@ -263,7 +301,8 @@ const SettlementPage = () => {
                   return (
                     <div
                       key={userId}
-                      className={`flex items-center gap-3 p-3 rounded-lg ${
+                      onClick={() => handleParticipantClick(userId, participant)}
+                      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:shadow-md transition-shadow ${
                         userId === user.id ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'
                       }`}
                     >
@@ -405,8 +444,23 @@ const SettlementPage = () => {
           setSelectedReceipt(null);
         }}
         onEdit={handleReceiptEdit}
+        onDelete={handleReceiptDelete}
         canEdit={selectedReceipt?.submittedBy === user?.id}
         members={members}
+        userProfiles={userProfiles}
+      />
+
+      {/* 참여자 상세 모달 */}
+      <ParticipantDetailModal
+        participant={selectedParticipant}
+        userId={selectedParticipantId}
+        isOpen={showParticipantModal}
+        onClose={() => {
+          setShowParticipantModal(false);
+          setSelectedParticipant(null);
+          setSelectedParticipantId(null);
+        }}
+        receipts={receipts}
         userProfiles={userProfiles}
       />
     </div>

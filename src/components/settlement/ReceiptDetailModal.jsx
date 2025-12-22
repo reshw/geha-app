@@ -1,7 +1,7 @@
 // src/components/settlement/ReceiptDetailModal.jsx
-import { X, Edit, Users } from 'lucide-react';
+import { X, Edit, Users, Trash2 } from 'lucide-react';
 
-const ReceiptDetailModal = ({ receipt, isOpen, onClose, onEdit, canEdit, members, userProfiles }) => {
+const ReceiptDetailModal = ({ receipt, isOpen, onClose, onEdit, onDelete, canEdit, members, userProfiles }) => {
   if (!isOpen || !receipt) return null;
 
   const formatCurrency = (amount) => {
@@ -39,12 +39,24 @@ const ReceiptDetailModal = ({ receipt, isOpen, onClose, onEdit, canEdit, members
             <h2 className="text-xl font-bold text-gray-900">영수증 상세</h2>
             <div className="flex items-center gap-2">
               {canEdit && (
-                <button
-                  onClick={onEdit}
-                  className="p-2 hover:bg-blue-50 rounded-lg text-blue-600 transition-colors"
-                >
-                  <Edit className="w-5 h-5" />
-                </button>
+                <>
+                  <button
+                    onClick={onEdit}
+                    className="p-2 hover:bg-blue-50 rounded-lg text-blue-600 transition-colors"
+                  >
+                    <Edit className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (window.confirm('정말 이 영수증을 삭제하시겠습니까?\n삭제된 영수증은 복구할 수 없습니다.')) {
+                        onDelete();
+                      }
+                    }}
+                    className="p-2 hover:bg-red-50 rounded-lg text-red-600 transition-colors"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                </>
               )}
               <button
                 onClick={onClose}

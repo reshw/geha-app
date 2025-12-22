@@ -1,12 +1,13 @@
 // src/services/settlementService.js
-import { 
-  collection, 
-  doc, 
-  getDocs, 
+import {
+  collection,
+  doc,
+  getDocs,
   getDoc,
   setDoc,
   updateDoc,
-  query, 
+  deleteDoc,
+  query,
   where,
   orderBy,
   Timestamp
@@ -175,6 +176,28 @@ const settlementService = {
       return { id: receiptId, ...receipt };
     } catch (error) {
       console.error('❌ submitReceipt 실패:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 영수증 삭제
+   */
+  async deleteReceipt(spaceId, weekId, receiptId) {
+    try {
+      console.log('🗑️ 영수증 삭제:', { spaceId, weekId, receiptId });
+
+      // 영수증 삭제
+      const receiptRef = doc(db, 'spaces', spaceId, 'settlement', weekId, 'receipts', receiptId);
+      await deleteDoc(receiptRef);
+
+      // Settlement 계산 업데이트
+      await this.updateSettlementCalculation(spaceId, weekId);
+
+      console.log('✅ 영수증 삭제 완료');
+      return true;
+    } catch (error) {
+      console.error('❌ deleteReceipt 실패:', error);
       throw error;
     }
   },

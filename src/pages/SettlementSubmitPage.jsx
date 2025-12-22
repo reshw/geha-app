@@ -38,7 +38,8 @@ const SettlementSubmitPage = () => {
   // 납부자 (기본: 본인)
   const [paidBy, setPaidBy] = useState('');
   const [paidByName, setPaidByName] = useState('');
-  const [showPaidByModal, setShowPaidByModal] = useState(false);
+  const [paidBySearchQuery, setPaidBySearchQuery] = useState('');
+  const [showPaidByDropdown, setShowPaidByDropdown] = useState(false);
   
   // 메모
   const [memo, setMemo] = useState('');
@@ -217,11 +218,22 @@ const SettlementSubmitPage = () => {
     ));
   };
 
+  // 납부자 검색 필터링
+  const getFilteredPaidByMembers = () => {
+    if (!paidBySearchQuery.trim()) return [];
+
+    const query = paidBySearchQuery.toLowerCase();
+    return members.filter(member =>
+      member.displayName.toLowerCase().includes(query)
+    );
+  };
+
   // 납부자 변경
   const changePaidBy = (userId, userName) => {
     setPaidBy(userId);
     setPaidByName(userName);
-    setShowPaidByModal(false);
+    setPaidBySearchQuery('');
+    setShowPaidByDropdown(false);
   };
 
   // 제출 유효성 검사
@@ -375,14 +387,91 @@ const SettlementSubmitPage = () => {
             <User className="w-5 h-5 text-blue-600" />
             돈 낸 사람
           </h3>
-          
-          <button
-            onClick={() => setShowPaidByModal(true)}
-            className="w-full p-3 bg-gray-50 rounded-lg text-left flex items-center justify-between hover:bg-gray-100 transition-colors"
-          >
-            <span className="font-medium text-gray-900">{paidByName}</span>
-            <span className="text-sm text-blue-600">변경</span>
-          </button>
+
+          {/* 선택된 납부자 표시 */}
+          {paidBy && paidByName && (
+            <div className="mb-2">
+              <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-3 py-2 rounded-lg font-medium">
+                {userProfiles[paidBy]?.profileImage ? (
+                  <img
+                    src={userProfiles[paidBy].profileImage}
+                    alt={paidByName}
+                    className="w-6 h-6 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold">
+                    {paidByName[0]}
+                  </div>
+                )}
+                <span>{paidByName}</span>
+              </div>
+            </div>
+          )}
+
+          {/* 검색 입력 */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              value={paidBySearchQuery}
+              onChange={(e) => {
+                setPaidBySearchQuery(e.target.value);
+                setShowPaidByDropdown(e.target.value.trim() !== '');
+              }}
+              onFocus={() => paidBySearchQuery && setShowPaidByDropdown(true)}
+              placeholder="이름으로 검색하여 선택"
+              className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+
+            {/* 검색 결과 드롭다운 */}
+            {showPaidByDropdown && paidBySearchQuery && (
+              <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {(() => {
+                  const filteredMembers = getFilteredPaidByMembers();
+                  return filteredMembers.length > 0 ? (
+                    filteredMembers.map((member) => {
+                      const userProfile = userProfiles[member.userId];
+                      const displayName = userProfile?.displayName || member.displayName;
+                      const profileImage = userProfile?.profileImage || '';
+                      const isSelected = paidBy === member.userId;
+
+                      return (
+                        <button
+                          key={member.userId}
+                          onClick={() => changePaidBy(member.userId, displayName)}
+                          className={`w-full flex items-center gap-3 p-3 text-left transition-colors ${
+                            isSelected
+                              ? 'bg-blue-50 text-blue-700'
+                              : 'hover:bg-gray-50'
+                          }`}
+                        >
+                          {profileImage ? (
+                            <img
+                              src={profileImage}
+                              alt={displayName}
+                              className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                            />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                              {displayName[0]}
+                            </div>
+                          )}
+                          <span className="font-medium flex-1">{displayName}</span>
+                          {isSelected && (
+                            <Check className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                          )}
+                        </button>
+                      );
+                    })
+                  ) : (
+                    <div className="p-4 text-center text-gray-500 text-sm">
+                      검색 결과가 없습니다
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* 메모 */}
@@ -629,43 +718,6 @@ const SettlementSubmitPage = () => {
         </button>
       </div>
 
-      {/* 납부자 선택 모달 */}
-      {showPaidByModal && (
-        <>
-          <div 
-            className="fixed inset-0 bg-black/50 z-[100]"
-            onClick={() => setShowPaidByModal(false)}
-          />
-          <div className="fixed inset-0 z-[101] flex items-end sm:items-center justify-center p-0 sm:p-4">
-            <div 
-              className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="p-4 border-b border-gray-200">
-                <h3 className="text-lg font-bold text-gray-900">돈 낸 사람 선택</h3>
-              </div>
-              <div className="p-4 space-y-2 max-h-96 overflow-y-auto">
-                {members.map((member) => (
-                  <button
-                    key={member.userId}
-                    onClick={() => changePaidBy(member.userId, member.displayName)}
-                    className={`w-full p-3 rounded-lg text-left transition-colors ${
-                      paidBy === member.userId
-                        ? 'bg-blue-50 border border-blue-300 text-blue-700 font-medium'
-                        : 'bg-gray-50 hover:bg-gray-100'
-                    }`}
-                  >
-                    {member.displayName}
-                    {paidBy === member.userId && (
-                      <Check className="w-5 h-5 text-blue-600 inline ml-2" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </>
-      )}
     </div>
   );
 };
