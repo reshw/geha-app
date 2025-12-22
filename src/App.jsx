@@ -12,6 +12,10 @@ import ExpenseListPage from './pages/ExpenseListPage';
 import ExpenseRequestPage from './pages/ExpenseRequestPage';
 import MigrationPage from './pages/MigrationPage';
 
+// 정산 페이지들
+import SettlementPage from './pages/SettlementPage';
+import SettlementSubmitPage from './pages/SettlementSubmitPage';
+
 // 스페이스 관리 페이지들
 import SpaceManagePage from './pages/SpaceManagePage';
 import SpaceSettingsPage from './pages/SpaceSettingsPage';
@@ -30,6 +34,7 @@ function App() {
           {/* 하단 네비게이션이 있는 메인 페이지들 */}
           <Route element={<MainLayout />}>
             <Route path="/" element={<WeeklyList />} />
+            <Route path="/settlement" element={<SettlementPage />} />
             <Route path="/praise" element={<PraisePage />} />
             <Route path="/expenses" element={<ExpenseListPage />} />
             <Route path="/slopes" element={<SlopesPage />} />
@@ -42,6 +47,7 @@ function App() {
           <Route path="/join" element={<JoinSpacePage />} />
           <Route path="/join/:code" element={<JoinSpacePage />} />
           <Route path="/expenses/request" element={<ExpenseRequestPage />} />
+          <Route path="/settlement/submit" element={<SettlementSubmitPage />} />
           <Route path="/terms" element={<TermsOfServicePage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/migration" element={<MigrationPage />} />

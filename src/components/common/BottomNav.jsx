@@ -1,5 +1,5 @@
 // components/common/BottomNav.jsx
-import { Home, Heart, MountainSnow } from 'lucide-react';
+import { Home, Heart, MountainSnow, Receipt } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 export default function BottomNav() {
@@ -29,6 +29,20 @@ export default function BottomNav() {
           <Home size={22} strokeWidth={isActive('/') ? 2.5 : 2} />
           <span className={`text-xs ${isActive('/') ? 'font-bold' : 'font-normal'}`}>
             예약
+          </span>
+        </Link>
+        
+        <Link 
+          to="/settlement" 
+          className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 transition-all ${
+            isActive('/settlement') 
+              ? 'text-blue-600 bg-blue-50' 
+              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+          }`}
+        >
+          <Receipt size={22} strokeWidth={isActive('/settlement') ? 2.5 : 2} />
+          <span className={`text-xs ${isActive('/settlement') ? 'font-bold' : 'font-normal'}`}>
+            정산
           </span>
         </Link>
         

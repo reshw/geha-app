@@ -1,0 +1,673 @@
+// src/pages/SettlementSubmitPage.jsx
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  ArrowLeft,
+  Camera,
+  Plus,
+  Trash2,
+  Users,
+  DollarSign,
+  User,
+  Check,
+  X,
+  Search,
+  ChevronDown,
+  ChevronUp
+} from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
+import useStore from '../store/useStore';
+import settlementService from '../services/settlementService';
+import authService from '../services/authService';
+import LoginOverlay from '../components/auth/LoginOverlay';
+
+const SettlementSubmitPage = () => {
+  const navigate = useNavigate();
+  const { user, isLoggedIn } = useAuth();
+  const { selectedSpace } = useStore();
+  
+  const [loading, setLoading] = useState(false);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  
+  // 멤버 목록
+  const [members, setMembers] = useState([]);
+  const [userProfiles, setUserProfiles] = useState({}); // userId -> {displayName, profileImage}
+
+  // 납부자 (기본: 본인)
+  const [paidBy, setPaidBy] = useState('');
+  const [paidByName, setPaidByName] = useState('');
+  const [showPaidByModal, setShowPaidByModal] = useState(false);
+  
+  // 메모
+  const [memo, setMemo] = useState('');
+  
+  // 항목 목록
+  const [items, setItems] = useState([
+    {
+      id: Date.now(),
+      itemName: '',
+      amount: '',
+      splitAmong: [], // [userId, ...]
+      searchQuery: '',
+      showSearchDropdown: false,
+      expanded: true, // 접기/펼치기 상태
+    }
+  ]);
+
+  useEffect(() => {
+    if (selectedSpace) {
+      loadMembers();
+    }
+  }, [selectedSpace]);
+
+  useEffect(() => {
+    if (user) {
+      setPaidBy(user.id);
+      setPaidByName(user.displayName);
+    }
+  }, [user]);
+
+  const loadMembers = async () => {
+    if (!selectedSpace) return;
+
+    try {
+      const spaceMembers = await settlementService.getSpaceMembers(selectedSpace.id);
+      setMembers(spaceMembers);
+
+      // users 컬렉션에서 프로필 정보 가져오기
+      const userIds = spaceMembers.map(m => m.userId);
+      if (userIds.length > 0) {
+        const profiles = await authService.getUserProfiles(userIds);
+        setUserProfiles(profiles);
+      }
+    } catch (error) {
+      console.error('멤버 로드 실패:', error);
+    }
+  };
+
+  // 이미지 선택
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Cloudinary 이미지 업로드
+  const uploadImageToCloudinary = async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
+
+    try {
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: 'POST',
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('이미지 업로드 실패');
+      }
+
+      const data = await response.json();
+      return data.secure_url;
+    } catch (error) {
+      console.error('Cloudinary 업로드 실패:', error);
+      throw error;
+    }
+  };
+
+  // 항목 추가
+  const addItem = () => {
+    setItems([
+      ...items,
+      {
+        id: Date.now(),
+        itemName: '',
+        amount: '',
+        splitAmong: [],
+        searchQuery: '',
+        showSearchDropdown: false,
+        expanded: true,
+      }
+    ]);
+  };
+
+  // 항목 접기/펼치기 토글
+  const toggleItemExpanded = (itemId) => {
+    setItems(items.map(item =>
+      item.id === itemId ? { ...item, expanded: !item.expanded } : item
+    ));
+  };
+
+  // 항목 삭제
+  const removeItem = (itemId) => {
+    if (items.length === 1) {
+      alert('최소 1개의 항목이 필요합니다.');
+      return;
+    }
+    setItems(items.filter(item => item.id !== itemId));
+  };
+
+  // 항목 업데이트
+  const updateItem = (itemId, field, value) => {
+    setItems(items.map(item => 
+      item.id === itemId ? { ...item, [field]: value } : item
+    ));
+  };
+
+  // 검색어로 멤버 필터링
+  const getFilteredMembers = (itemId) => {
+    const item = items.find(i => i.id === itemId);
+    if (!item || !item.searchQuery.trim()) return [];
+
+    const query = item.searchQuery.toLowerCase();
+    return members.filter(member =>
+      member.displayName.toLowerCase().includes(query)
+    );
+  };
+
+  // 분담자 추가
+  const addMemberToSplit = (itemId, member) => {
+    const item = items.find(i => i.id === itemId);
+
+    // 이미 선택된 멤버인지 확인
+    if (item.splitAmong.includes(member.userId)) {
+      return;
+    }
+
+    setItems(items.map(i =>
+      i.id === itemId
+        ? {
+            ...i,
+            splitAmong: [...i.splitAmong, member.userId],
+            searchQuery: '',
+            showSearchDropdown: false,
+          }
+        : i
+    ));
+  };
+
+  // 분담자 제거
+  const removeMemberFromSplit = (itemId, userId) => {
+    const item = items.find(i => i.id === itemId);
+    updateItem(itemId, 'splitAmong', item.splitAmong.filter(id => id !== userId));
+  };
+
+  // 검색 입력 처리
+  const handleSearchChange = (itemId, value) => {
+    setItems(items.map(item =>
+      item.id === itemId
+        ? {
+            ...item,
+            searchQuery: value,
+            showSearchDropdown: value.trim() !== '',
+          }
+        : item
+    ));
+  };
+
+  // 납부자 변경
+  const changePaidBy = (userId, userName) => {
+    setPaidBy(userId);
+    setPaidByName(userName);
+    setShowPaidByModal(false);
+  };
+
+  // 제출 유효성 검사
+  const validateForm = () => {
+    if (!imageFile) {
+      alert('영수증 사진을 첨부해주세요.');
+      return false;
+    }
+    
+    for (const item of items) {
+      if (!item.itemName.trim()) {
+        alert('항목명을 입력해주세요.');
+        return false;
+      }
+      if (!item.amount || item.amount <= 0) {
+        alert('금액을 입력해주세요.');
+        return false;
+      }
+      if (item.splitAmong.length === 0) {
+        alert(`"${item.itemName}" 항목의 분담자를 선택해주세요.`);
+        return false;
+      }
+    }
+    
+    return true;
+  };
+
+  // 제출
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
+    
+    try {
+      setLoading(true);
+      
+      // Cloudinary 이미지 업로드
+      setUploading(true);
+      const imageUrl = await uploadImageToCloudinary(imageFile);
+      setUploading(false);
+      
+      // 영수증 데이터 준비
+      const receiptData = {
+        submittedBy: user.id,
+        submittedByName: user.displayName,
+        paidBy,
+        paidByName,
+        memo,
+        imageUrl,
+        items: items.map(item => ({
+          itemName: item.itemName,
+          amount: parseInt(item.amount),
+          splitAmong: item.splitAmong,
+        })),
+      };
+      
+      // 제출
+      await settlementService.submitReceipt(selectedSpace.id, receiptData);
+      
+      alert('영수증이 제출되었습니다! 🎉');
+      navigate('/settlement');
+      
+    } catch (error) {
+      console.error('영수증 제출 실패:', error);
+      alert('영수증 제출에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setLoading(false);
+      setUploading(false);
+    }
+  };
+
+  const formatCurrency = (amount) => {
+    return amount.toLocaleString('ko-KR');
+  };
+
+  const getTotalAmount = () => {
+    return items.reduce((sum, item) => sum + (parseInt(item.amount) || 0), 0);
+  };
+
+  if (!isLoggedIn) {
+    return <LoginOverlay />;
+  }
+
+  if (!selectedSpace) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="text-center">
+          <div className="text-2xl mb-4">🏠</div>
+          <p className="text-gray-600 mb-2">스페이스를 불러오는 중...</p>
+          <p className="text-sm text-gray-500">예약 페이지에서 스페이스를 먼저 선택해주세요</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 pb-24">
+      {/* 헤더 */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="px-4 py-4 flex items-center gap-3">
+          <button
+            onClick={() => navigate('/settlement')}
+            className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100"
+          >
+            <ArrowLeft className="w-6 h-6 text-gray-700" />
+          </button>
+          <h1 className="text-xl font-bold text-gray-900">영수증 제출</h1>
+        </div>
+      </div>
+
+      <div className="p-4 space-y-4">
+        {/* 영수증 사진 */}
+        <div className="bg-white rounded-xl p-4 shadow-sm">
+          <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+            <Camera className="w-5 h-5 text-blue-600" />
+            영수증 사진
+          </h3>
+          
+          {imagePreview ? (
+            <div className="relative">
+              <img 
+                src={imagePreview} 
+                alt="영수증 미리보기" 
+                className="w-full rounded-lg border border-gray-200"
+              />
+              <button
+                onClick={() => {
+                  setImageFile(null);
+                  setImagePreview(null);
+                }}
+                className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          ) : (
+            <label className="block w-full p-8 border-2 border-dashed border-gray-300 rounded-lg text-center cursor-pointer hover:bg-gray-50 transition-colors">
+              <Camera className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+              <p className="text-sm text-gray-600">클릭하여 사진 선택</p>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="hidden"
+              />
+            </label>
+          )}
+        </div>
+
+        {/* 납부자 선택 */}
+        <div className="bg-white rounded-xl p-4 shadow-sm">
+          <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+            <User className="w-5 h-5 text-blue-600" />
+            돈 낸 사람
+          </h3>
+          
+          <button
+            onClick={() => setShowPaidByModal(true)}
+            className="w-full p-3 bg-gray-50 rounded-lg text-left flex items-center justify-between hover:bg-gray-100 transition-colors"
+          >
+            <span className="font-medium text-gray-900">{paidByName}</span>
+            <span className="text-sm text-blue-600">변경</span>
+          </button>
+        </div>
+
+        {/* 메모 */}
+        <div className="bg-white rounded-xl p-4 shadow-sm">
+          <h3 className="font-bold text-gray-900 mb-3">메모 (선택)</h3>
+          <input
+            type="text"
+            value={memo}
+            onChange={(e) => setMemo(e.target.value)}
+            placeholder="예: 치킨집 회식"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        {/* 항목 목록 */}
+        <div className="space-y-3">
+          {items.map((item, index) => (
+            <div key={item.id} className="bg-white rounded-xl p-4 shadow-sm">
+              {/* 헤더 (항상 표시) */}
+              <div className="flex items-center justify-between mb-3">
+                <button
+                  onClick={() => toggleItemExpanded(item.id)}
+                  className="flex-1 flex items-center gap-2 text-left"
+                >
+                  <h3 className="font-bold text-gray-900">항목 {index + 1}</h3>
+                  {!item.expanded && item.itemName && (
+                    <span className="text-sm text-gray-600">
+                      • {item.itemName}
+                      {item.amount && ` • ${formatCurrency(parseInt(item.amount))}원`}
+                    </span>
+                  )}
+                  {item.expanded ? (
+                    <ChevronUp className="w-5 h-5 text-gray-400 ml-auto" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-gray-400 ml-auto" />
+                  )}
+                </button>
+                {items.length > 1 && (
+                  <button
+                    onClick={() => removeItem(item.id)}
+                    className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-red-50 text-red-600 transition-colors ml-2"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
+
+              {/* 펼쳐진 내용 */}
+              {item.expanded && (
+                <div className="space-y-3">
+
+                  {/* 항목명 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      항목명
+                    </label>
+                    <input
+                      type="text"
+                      value={item.itemName}
+                      onChange={(e) => updateItem(item.id, 'itemName', e.target.value)}
+                      placeholder="예: 양념치킨 2마리"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  {/* 금액 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      금액
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={item.amount}
+                        onChange={(e) => updateItem(item.id, 'amount', e.target.value)}
+                        placeholder="0"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">원</span>
+                    </div>
+                  </div>
+
+                  {/* 분담자 선택 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      분담자 선택
+                    </label>
+
+                    {/* 선택된 멤버들 표시 */}
+                    {item.splitAmong.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {item.splitAmong.map((userId) => {
+                          const member = members.find(m => m.userId === userId);
+                          const userProfile = userProfiles[userId];
+                          if (!member) return null;
+
+                          const displayName = userProfile?.displayName || member.displayName;
+                          const profileImage = userProfile?.profileImage || '';
+
+                          return (
+                            <div
+                              key={userId}
+                              className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-sm font-medium"
+                            >
+                              {profileImage ? (
+                                <img
+                                  src={profileImage}
+                                  alt={displayName}
+                                  className="w-6 h-6 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold">
+                                  {displayName[0]}
+                                </div>
+                              )}
+                              <span>{displayName}</span>
+                              <button
+                                onClick={() => removeMemberFromSplit(item.id, userId)}
+                                className="hover:bg-blue-200 rounded-full p-0.5"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* 검색 입력 */}
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type="text"
+                        value={item.searchQuery}
+                        onChange={(e) => handleSearchChange(item.id, e.target.value)}
+                        onFocus={() => item.searchQuery && updateItem(item.id, 'showSearchDropdown', true)}
+                        placeholder="이름으로 검색하여 추가"
+                        className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+
+                      {/* 검색 결과 드롭다운 */}
+                      {item.showSearchDropdown && item.searchQuery && (
+                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                          {(() => {
+                            const filteredMembers = getFilteredMembers(item.id);
+                            return filteredMembers.length > 0 ? (
+                              filteredMembers.map((member) => {
+                                const isAlreadySelected = item.splitAmong.includes(member.userId);
+                                const userProfile = userProfiles[member.userId];
+                                const displayName = userProfile?.displayName || member.displayName;
+                                const profileImage = userProfile?.profileImage || '';
+
+                                return (
+                                  <button
+                                    key={member.userId}
+                                    onClick={() => addMemberToSplit(item.id, member)}
+                                    disabled={isAlreadySelected}
+                                    className={`w-full flex items-center gap-3 p-3 text-left transition-colors ${
+                                      isAlreadySelected
+                                        ? 'bg-gray-50 text-gray-400 cursor-not-allowed'
+                                        : 'hover:bg-blue-50'
+                                    }`}
+                                  >
+                                    {profileImage ? (
+                                      <img
+                                        src={profileImage}
+                                        alt={displayName}
+                                        className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                                      />
+                                    ) : (
+                                      <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                                        {displayName[0]}
+                                      </div>
+                                    )}
+                                    <span className="font-medium flex-1">{displayName}</span>
+                                    {isAlreadySelected && (
+                                      <Check className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                                    )}
+                                  </button>
+                                );
+                              })
+                            ) : (
+                              <div className="p-4 text-center text-gray-500 text-sm">
+                                검색 결과가 없습니다
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 1/n 계산 표시 */}
+                    {item.amount && item.splitAmong.length > 0 && (
+                      <div className="mt-2 p-2 bg-blue-50 rounded-lg text-center">
+                        <p className="text-sm text-blue-800">
+                          <span className="font-bold">1인당 {formatCurrency(Math.floor(parseInt(item.amount) / item.splitAmong.length))}원</span>
+                          <span className="text-xs ml-1">({item.splitAmong.length}명 분담)</span>
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* 항목 추가 버튼 */}
+          <button
+            onClick={addItem}
+            className="w-full p-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-600 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            <span className="font-medium">항목 추가</span>
+          </button>
+        </div>
+
+        {/* 총액 표시 */}
+        <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-4 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <span className="font-medium">총 금액</span>
+            <span className="text-2xl font-bold">{formatCurrency(getTotalAmount())}원</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 하단 제출 버튼 */}
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200">
+        <button
+          onClick={handleSubmit}
+          disabled={loading || uploading}
+          className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
+        >
+          {loading || uploading ? (
+            <>
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+              <span>{uploading ? '이미지 업로드 중...' : '제출 중...'}</span>
+            </>
+          ) : (
+            <>
+              <Check className="w-5 h-5" />
+              <span>제출하기</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* 납부자 선택 모달 */}
+      {showPaidByModal && (
+        <>
+          <div 
+            className="fixed inset-0 bg-black/50 z-[100]"
+            onClick={() => setShowPaidByModal(false)}
+          />
+          <div className="fixed inset-0 z-[101] flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <div 
+              className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-4 border-b border-gray-200">
+                <h3 className="text-lg font-bold text-gray-900">돈 낸 사람 선택</h3>
+              </div>
+              <div className="p-4 space-y-2 max-h-96 overflow-y-auto">
+                {members.map((member) => (
+                  <button
+                    key={member.userId}
+                    onClick={() => changePaidBy(member.userId, member.displayName)}
+                    className={`w-full p-3 rounded-lg text-left transition-colors ${
+                      paidBy === member.userId
+                        ? 'bg-blue-50 border border-blue-300 text-blue-700 font-medium'
+                        : 'bg-gray-50 hover:bg-gray-100'
+                    }`}
+                  >
+                    {member.displayName}
+                    {paidBy === member.userId && (
+                      <Check className="w-5 h-5 text-blue-600 inline ml-2" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+export default SettlementSubmitPage;

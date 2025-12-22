@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, ChevronDown, Plus, Check, X, Menu, Settings2, Share2, GripVertical, User, LogOut, FileText, Shield, UserCog, UserMinus, Wallet } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Plus, Check, X, Menu, Settings2, Share2, GripVertical, User, LogOut, FileText, Shield, UserCog, UserMinus, Wallet, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useReservations } from '../../hooks/useReservations';
 import useStore from '../../store/useStore';
@@ -654,6 +654,23 @@ const WeeklyList = () => {
                               <Shield className="w-5 h-5 text-gray-500" />
                               <span className="font-medium">개인정보 처리방침</span>
                             </button>
+
+                            {/* 슈퍼어드민 메뉴 */}
+                            {user?.isSuperAdmin && (
+                              <>
+                                <div className="border-t border-gray-100 my-2"></div>
+                                <button
+                                  onClick={() => {
+                                    setShowProfileMenu(false);
+                                    navigate('/super-admin');
+                                  }}
+                                  className="w-full px-4 py-3 text-left hover:bg-purple-50 transition-colors text-purple-700 flex items-center gap-3"
+                                >
+                                  <ShieldCheck className="w-5 h-5 text-purple-600" />
+                                  <span className="font-medium">슈퍼어드민</span>
+                                </button>
+                              </>
+                            )}
 
                             <div className="border-t border-gray-100 my-2"></div>
 
