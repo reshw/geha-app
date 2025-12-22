@@ -283,6 +283,91 @@ const spaceSettingsService = {
       console.error('❌ 대기 중인 신청 조회 실패:', error);
       throw error;
     }
+  },
+
+  /**
+   * 슈퍼 어드민: 활성화된 알림톡 스페이스 목록 조회
+   */
+  async getActiveAlimtalkSpaces() {
+    try {
+      console.log('📋 활성화된 알림톡 스페이스 조회 시작');
+
+      // 모든 스페이스 조회
+      const spacesRef = collection(db, 'spaces');
+      const spacesSnapshot = await getDocs(spacesRef);
+
+      const activeSpaces = [];
+
+      // 각 스페이스의 알림톡 설정 확인
+      for (const spaceDoc of spacesSnapshot.docs) {
+        const spaceId = spaceDoc.id;
+        const spaceData = spaceDoc.data();
+
+        // 알림톡 설정 조회
+        const alimtalkRef = doc(db, `spaces/${spaceId}/settings`, 'alimtalk');
+        const alimtalkDoc = await getDoc(alimtalkRef);
+
+        if (alimtalkDoc.exists()) {
+          const alimtalkData = alimtalkDoc.data();
+
+          // enabled: true인 경우만 추가
+          if (alimtalkData.enabled === true) {
+            activeSpaces.push({
+              spaceId,
+              spaceName: spaceData.name || '이름 없음',
+              alimtalkSettings: alimtalkData,
+              spaceData
+            });
+          }
+        }
+      }
+
+      console.log(`✅ 활성화된 알림톡 스페이스 ${activeSpaces.length}개 발견`);
+
+      // 승인일 기준 내림차순 정렬
+      activeSpaces.sort((a, b) => {
+        const aDate = a.alimtalkSettings.approvedAt?.toDate?.() || new Date(0);
+        const bDate = b.alimtalkSettings.approvedAt?.toDate?.() || new Date(0);
+        return bDate - aDate;
+      });
+
+      return activeSpaces;
+    } catch (error) {
+      console.error('❌ 활성화된 알림톡 스페이스 조회 실패:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 슈퍼 어드민: 알림톡 강제 비활성화
+   */
+  async superAdminDeactivateAlimtalk(spaceId, adminId, adminName, reason) {
+    try {
+      console.log('🔒 슈퍼 어드민 알림톡 비활성화 시작:', { spaceId, adminId });
+
+      const alimtalkRef = doc(db, `spaces/${spaceId}/settings`, 'alimtalk');
+
+      const settingsData = {
+        enabled: false,
+        status: 'deactivated_by_admin',
+        deactivatedAt: new Date(),
+        deactivatedBy: {
+          id: adminId,
+          displayName: adminName
+        },
+        deactivationReason: reason,
+        updatedAt: new Date()
+      };
+
+      await updateDoc(alimtalkRef, settingsData);
+
+      console.log('✅ 슈퍼 어드민 알림톡 비활성화 완료');
+
+      return { success: true };
+    } catch (error) {
+      console.error('❌ 슈퍼 어드민 알림톡 비활성화 실패:', error);
+      throw error;
+    }
   }
 };
 

@@ -462,6 +462,8 @@ const SettlementPage = () => {
         }}
         receipts={receipts}
         userProfiles={userProfiles}
+        members={members}
+        currentUser={user}
       />
     </div>
   );

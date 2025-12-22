@@ -1,5 +1,7 @@
 // src/components/settlement/ParticipantDetailModal.jsx
+import { useState } from 'react';
 import { X, Receipt, TrendingUp, TrendingDown } from 'lucide-react';
+import ReceiptDetailModal from './ReceiptDetailModal';
 
 const ParticipantDetailModal = ({
   participant,
@@ -7,8 +9,12 @@ const ParticipantDetailModal = ({
   isOpen,
   onClose,
   receipts,
-  userProfiles
+  userProfiles,
+  members,
+  currentUser
 }) => {
+  const [selectedReceipt, setSelectedReceipt] = useState(null);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
   if (!isOpen || !participant || !userId) return null;
 
   const formatCurrency = (amount) => {
@@ -43,6 +49,18 @@ const ParticipantDetailModal = ({
   const userProfile = userProfiles?.[userId];
   const displayName = userProfile?.displayName || participant.name || userId;
   const profileImage = userProfile?.profileImage || '';
+
+  // 영수증 클릭 핸들러
+  const handleReceiptClick = (receipt) => {
+    setSelectedReceipt(receipt);
+    setShowReceiptModal(true);
+  };
+
+  // 영수증 수정 핸들러 (준비 중)
+  const handleReceiptEdit = () => {
+    setShowReceiptModal(false);
+    alert('영수증 수정 기능은 준비 중입니다.');
+  };
 
   return (
     <>
@@ -141,7 +159,11 @@ const ParticipantDetailModal = ({
                     const isPayer = receipt.paidBy === userId;
 
                     return (
-                      <div key={receipt.id} className="bg-gray-50 rounded-lg p-3">
+                      <div
+                        key={receipt.id}
+                        onClick={() => handleReceiptClick(receipt)}
+                        className="bg-gray-50 rounded-lg p-3 cursor-pointer hover:bg-gray-100 transition-colors"
+                      >
                         {/* 영수증 정보 */}
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex-1">
@@ -209,6 +231,21 @@ const ParticipantDetailModal = ({
           </div>
         </div>
       </div>
+
+      {/* 영수증 상세 모달 */}
+      <ReceiptDetailModal
+        receipt={selectedReceipt}
+        isOpen={showReceiptModal}
+        onClose={() => {
+          setShowReceiptModal(false);
+          setSelectedReceipt(null);
+        }}
+        onEdit={handleReceiptEdit}
+        onDelete={() => {}}
+        canEdit={false} // 참여자 상세 모달에서는 수정/삭제 버튼 숨김
+        members={members}
+        userProfiles={userProfiles}
+      />
     </>
   );
 };
