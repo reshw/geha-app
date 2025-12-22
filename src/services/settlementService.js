@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import * as notificationService from './notificationService';
+import { normalizePhoneNumber } from './notificationService';
 
 /**
  * 주차 ID 생성 (ISO Week)
@@ -238,6 +239,7 @@ const settlementService = {
             totalPaid: 0,
             totalOwed: 0,
             balance: 0,
+            phone: null, // 나중에 조회
           };
         }
         participants[receipt.paidBy].totalPaid += receipt.totalAmount;
@@ -252,6 +254,7 @@ const settlementService = {
                 totalPaid: 0,
                 totalOwed: 0,
                 balance: 0,
+                phone: null, // 나중에 조회
               };
             }
             participants[userId].totalOwed += item.perPerson;
@@ -265,7 +268,33 @@ const settlementService = {
         p.balance = p.totalPaid - p.totalOwed;
       });
 
-      // Settlement 문서 업데이트 (profileImage는 저장하지 않음)
+      // 각 참여자의 전화번호 조회 및 정규화 (users 컬렉션에서)
+      console.log('📞 참여자 전화번호 조회 시작');
+      for (const userId of Object.keys(participants)) {
+        try {
+          const userDocRef = doc(db, 'users', userId);
+          const userDoc = await getDoc(userDocRef);
+
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            const rawPhone = userData.phoneNumber;
+            const normalizedPhone = normalizePhoneNumber(rawPhone);
+
+            participants[userId].phone = normalizedPhone;
+
+            console.log(`📱 [${participants[userId].name}] 전화번호:`, {
+              원본: rawPhone || '없음',
+              정규화: normalizedPhone || '없음'
+            });
+          } else {
+            console.warn(`⚠️ [${participants[userId].name}] users 문서 없음:`, userId);
+          }
+        } catch (error) {
+          console.error(`❌ [${participants[userId].name}] 전화번호 조회 실패:`, error);
+        }
+      }
+
+      // Settlement 문서 업데이트
       const settlementRef = doc(db, 'spaces', spaceId, 'settlement', weekId);
       await updateDoc(settlementRef, {
         participants,
@@ -316,7 +345,11 @@ const settlementService = {
     try {
       console.log('💰 주간 정산 확정:', { spaceId, weekId });
 
-      // 1. 정산 상태 업데이트
+      // 1. 정산 계산 업데이트 (최신 전화번호 포함)
+      console.log('🔄 정산 확정 전 최신 데이터 업데이트...');
+      await this.updateSettlementCalculation(spaceId, weekId);
+
+      // 2. 정산 상태 업데이트
       const settlementRef = doc(db, 'spaces', spaceId, 'settlement', weekId);
       await updateDoc(settlementRef, {
         status: 'settled',
@@ -325,7 +358,7 @@ const settlementService = {
 
       console.log('✅ 정산 확정 완료');
 
-      // 2. 정산 결과 가져오기
+      // 3. 정산 결과 가져오기
       const settlementDoc = await getDoc(settlementRef);
       if (!settlementDoc.exists()) {
         console.warn('정산 문서를 찾을 수 없습니다.');
@@ -333,9 +366,19 @@ const settlementService = {
       }
 
       const settlementData = settlementDoc.data();
+      console.log('📋 정산 데이터 확인:', {
+        participantCount: Object.keys(settlementData.participants || {}).length,
+        participants: Object.entries(settlementData.participants || {}).map(([userId, p]) => ({
+          userId,
+          name: p.name,
+          phone: p.phone || '❌ 없음',
+          balance: p.balance
+        }))
+      });
+
       let notificationResult = null;
 
-      // 3. 알림톡 활성화 여부 확인 및 스페이스 정보 가져오기
+      // 4. 알림톡 활성화 여부 확인 및 스페이스 정보 가져오기
       try {
         const alimtalkDocRef = doc(db, 'spaces', spaceId, 'settings', 'alimtalk');
         const alimtalkDoc = await getDoc(alimtalkDocRef);
@@ -380,12 +423,16 @@ const settlementService = {
 
             if (userDoc.exists()) {
               const userData = userDoc.data();
+              const rawPhone = userData.phoneNumber;
+              const normalizedPhone = normalizePhoneNumber(rawPhone);
+
               console.log('📋 users 문서 데이터:', {
-                hasPhoneNumber: !!userData.phoneNumber,
-                phoneNumber: userData.phoneNumber,
+                hasPhoneNumber: !!rawPhone,
+                phoneNumber: rawPhone,
+                정규화: normalizedPhone,
                 allFields: Object.keys(userData)
               });
-              managerPhone = userData.phoneNumber || null;
+              managerPhone = normalizedPhone;
             } else {
               console.warn('❌ users 문서가 존재하지 않음:', managerUserId);
             }
@@ -405,7 +452,7 @@ const settlementService = {
           managerPhone: managerPhone ? '✅' : '❌'
         });
 
-        // 4. 참여자들에게 정산 완료 알림 발송
+        // 5. 참여자들에게 정산 완료 알림 발송
         if (settlementData.participants && Object.keys(settlementData.participants).length > 0) {
           notificationResult = await notificationService.sendSettlementComplete(
             {

@@ -257,11 +257,11 @@ const SettlementPage = () => {
                 )}
               </p>
             </div>
-            {/* 정산 완료 버튼 (매니저만, active 상태일 때만) */}
+            {/* 정산 완료 버튼 (매니저만, active 상태일 때만) - 데스크톱 전용 */}
             {isManager && settlement?.status === 'active' && (
               <button
                 onClick={handleCompleteSettlement}
-                className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transition-all flex items-center gap-2"
+                className="hidden md:flex px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transition-all items-center gap-2"
               >
                 <CheckCircle className="w-4 h-4" />
                 <span>정산완료</span>
@@ -491,12 +491,29 @@ const SettlementPage = () => {
         </div>
       </div>
 
-      {/* 플로팅 버튼 */}
+      {/* 모바일 정산완료 버튼 (매니저만, active 상태일 때만) */}
+      {isManager && settlement?.status === 'active' && (
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 md:hidden z-50">
+          <button
+            onClick={handleCompleteSettlement}
+            className="w-full py-4 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2"
+          >
+            <CheckCircle className="w-5 h-5" />
+            <span>정산완료</span>
+          </button>
+        </div>
+      )}
+
+      {/* 플로팅 영수증 제출 버튼 */}
       {settlement?.status === 'active' && receipts.length > 0 && (
         <button
           onClick={() => navigate('/settlement/submit')}
-          className="fixed right-4 w-14 h-14 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center transition-all active:scale-95 z-50"
-          style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom))' }}
+          className="fixed right-4 w-14 h-14 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center transition-all active:scale-95 z-40"
+          style={{
+            bottom: isManager
+              ? 'calc(5rem + 5rem + env(safe-area-inset-bottom))' // 모바일: 정산완료 버튼 위
+              : 'calc(5rem + env(safe-area-inset-bottom))' // 기본 위치
+          }}
         >
           <Plus size={24} />
         </button>

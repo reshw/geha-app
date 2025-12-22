@@ -101,12 +101,22 @@ exports.handler = async (event) => {
         templateCode = 'JH8637'; // 받을 돈 템플릿
         templateParams = createSettlementReceiveParams(settlementData);
         recipientNo = settlementData.phone;
+        console.log('📞 정산 받을 돈 알림 발송:', {
+          name: settlementData.name,
+          phone: recipientNo,
+          balance: settlementData.balance
+        });
         break;
 
       case 'settlement_pay':
         templateCode = 'JH8638'; // 낼 돈 템플릿
         templateParams = createSettlementPayParams(settlementData);
         recipientNo = settlementData.phone;
+        console.log('📞 정산 낼 돈 알림 발송:', {
+          name: settlementData.name,
+          phone: recipientNo,
+          balance: settlementData.balance
+        });
         break;
 
       // 추가 템플릿 타입들...
@@ -168,6 +178,7 @@ function createGuestConfirmationParams(data) {
     nights,
     days,
     cost,
+    pricePerNightper10000,
     accountBank,      // 변경: accountInfo → accountBank
     accountNumber,    // 추가
     accountHolder,    // 추가
@@ -181,6 +192,7 @@ function createGuestConfirmationParams(data) {
     '입실일': checkIn,
     '퇴실일': checkOut,
     '박수': String(nights),
+    '단가': pricePerNightper10000, // 1박 요금 (만원 단위)
     '일수': String(days),
     '비용': cost.toLocaleString(),
     '은행명': accountBank,        // 변경
