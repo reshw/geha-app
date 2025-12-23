@@ -29,6 +29,7 @@ const SettlementPage = () => {
   const [selectedParticipantId, setSelectedParticipantId] = useState(null);
   const [showParticipantModal, setShowParticipantModal] = useState(false);
   const [viewMode, setViewMode] = useState('card'); // 'card' | 'table'
+  const [activeTab, setActiveTab] = useState('receipts'); // 'receipts' | 'participants'
 
   useEffect(() => {
     if (selectedSpace?.id && user?.id) {
@@ -306,222 +307,283 @@ const SettlementPage = () => {
         {viewMode === 'card' ? (
           <>
             {/* 내 정산 현황 카드 */}
-            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Users className="w-5 h-5" />
-              <span className="font-medium">내 정산 현황</span>
-            </div>
-            {settlement?.status === 'active' && (
-              <span className="text-xs bg-white/20 px-2 py-1 rounded-full">진행중</span>
-            )}
-          </div>
+            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white shadow-md">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  <span className="font-semibold text-sm">내 정산 현황</span>
+                </div>
+                {settlement?.status === 'active' && (
+                  <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">진행중</span>
+                )}
+              </div>
 
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-sm opacity-90">낸 금액</span>
-              <span className="text-lg font-bold">{formatCurrency(myBalance?.totalPaid || 0)}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm opacity-90">내 부담액</span>
-              <span className="text-lg font-bold">{formatCurrency(myBalance?.totalOwed || 0)}</span>
-            </div>
-            <div className="border-t border-white/20 pt-3 mt-3">
-              <div className="flex justify-between items-center">
-                <span className="font-medium">정산 결과</span>
+              {/* 정산 결과와 상세 정보를 한 줄로 */}
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   {myBalance?.balance > 0 ? (
                     <>
                       <TrendingUp className="w-5 h-5 text-green-300" />
-                      <span className="text-2xl font-bold text-green-300">
-                        +{formatCurrency(myBalance.balance)}
-                      </span>
+                      <div>
+                        <p className="text-xs opacity-75">정산 결과</p>
+                        <span className="text-2xl font-bold text-green-300">
+                          +{formatCurrency(myBalance.balance)}
+                        </span>
+                      </div>
                     </>
                   ) : myBalance?.balance < 0 ? (
                     <>
                       <TrendingDown className="w-5 h-5 text-red-300" />
-                      <span className="text-2xl font-bold text-red-300">
-                        {formatCurrency(myBalance.balance)}
-                      </span>
+                      <div>
+                        <p className="text-xs opacity-75">정산 결과</p>
+                        <span className="text-2xl font-bold text-red-300">
+                          {formatCurrency(myBalance.balance)}
+                        </span>
+                      </div>
                     </>
                   ) : (
-                    <span className="text-2xl font-bold">0원</span>
+                    <div>
+                      <p className="text-xs opacity-75">정산 결과</p>
+                      <span className="text-2xl font-bold">0원</span>
+                    </div>
                   )}
+                </div>
+
+                <div className="flex gap-3 text-xs">
+                  <div className="text-right">
+                    <p className="opacity-70 mb-0.5">낸 금액</p>
+                    <p className="font-semibold">{formatCurrency(myBalance?.totalPaid || 0)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="opacity-70 mb-0.5">부담액</p>
+                    <p className="font-semibold">{formatCurrency(myBalance?.totalOwed || 0)}</p>
+                  </div>
                 </div>
               </div>
-              <p className="text-xs opacity-75 mt-2 text-center">
-                {myBalance?.balance > 0 
-                  ? '정산자에게 받을 금액입니다' 
-                  : myBalance?.balance < 0 
-                  ? '정산자에게 낼 금액입니다'
-                  : '정산할 금액이 없습니다'}
-              </p>
             </div>
-          </div>
-        </div>
 
-        {/* 전체 정산 요약 */}
-        <div className="bg-white rounded-xl p-4 shadow-sm">
-          <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-            <Receipt className="w-5 h-5 text-blue-600" />
-            이번주 정산 요약
-          </h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="text-center p-3 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-600 mb-1">총 지출</p>
-              <p className="text-xl font-bold text-gray-900">
-                {formatCurrency(settlement?.totalAmount || 0)}
-              </p>
-            </div>
-            <div className="text-center p-3 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-600 mb-1">영수증 개수</p>
-              <p className="text-xl font-bold text-gray-900">
-                {receipts.length}개
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* 참여자별 정산 현황 */}
-        {settlement?.participants && Object.keys(settlement.participants).length > 0 && (
-          <div className="bg-white rounded-xl p-4 shadow-sm">
-            <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-              <Users className="w-5 h-5 text-blue-600" />
-              참여자별 현황
-            </h3>
-            <div className="space-y-2">
-              {Object.entries(settlement.participants)
-                .sort(([, a], [, b]) => b.balance - a.balance)
-                .map(([userId, participant]) => {
-                  // users 컬렉션에서 displayName과 profileImage 가져오기
-                  const memberInfo = getMemberInfo(userId);
-                  const displayName = memberInfo.displayName;
-                  const profileImage = memberInfo.profileImage;
-
-                  return (
-                    <div
-                      key={userId}
-                      onClick={() => handleParticipantClick(userId, participant)}
-                      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:shadow-md transition-shadow ${
-                        userId === user.id ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'
-                      }`}
-                    >
-                      {/* 프로필 이미지 */}
-                      {profileImage ? (
-                        <img
-                          src={profileImage}
-                          alt={displayName}
-                          className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold flex-shrink-0">
-                          {displayName[0]}
-                        </div>
-                      )}
-
-                      {/* 이름 및 정보 */}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900">
-                          {displayName}
-                          {userId === user.id && (
-                            <span className="ml-2 text-xs text-blue-600 font-semibold">(나)</span>
-                          )}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          낸 {formatCurrency(participant.totalPaid)} / 부담 {formatCurrency(participant.totalOwed)}
-                        </p>
-                      </div>
-
-                      {/* 잔액 */}
-                      <div className={`font-bold flex-shrink-0 ${
-                        participant.balance > 0
-                          ? 'text-green-600'
-                          : participant.balance < 0
-                          ? 'text-red-600'
-                          : 'text-gray-600'
-                      }`}>
-                        {participant.balance > 0 ? '+' : ''}{formatCurrency(participant.balance)}
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
-          </div>
-        )}
-
-        {/* 영수증 목록 */}
-        <div className="bg-white rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-bold text-gray-900 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-blue-600" />
-              제출된 영수증
-            </h3>
-          </div>
-
-          {receipts.length === 0 ? (
-            <div className="text-center py-12">
-              <Receipt className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-              <p className="text-gray-600 font-medium mb-2">아직 제출된 영수증이 없습니다</p>
-              <p className="text-sm text-gray-500 mb-6">첫 영수증을 제출해보세요!</p>
-              <button
-                onClick={() => navigate('/settlement/submit')}
-                className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-colors"
-              >
-                <Plus className="w-5 h-5" />
-                영수증 제출하기
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {receipts.map((receipt) => (
-                <div
-                  key={receipt.id}
-                  className="border border-gray-200 rounded-lg p-3 hover:bg-gray-50 transition-colors cursor-pointer"
-                  onClick={() => handleReceiptClick(receipt)}
+            {/* 탭 UI */}
+            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+              {/* 탭 헤더 */}
+              <div className="flex border-b border-gray-200">
+                <button
+                  onClick={() => setActiveTab('receipts')}
+                  className={`flex-1 py-3 px-4 font-semibold transition-colors ${
+                    activeTab === 'receipts'
+                      ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
                 >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900">
-                        {receipt.paidByName}
-                        {receipt.paidBy !== receipt.submittedBy && (
-                          <span className="text-xs text-gray-500 ml-1">
-                            (등록: {receipt.submittedByName})
-                          </span>
-                        )}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {formatDateTime(receipt.createdAt)}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-gray-900">
-                        {formatCurrency(receipt.totalAmount)}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {receipt.items.length}개 항목
-                      </p>
-                    </div>
+                  <div className="flex items-center justify-center gap-2">
+                    <Calendar className="w-4 h-4" />
+                    <span>참여 내역</span>
                   </div>
-                  {receipt.memo && (
-                    <p className="text-sm text-gray-600 mt-2 line-clamp-1">
-                      💬 {receipt.memo}
-                    </p>
-                  )}
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {receipt.items.map((item, idx) => (
-                      <span 
-                        key={idx}
-                        className="text-xs bg-gray-100 px-2 py-1 rounded"
-                      >
-                        {item.itemName}
-                      </span>
-                    ))}
+                </button>
+                <button
+                  onClick={() => setActiveTab('participants')}
+                  className={`flex-1 py-3 px-4 font-semibold transition-colors ${
+                    activeTab === 'participants'
+                      ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <Users className="w-4 h-4" />
+                    <span>참여자별</span>
                   </div>
+                </button>
+              </div>
+
+              {/* 탭 컨텐츠 */}
+              <div className="p-4">
+                {activeTab === 'participants' && settlement?.participants && Object.keys(settlement.participants).length > 0 && (
+                  <div className="space-y-2">
+                    {Object.entries(settlement.participants)
+                      .sort(([, a], [, b]) => b.balance - a.balance)
+                      .map(([userId, participant]) => {
+                        // users 컬렉션에서 displayName과 profileImage 가져오기
+                        const memberInfo = getMemberInfo(userId);
+                        const displayName = memberInfo.displayName;
+                        const profileImage = memberInfo.profileImage;
+
+                        return (
+                          <div
+                            key={userId}
+                            onClick={() => handleParticipantClick(userId, participant)}
+                            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:shadow-md transition-shadow ${
+                              userId === user.id ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'
+                            }`}
+                          >
+                            {/* 프로필 이미지 */}
+                            {profileImage ? (
+                              <img
+                                src={profileImage}
+                                alt={displayName}
+                                className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold flex-shrink-0">
+                                {displayName[0]}
+                              </div>
+                            )}
+
+                            {/* 이름 및 정보 */}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-gray-900">
+                                {displayName}
+                                {userId === user.id && (
+                                  <span className="ml-2 text-xs text-blue-600 font-semibold">(나)</span>
+                                )}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                낸 {formatCurrency(participant.totalPaid)} / 부담 {formatCurrency(participant.totalOwed)}
+                              </p>
+                            </div>
+
+                            {/* 잔액 */}
+                            <div className={`font-bold flex-shrink-0 ${
+                              participant.balance > 0
+                                ? 'text-green-600'
+                                : participant.balance < 0
+                                ? 'text-red-600'
+                                : 'text-gray-600'
+                            }`}>
+                              {participant.balance > 0 ? '+' : ''}{formatCurrency(participant.balance)}
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
+
+                {activeTab === 'receipts' && (
+                  <>
+                    {receipts.length === 0 ? (
+                <div className="text-center py-12">
+                  <Receipt className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                  <p className="text-gray-600 font-medium mb-2">아직 제출된 영수증이 없습니다</p>
+                  <p className="text-sm text-gray-500 mb-6">첫 영수증을 제출해보세요!</p>
+                  <button
+                    onClick={() => navigate('/settlement/submit')}
+                    className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-colors"
+                  >
+                    <Plus className="w-5 h-5" />
+                    영수증 제출하기
+                  </button>
                 </div>
-              ))}
+              ) : (
+                <div className="space-y-3">
+                  {receipts.map((receipt) => {
+                    // 내가 분담한 항목들과 총 금액 계산
+                    const myItems = receipt.items.filter(item => item.splitAmong?.includes(user?.id));
+                    const myShare = myItems.reduce((sum, item) => sum + (item.perPerson || 0), 0);
+                    const isPayer = receipt.paidBy === user?.id;
+
+                    return (
+                      <div
+                        key={receipt.id}
+                        className={`border-2 rounded-lg p-4 hover:shadow-md transition-all cursor-pointer ${
+                          isPayer ? 'border-green-200 bg-green-50/30' : 'border-gray-200 bg-white'
+                        }`}
+                        onClick={() => handleReceiptClick(receipt)}
+                      >
+                        {/* 상호명/메모 */}
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            {receipt.memo && (
+                              <h4 className="font-bold text-gray-900 text-base mb-1">
+                                {receipt.memo}
+                              </h4>
+                            )}
+                            <p className="text-xs text-gray-500">
+                              {formatDateTime(receipt.createdAt)}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* 품목 리스트 */}
+                        <div className="mb-3 space-y-1.5">
+                          {receipt.items.map((item, idx) => {
+                            const isMyItem = item.splitAmong?.includes(user?.id);
+                            return (
+                              <div
+                                key={idx}
+                                className={`flex justify-between items-start text-sm py-2 px-2 rounded ${
+                                  isMyItem ? 'bg-blue-50' : 'bg-gray-50'
+                                }`}
+                              >
+                                <span className={`${isMyItem ? 'font-semibold text-blue-900' : 'text-gray-700'} flex-1`}>
+                                  {item.itemName}
+                                </span>
+                                <div className="flex flex-col items-end gap-0.5 ml-2">
+                                  {isMyItem ? (
+                                    <>
+                                      <div className="flex items-baseline gap-1">
+                                        <span className="font-bold text-blue-600">
+                                          {formatCurrency(item.perPerson || 0)}
+                                        </span>
+                                        <span className="text-xs text-gray-500">
+                                          / {formatCurrency(item.amount || 0)}
+                                        </span>
+                                      </div>
+                                      <span className="text-xs text-gray-500">
+                                        {item.splitAmong?.length || 0}명 분담
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span className="text-gray-600">
+                                        {formatCurrency(item.amount || 0)}
+                                      </span>
+                                      <span className="text-xs text-gray-500">
+                                        {item.splitAmong?.length || 0}명 분담
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* 하단: 내가 분담한 금액 / 낸 사람 정보 */}
+                        <div className="pt-3 border-t border-gray-200">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-600">낸 사람</span>
+                              <span className={`font-bold ${isPayer ? 'text-green-600' : 'text-gray-900'}`}>
+                                {receipt.paidByName}
+                                {isPayer && (
+                                  <span className="ml-1 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
+                                    나
+                                  </span>
+                                )}
+                              </span>
+                              {isPayer && (
+                                <span className="text-lg font-bold text-green-600">
+                                  {formatCurrency(receipt.totalAmount)}
+                                </span>
+                              )}
+                            </div>
+                            {!isPayer && myShare > 0 && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-gray-600">내 분담액</span>
+                                <span className="text-lg font-bold text-blue-600">
+                                  {formatCurrency(myShare)}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                      })}
+                    </div>
+                  )}
+                  </>
+                )}
+              </div>
             </div>
-          )}
-        </div>
           </>
         ) : (
           /* 테이블 뷰 */

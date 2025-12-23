@@ -103,39 +103,47 @@ const ParticipantDetailModal = ({
           {/* 내용 */}
           <div className="p-4 space-y-4">
             {/* 정산 요약 */}
-            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white">
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm opacity-90">낸 금액</span>
-                  <span className="text-lg font-bold">{formatCurrency(participant.totalPaid || 0)}</span>
+            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white">
+              {/* 정산 결과 - 크게 강조 */}
+              <div className="text-center mb-4">
+                <p className="text-sm opacity-80 mb-2">정산 결과</p>
+                <div className="flex items-center justify-center gap-3">
+                  {participant.balance > 0 ? (
+                    <>
+                      <TrendingUp className="w-8 h-8 text-green-300" />
+                      <span className="text-4xl font-bold text-green-300">
+                        +{formatCurrency(participant.balance)}
+                      </span>
+                    </>
+                  ) : participant.balance < 0 ? (
+                    <>
+                      <TrendingDown className="w-8 h-8 text-red-300" />
+                      <span className="text-4xl font-bold text-red-300">
+                        {formatCurrency(participant.balance)}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-4xl font-bold">0원</span>
+                  )}
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm opacity-90">부담액</span>
-                  <span className="text-lg font-bold">{formatCurrency(participant.totalOwed || 0)}</span>
+                <p className="text-xs opacity-75 mt-3">
+                  {participant.balance > 0
+                    ? '정산자에게 받을 금액입니다'
+                    : participant.balance < 0
+                    ? '정산자에게 낼 금액입니다'
+                    : '정산할 금액이 없습니다'}
+                </p>
+              </div>
+
+              {/* 상세 정보 - 작게 표시 */}
+              <div className="flex justify-around pt-4 border-t border-white/20 text-xs">
+                <div className="text-center">
+                  <p className="opacity-70 mb-1">낸 금액</p>
+                  <p className="font-semibold">{formatCurrency(participant.totalPaid || 0)}</p>
                 </div>
-                <div className="border-t border-white/20 pt-2 mt-2">
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium">정산 결과</span>
-                    <div className="flex items-center gap-2">
-                      {participant.balance > 0 ? (
-                        <>
-                          <TrendingUp className="w-5 h-5 text-green-300" />
-                          <span className="text-xl font-bold text-green-300">
-                            +{formatCurrency(participant.balance)}
-                          </span>
-                        </>
-                      ) : participant.balance < 0 ? (
-                        <>
-                          <TrendingDown className="w-5 h-5 text-red-300" />
-                          <span className="text-xl font-bold text-red-300">
-                            {formatCurrency(participant.balance)}
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-xl font-bold">0원</span>
-                      )}
-                    </div>
-                  </div>
+                <div className="text-center">
+                  <p className="opacity-70 mb-1">부담액</p>
+                  <p className="font-semibold">{formatCurrency(participant.totalOwed || 0)}</p>
                 </div>
               </div>
             </div>
@@ -157,61 +165,104 @@ const ParticipantDetailModal = ({
                   {participantReceipts.map((receipt) => {
                     const participantItems = getParticipantItems(receipt);
                     const isPayer = receipt.paidBy === userId;
+                    const myShare = participantItems.reduce((sum, item) => sum + (item.perPerson || 0), 0);
 
                     return (
                       <div
                         key={receipt.id}
                         onClick={() => handleReceiptClick(receipt)}
-                        className="bg-gray-50 rounded-lg p-3 cursor-pointer hover:bg-gray-100 transition-colors"
+                        className={`border-2 rounded-lg p-4 cursor-pointer hover:shadow-md transition-all ${
+                          isPayer ? 'border-green-200 bg-green-50/30' : 'border-gray-200 bg-white'
+                        }`}
                       >
-                        {/* 영수증 정보 */}
-                        <div className="flex items-start justify-between mb-2">
+                        {/* 상호명/메모 */}
+                        <div className="flex items-start justify-between mb-3">
                           <div className="flex-1">
-                            <p className="font-medium text-gray-900">
-                              {receipt.paidByName}
-                              {isPayer && (
-                                <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
-                                  낸사람
-                                </span>
-                              )}
-                            </p>
-                            <p className="text-xs text-gray-500 mt-1">
+                            {receipt.memo && (
+                              <h4 className="font-bold text-gray-900 text-base mb-1">
+                                {receipt.memo}
+                              </h4>
+                            )}
+                            <p className="text-xs text-gray-500">
                               {formatDateTime(receipt.createdAt)}
                             </p>
-                            {receipt.memo && (
-                              <p className="text-sm text-gray-600 mt-1">
-                                💬 {receipt.memo}
-                              </p>
-                            )}
                           </div>
-                          <span className="font-bold text-gray-900">
-                            {formatCurrency(receipt.totalAmount)}
-                          </span>
                         </div>
 
-                        {/* 참여 항목 */}
-                        {participantItems.length > 0 && (
-                          <div className="mt-3 pt-3 border-t border-gray-200">
-                            <p className="text-xs font-medium text-gray-600 mb-2">
-                              내 부담 항목
-                            </p>
-                            <div className="space-y-2">
-                              {participantItems.map((item, idx) => (
-                                <div key={idx} className="flex justify-between items-center text-sm">
-                                  <div className="flex-1">
-                                    <span className="text-gray-700">{item.itemName}</span>
-                                    <span className="text-xs text-gray-500 ml-2">
-                                      ({item.splitAmong?.length || 0}명 분담)
-                                    </span>
-                                  </div>
-                                  <span className="font-semibold text-blue-600">
-                                    {formatCurrency(item.perPerson || 0)}
-                                  </span>
+                        {/* 품목 리스트 */}
+                        <div className="mb-3 space-y-1.5">
+                          {receipt.items.map((item, idx) => {
+                            const isParticipantItem = item.splitAmong?.includes(userId);
+                            return (
+                              <div
+                                key={idx}
+                                className={`flex justify-between items-start text-sm py-2 px-2 rounded ${
+                                  isParticipantItem ? 'bg-blue-50' : 'bg-gray-50'
+                                }`}
+                              >
+                                <span className={`${isParticipantItem ? 'font-semibold text-blue-900' : 'text-gray-700'} flex-1`}>
+                                  {item.itemName}
+                                </span>
+                                <div className="flex flex-col items-end gap-0.5 ml-2">
+                                  {isParticipantItem ? (
+                                    <>
+                                      <div className="flex items-baseline gap-1">
+                                        <span className="font-bold text-blue-600">
+                                          {formatCurrency(item.perPerson || 0)}
+                                        </span>
+                                        <span className="text-xs text-gray-500">
+                                          / {formatCurrency(item.amount || 0)}
+                                        </span>
+                                      </div>
+                                      <span className="text-xs text-gray-500">
+                                        {item.splitAmong?.length || 0}명 분담
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span className="text-gray-600">
+                                        {formatCurrency(item.amount || 0)}
+                                      </span>
+                                      <span className="text-xs text-gray-500">
+                                        {item.splitAmong?.length || 0}명 분담
+                                      </span>
+                                    </>
+                                  )}
                                 </div>
-                              ))}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* 하단: 분담 금액 / 낸 사람 정보 */}
+                        <div className="pt-3 border-t border-gray-200">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-600">낸 사람</span>
+                              <span className={`font-bold ${isPayer ? 'text-green-600' : 'text-gray-900'}`}>
+                                {receipt.paidByName}
+                                {isPayer && (
+                                  <span className="ml-1 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
+                                    본인
+                                  </span>
+                                )}
+                              </span>
+                              {isPayer && (
+                                <span className="text-lg font-bold text-green-600">
+                                  {formatCurrency(receipt.totalAmount)}
+                                </span>
+                              )}
                             </div>
+                            {!isPayer && myShare > 0 && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-gray-600">분담액</span>
+                                <span className="text-lg font-bold text-blue-600">
+                                  {formatCurrency(myShare)}
+                                </span>
+                              </div>
+                            )}
                           </div>
-                        )}
+                        </div>
                       </div>
                     );
                   })}
