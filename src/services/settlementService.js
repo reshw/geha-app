@@ -65,17 +65,18 @@ const generateReceiptId = (date = new Date()) => {
 const settlementService = {
   /**
    * 이번주 Settlement 가져오기 (없으면 생성)
+   * 새 주차 생성 시 이전 주차가 active 상태이면 경고 반환
    */
   async getCurrentWeekSettlement(spaceId) {
     try {
       const weekId = getWeekId();
       const { weekStart, weekEnd } = getWeekRange();
-      
+
       console.log('📅 이번주 Settlement 조회:', { spaceId, weekId });
-      
+
       const settlementRef = doc(db, 'spaces', spaceId, 'settlement', weekId);
       const settlementSnap = await getDoc(settlementRef);
-      
+
       // 이미 존재하면 반환
       if (settlementSnap.exists()) {
         const data = settlementSnap.data();
@@ -90,7 +91,10 @@ const settlementService = {
           settledAt: data.settledAt?.toDate(),
         };
       }
-      
+
+      // 새로 생성하기 전에 이전 주차 확인
+      const prevWeekWarning = await this.checkPreviousWeekStatus(spaceId, weekStart);
+
       // 없으면 새로 생성
       console.log('🆕 새 Settlement 생성');
       const newSettlement = {
@@ -103,9 +107,9 @@ const settlementService = {
         participants: {}, // { userId: { name, totalPaid, totalOwed, balance } }
         totalAmount: 0,
       };
-      
+
       await setDoc(settlementRef, newSettlement);
-      
+
       return {
         id: weekId,
         weekId,
@@ -114,9 +118,122 @@ const settlementService = {
         weekEnd,
         createdAt: new Date(),
         settledAt: null,
+        prevWeekWarning, // 이전 주차 경고 메시지
       };
     } catch (error) {
       console.error('❌ getCurrentWeekSettlement 실패:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 이전 주차 상태 확인
+   * 새 주차 생성 시 이전 주차가 active 상태이면 경고 반환
+   */
+  async checkPreviousWeekStatus(spaceId, currentWeekStart) {
+    try {
+      // 이전 주 월요일 계산
+      const prevWeekStart = new Date(currentWeekStart);
+      prevWeekStart.setDate(prevWeekStart.getDate() - 7);
+
+      const prevWeekId = getWeekId(prevWeekStart);
+      console.log('🔍 이전 주차 확인:', prevWeekId);
+
+      const prevSettlement = await this.getWeekSettlement(spaceId, prevWeekId);
+
+      if (prevSettlement && prevSettlement.status === 'active') {
+        const warning = {
+          hasPreviousActiveWeek: true,
+          prevWeekId,
+          prevWeekStart: prevSettlement.weekStart,
+          prevWeekEnd: prevSettlement.weekEnd,
+          message: `이전 주차(${prevWeekId})가 아직 정산 완료되지 않았습니다.`,
+        };
+        console.warn('⚠️ 이전 주차가 active 상태:', warning);
+        return warning;
+      }
+
+      return null;
+    } catch (error) {
+      console.error('❌ checkPreviousWeekStatus 실패:', error);
+      return null;
+    }
+  },
+
+  /**
+   * 특정 주차 Settlement 가져오기 (없으면 null 반환, 생성하지 않음)
+   */
+  async getWeekSettlement(spaceId, weekId) {
+    try {
+      console.log('📅 특정 주차 Settlement 조회:', { spaceId, weekId });
+
+      const settlementRef = doc(db, 'spaces', spaceId, 'settlement', weekId);
+      const settlementSnap = await getDoc(settlementRef);
+
+      if (!settlementSnap.exists()) {
+        console.log('❌ Settlement 없음');
+        return null;
+      }
+
+      const data = settlementSnap.data();
+      console.log('✅ Settlement 발견');
+      return {
+        id: settlementSnap.id,
+        weekId,
+        ...data,
+        weekStart: data.weekStart?.toDate(),
+        weekEnd: data.weekEnd?.toDate(),
+        createdAt: data.createdAt?.toDate(),
+        settledAt: data.settledAt?.toDate(),
+      };
+    } catch (error) {
+      console.error('❌ getWeekSettlement 실패:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 날짜로 주차 Settlement 가져오기 (없으면 null 반환)
+   */
+  async getSettlementByDate(spaceId, date) {
+    try {
+      const weekId = getWeekId(date);
+      return await this.getWeekSettlement(spaceId, weekId);
+    } catch (error) {
+      console.error('❌ getSettlementByDate 실패:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 모든 Settlement 목록 가져오기 (최신순)
+   */
+  async getAllSettlements(spaceId) {
+    try {
+      console.log('📋 모든 Settlement 조회:', spaceId);
+
+      const settlementsRef = collection(db, 'spaces', spaceId, 'settlement');
+      const q = query(settlementsRef, orderBy('weekStart', 'desc'));
+      const snapshot = await getDocs(q);
+
+      const settlements = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        settlements.push({
+          id: doc.id,
+          weekId: doc.id,
+          ...data,
+          weekStart: data.weekStart?.toDate(),
+          weekEnd: data.weekEnd?.toDate(),
+          createdAt: data.createdAt?.toDate(),
+          settledAt: data.settledAt?.toDate(),
+        });
+      });
+
+      console.log('✅ Settlement 목록 조회 완료:', settlements.length);
+      return settlements;
+    } catch (error) {
+      console.error('❌ getAllSettlements 실패:', error);
       throw error;
     }
   },
@@ -145,12 +262,12 @@ const settlementService = {
       // 총액 계산
       const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
       
-      // 각 항목의 1/n 계산
+      // 각 항목의 1/n 계산 (올림으로 낸 사람 우대)
       const processedItems = items.map(item => ({
         itemName: item.itemName,
         amount: item.amount,
         splitAmong: item.splitAmong, // [userId, ...]
-        perPerson: Math.floor(item.amount / item.splitAmong.length),
+        perPerson: Math.ceil(item.amount / item.splitAmong.length),
       }));
       
       // 영수증 데이터
@@ -243,6 +360,83 @@ const settlementService = {
       return true;
     } catch (error) {
       console.error('❌ deleteReceipt 실패:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 영수증 수정
+   */
+  async updateReceipt(spaceId, weekId, receiptId, receiptData) {
+    try {
+      console.log('✏️ 영수증 수정:', { spaceId, weekId, receiptId, receiptData });
+
+      const {
+        paidBy,
+        paidByName,
+        memo,
+        imageUrl,
+        items,
+      } = receiptData;
+
+      // 총액 계산
+      const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
+
+      // 각 항목의 1/n 계산 (올림으로 낸 사람 우대)
+      const processedItems = items.map(item => ({
+        itemName: item.itemName,
+        amount: item.amount,
+        splitAmong: item.splitAmong,
+        perPerson: Math.ceil(item.amount / item.splitAmong.length),
+      }));
+
+      // 영수증 업데이트
+      const receiptRef = doc(db, 'spaces', spaceId, 'settlement', weekId, 'receipts', receiptId);
+      await updateDoc(receiptRef, {
+        paidBy,
+        paidByName,
+        memo: memo || '',
+        imageUrl: imageUrl || '',
+        items: processedItems,
+        totalAmount,
+        updatedAt: Timestamp.now(),
+      });
+
+      // Settlement 계산 업데이트
+      await this.updateSettlementCalculation(spaceId, weekId);
+
+      console.log('✅ 영수증 수정 완료');
+      return true;
+    } catch (error) {
+      console.error('❌ updateReceipt 실패:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 영수증 조회 (단일)
+   */
+  async getReceipt(spaceId, weekId, receiptId) {
+    try {
+      console.log('🔍 영수증 조회:', { spaceId, weekId, receiptId });
+
+      const receiptRef = doc(db, 'spaces', spaceId, 'settlement', weekId, 'receipts', receiptId);
+      const receiptSnap = await getDoc(receiptRef);
+
+      if (!receiptSnap.exists()) {
+        throw new Error('영수증을 찾을 수 없습니다.');
+      }
+
+      const receiptData = {
+        id: receiptSnap.id,
+        ...receiptSnap.data(),
+        createdAt: receiptSnap.data().createdAt?.toDate(),
+      };
+
+      console.log('✅ 영수증 조회 완료');
+      return receiptData;
+    } catch (error) {
+      console.error('❌ getReceipt 실패:', error);
       throw error;
     }
   },
@@ -556,5 +750,8 @@ const settlementService = {
     }
   },
 };
+
+// 유틸리티 함수 export
+export { getWeekId, getWeekRange };
 
 export default settlementService;

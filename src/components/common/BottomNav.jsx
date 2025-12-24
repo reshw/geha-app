@@ -1,5 +1,5 @@
 // components/common/BottomNav.jsx
-import { Home, Heart, MountainSnow, Receipt } from 'lucide-react';
+import { Home, Heart, MountainSnow, Receipt, MoreHorizontal } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 export default function BottomNav() {
@@ -60,17 +60,31 @@ export default function BottomNav() {
           </span>
         </Link>
 
-        <Link 
-          to="/slopes" 
+        <Link
+          to="/slopes"
           className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 transition-all ${
-            isActive('/slopes') 
-              ? 'text-blue-600 bg-blue-50' 
+            isActive('/slopes')
+              ? 'text-blue-600 bg-blue-50'
               : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
           }`}
         >
           <MountainSnow size={22} strokeWidth={isActive('/slopes') ? 2.5 : 2} />
           <span className={`text-xs ${isActive('/slopes') ? 'font-bold' : 'font-normal'}`}>
             오픈정보
+          </span>
+        </Link>
+
+        <Link
+          to="/more"
+          className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 transition-all ${
+            isActive('/more')
+              ? 'text-blue-600 bg-blue-50'
+              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+          }`}
+        >
+          <MoreHorizontal size={22} strokeWidth={isActive('/more') ? 2.5 : 2} />
+          <span className={`text-xs ${isActive('/more') ? 'font-bold' : 'font-normal'}`}>
+            더보기
           </span>
         </Link>
       </div>

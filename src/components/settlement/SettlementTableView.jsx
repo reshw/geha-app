@@ -309,12 +309,15 @@ const SettlementTableView = ({
                       {formatCurrency(item.amount)}
                     </td>
 
-                    {/* 분담자 */}
-                    <td className="border border-gray-300 px-3 py-2 text-center">
-                      {isFirstItemOfReceipt ? (
-                        userProfiles[receipt.paidBy]?.displayName || receipt.paidByName
-                      ) : '-'}
-                    </td>
+                    {/* 분담자 (영수증별 첫 항목에만 표시) */}
+                    {isFirstItemOfReceipt && (
+                      <td
+                        rowSpan={receipt.items.length}
+                        className="border border-gray-300 px-3 py-2 text-center align-top"
+                      >
+                        {userProfiles[receipt.paidBy]?.displayName || receipt.paidByName}
+                      </td>
+                    )}
 
                     {/* 인원 */}
                     <td className="border border-gray-300 px-3 py-2 text-center">

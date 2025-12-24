@@ -13,3 +13,7 @@
 
 [functions]
   node_bundler = "esbuild"
+
+# 정산 자동 마감 - 매시간 실행
+[functions."settlement-auto-close"]
+  schedule = "@hourly"

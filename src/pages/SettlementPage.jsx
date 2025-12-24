@@ -1,10 +1,10 @@
 // src/pages/SettlementPage.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Receipt, Plus, TrendingUp, TrendingDown, Users, Calendar, User, CheckCircle, Table, LayoutGrid } from 'lucide-react';
+import { Receipt, Plus, TrendingUp, TrendingDown, Users, Calendar, User, CheckCircle, Table, LayoutGrid, ChevronLeft, ChevronRight, List } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import useStore from '../store/useStore';
-import settlementService from '../services/settlementService';
+import settlementService, { getWeekId, getWeekRange } from '../services/settlementService';
 import authService from '../services/authService';
 import LoginOverlay from '../components/auth/LoginOverlay';
 import ReceiptDetailModal from '../components/settlement/ReceiptDetailModal';
@@ -16,7 +16,14 @@ const SettlementPage = () => {
   const navigate = useNavigate();
   const { user, isLoggedIn } = useAuth();
   const { selectedSpace } = useStore();
-  
+
+  // 현재 보고 있는 주차의 시작일
+  const [selectedWeekStart, setSelectedWeekStart] = useState(() => {
+    const today = new Date();
+    const { weekStart } = getWeekRange(today);
+    return weekStart;
+  });
+
   const [settlement, setSettlement] = useState(null);
   const [receipts, setReceipts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,15 +37,18 @@ const SettlementPage = () => {
   const [showParticipantModal, setShowParticipantModal] = useState(false);
   const [viewMode, setViewMode] = useState('card'); // 'card' | 'table'
   const [activeTab, setActiveTab] = useState('receipts'); // 'receipts' | 'participants'
+  const [allSettlements, setAllSettlements] = useState([]); // 모든 정산 목록
+  const [showWeekList, setShowWeekList] = useState(false); // 주차 목록 표시 여부
 
   useEffect(() => {
     if (selectedSpace?.id && user?.id) {
       loadSettlement();
+      loadAllSettlements();
     } else if (selectedSpace && user) {
       // user.id가 없는 경우에도 로딩 종료
       setLoading(false);
     }
-  }, [selectedSpace, user]);
+  }, [selectedSpace, user, selectedWeekStart]);
 
   const loadSettlement = async () => {
     if (!selectedSpace?.id || !user?.id) return;
@@ -50,17 +60,53 @@ const SettlementPage = () => {
       const spaceMembers = await settlementService.getSpaceMembers(selectedSpace.id);
       setMembers(spaceMembers);
 
-      // 이번주 Settlement 가져오기
-      const weekSettlement = await settlementService.getCurrentWeekSettlement(selectedSpace.id);
-      setSettlement(weekSettlement);
+      // 선택된 주차의 weekId 계산
+      const weekId = getWeekId(selectedWeekStart);
+      console.log('📅 선택된 주차:', weekId, selectedWeekStart);
+
+      // 선택된 주차의 Settlement 가져오기
+      let weekSettlement = await settlementService.getSettlementByDate(selectedSpace.id, selectedWeekStart);
 
       // 영수증 목록 가져오기
+      let weekReceipts = [];
       if (weekSettlement?.weekId) {
-        const weekReceipts = await settlementService.getWeekReceipts(selectedSpace.id, weekSettlement.weekId);
-        setReceipts(weekReceipts);
-      } else {
-        setReceipts([]);
+        weekReceipts = await settlementService.getWeekReceipts(selectedSpace.id, weekSettlement.weekId);
+
+        // 🔄 영수증이 있으면 무조건 재계산하여 항상 최신 상태 유지
+        if (weekReceipts.length > 0) {
+          const actualTotalAmount = weekReceipts.reduce((sum, receipt) => sum + (receipt.totalAmount || 0), 0);
+          const storedTotalAmount = weekSettlement.totalAmount || 0;
+
+          console.log('🔄 영수증 기반 정산 상태 확인:', {
+            영수증수: weekReceipts.length,
+            실제총액: actualTotalAmount,
+            저장된총액: storedTotalAmount,
+            참여자수: Object.keys(weekSettlement.participants || {}).length
+          });
+
+          try {
+            console.log('🔄 정산 재계산 시작...');
+            const updatedParticipants = await settlementService.updateSettlementCalculation(selectedSpace.id, weekSettlement.weekId);
+            console.log('✅ 정산 재계산 완료:', updatedParticipants);
+
+            // 재계산 후 최신 데이터 다시 가져오기
+            const freshSettlement = await settlementService.getSettlementByDate(selectedSpace.id, selectedWeekStart);
+            if (freshSettlement) {
+              weekSettlement = freshSettlement;
+              console.log('✅ 최신 정산 데이터 로드 완료');
+            } else {
+              console.warn('⚠️ 재계산 후 데이터 조회 실패 - 기존 데이터 유지');
+            }
+          } catch (recalcError) {
+            console.error('❌ 정산 재계산 실패:', recalcError);
+            console.error('상세 에러:', recalcError.message, recalcError.stack);
+            // 재계산 실패해도 기존 데이터는 유지
+          }
+        }
       }
+
+      setSettlement(weekSettlement);
+      setReceipts(weekReceipts);
 
       // 참여자들의 프로필 정보 가져오기 (users 컬렉션에서)
       const participantIds = Object.keys(weekSettlement?.participants || {});
@@ -81,6 +127,18 @@ const SettlementPage = () => {
       setMyBalance({ name: user.displayName, totalPaid: 0, totalOwed: 0, balance: 0 });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 모든 정산 목록 로드
+  const loadAllSettlements = async () => {
+    if (!selectedSpace?.id) return;
+
+    try {
+      const settlements = await settlementService.getAllSettlements(selectedSpace.id);
+      setAllSettlements(settlements);
+    } catch (error) {
+      console.error('정산 목록 로드 실패:', error);
     }
   };
 
@@ -123,9 +181,11 @@ const SettlementPage = () => {
 
   // 영수증 수정 핸들러
   const handleReceiptEdit = () => {
+    if (!selectedReceipt || !settlement?.weekId) return;
+
     setShowReceiptModal(false);
-    // TODO: 영수증 수정 페이지로 이동 (나중에 구현)
-    alert('영수증 수정 기능은 준비 중입니다.');
+    // 수정 페이지로 이동
+    navigate(`/settlement/submit?receiptId=${selectedReceipt.id}&weekId=${settlement.weekId}`);
   };
 
   // 영수증 삭제 핸들러
@@ -160,6 +220,37 @@ const SettlementPage = () => {
     setSelectedParticipantId(userId);
     setSelectedParticipant(participant);
     setShowParticipantModal(true);
+  };
+
+  // 주차 네비게이션 함수
+  const prevWeek = () => {
+    const newDate = new Date(selectedWeekStart);
+    newDate.setDate(newDate.getDate() - 7);
+    setSelectedWeekStart(newDate);
+  };
+
+  const nextWeek = () => {
+    const newDate = new Date(selectedWeekStart);
+    newDate.setDate(newDate.getDate() + 7);
+    setSelectedWeekStart(newDate);
+  };
+
+  const goToThisWeek = () => {
+    const today = new Date();
+    const { weekStart } = getWeekRange(today);
+    setSelectedWeekStart(weekStart);
+  };
+
+  const goToWeek = (weekStart) => {
+    setSelectedWeekStart(weekStart);
+    setShowWeekList(false);
+  };
+
+  // 현재 주차인지 확인
+  const isCurrentWeek = () => {
+    const today = new Date();
+    const { weekStart } = getWeekRange(today);
+    return selectedWeekStart.getTime() === weekStart.getTime();
   };
 
   // 정산 완료 핸들러 (매니저만)
@@ -203,6 +294,7 @@ const SettlementPage = () => {
       }
 
       await loadSettlement();
+      await loadAllSettlements();
     } catch (error) {
       console.error('❌ 정산 완료 실패:', error);
       alert('정산 완료에 실패했습니다. 다시 시도해주세요.');
@@ -246,22 +338,65 @@ const SettlementPage = () => {
       {/* 헤더 */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="px-4 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex-1">
               <h1 className="text-2xl font-bold text-gray-900">💰 정산</h1>
-              <p className="text-sm text-gray-600 mt-1">
-                {settlement?.weekStart && settlement?.weekEnd && (
-                  <>
-                    {formatDate(settlement.weekStart)} ~ {formatDate(settlement.weekEnd)}
-                    {settlement.status === 'settled' && (
-                      <span className="ml-2 text-green-600 font-semibold">✓ 정산완료</span>
-                    )}
-                  </>
-                )}
-              </p>
             </div>
 
             <div className="flex items-center gap-2">
+              {/* 주차 목록 버튼 */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowWeekList(!showWeekList)}
+                  className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center gap-1.5"
+                >
+                  <List className="w-4 h-4" />
+                  <span className="text-sm font-medium hidden sm:inline">목록</span>
+                </button>
+
+                {/* 주차 목록 드롭다운 */}
+                {showWeekList && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setShowWeekList(false)}
+                    />
+                    <div className="absolute top-full right-0 mt-2 bg-white rounded-xl shadow-xl z-50 overflow-hidden min-w-[280px] max-h-[400px] overflow-y-auto">
+                      {allSettlements.length > 0 ? (
+                        allSettlements.map((s) => (
+                          <button
+                            key={s.weekId}
+                            onClick={() => goToWeek(s.weekStart)}
+                            className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0 ${
+                              s.weekStart.getTime() === selectedWeekStart.getTime() ? 'bg-blue-50' : ''
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <div className="font-semibold text-gray-900">
+                                  {formatDate(s.weekStart)} ~ {formatDate(s.weekEnd)}
+                                </div>
+                                <div className="text-xs text-gray-500 mt-0.5">
+                                  {s.status === 'settled' ? '✓ 정산완료' : '진행중'}
+                                  {s.totalAmount > 0 && ` · ${formatCurrency(s.totalAmount)}`}
+                                </div>
+                              </div>
+                              {s.weekStart.getTime() === selectedWeekStart.getTime() && (
+                                <div className="w-2 h-2 rounded-full bg-blue-600" />
+                              )}
+                            </div>
+                          </button>
+                        ))
+                      ) : (
+                        <div className="px-4 py-8 text-center text-gray-500 text-sm">
+                          정산 내역이 없습니다
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+
               {/* 뷰 모드 토글 버튼 */}
               <div className="flex bg-gray-100 rounded-lg p-1">
                 <button
@@ -289,7 +424,7 @@ const SettlementPage = () => {
               </div>
 
               {/* 정산 완료 버튼 (매니저만, active 상태일 때만) */}
-              {isManager && settlement?.status === 'active' && (
+              {isManager && settlement?.status === 'active' && isCurrentWeek() && (
                 <button
                   onClick={handleCompleteSettlement}
                   className="flex px-3 py-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transition-all items-center gap-1.5 sm:gap-2"
@@ -298,6 +433,64 @@ const SettlementPage = () => {
                   <span className="text-sm sm:text-base">정산완료</span>
                 </button>
               )}
+            </div>
+          </div>
+
+          {/* 주차 네비게이션 */}
+          <div className="flex items-center justify-between">
+            <button
+              onClick={prevWeek}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <ChevronLeft className="w-5 h-5 text-gray-600" />
+            </button>
+
+            <div className="flex-1 text-center">
+              <div className="text-sm text-gray-600">
+                {settlement?.weekStart && settlement?.weekEnd ? (
+                  <>
+                    {formatDate(settlement.weekStart)} ~ {formatDate(settlement.weekEnd)}
+                  </>
+                ) : (
+                  <>
+                    {formatDate(selectedWeekStart)} ~ {formatDate(new Date(selectedWeekStart.getTime() + 6 * 24 * 60 * 60 * 1000))}
+                  </>
+                )}
+              </div>
+              <div className="flex items-center justify-center gap-2 mt-1">
+                {settlement?.status === 'settled' && (
+                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">
+                    ✓ 정산완료
+                  </span>
+                )}
+                {!settlement && (
+                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                    정산 내역 없음
+                  </span>
+                )}
+                {isCurrentWeek() && (
+                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold">
+                    이번 주
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1">
+              {!isCurrentWeek() && (
+                <button
+                  onClick={goToThisWeek}
+                  className="px-3 py-1.5 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors font-semibold"
+                >
+                  이번 주
+                </button>
+              )}
+              <button
+                onClick={nextWeek}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <ChevronRight className="w-5 h-5 text-gray-600" />
+              </button>
             </div>
           </div>
         </div>

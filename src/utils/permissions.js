@@ -22,8 +22,8 @@ export const canCancelReservation = (userType, userId, reservationUserId) => {
 };
 
 export const canManageSpace = (userType) => {
-  // manager만 스페이스 관리 가능 (멤버 관리, 권한 변경 등)
-  return userType === USER_TYPES.MANAGER;
+  // vice-manager, manager는 스페이스 관리 가능 (멤버 관리, 권한 변경 등)
+  return userType === USER_TYPES.VICE_MANAGER || userType === USER_TYPES.MANAGER;
 };
 
 export const canManageReservations = (userType) => {

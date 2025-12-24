@@ -34,7 +34,29 @@ const EmailNotificationSettings = ({ spaceId, settings, onSave }) => {
 
   useEffect(() => {
     if (settings) {
-      setEmailSettings(settings);
+      setEmailSettings(prev => ({
+        reservation: {
+          enabled: false,
+          types: [],
+          recipients: [],
+          ...settings.reservation
+        },
+        settlement: {
+          enabled: false,
+          recipients: [],
+          ...settings.settlement
+        },
+        praise: {
+          enabled: false,
+          recipients: [],
+          ...settings.praise
+        },
+        expense: {
+          enabled: false,
+          recipients: [],
+          ...settings.expense
+        }
+      }));
     }
   }, [settings]);
 

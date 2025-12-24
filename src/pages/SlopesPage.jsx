@@ -1,6 +1,6 @@
 // pages/SlopesPage.jsx
 import { useState } from 'react';
-import { Mountain } from 'lucide-react';
+import { MountainSnow } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import LoginOverlay from '../components/auth/LoginOverlay';
 
@@ -29,7 +29,7 @@ export default function SlopesPage() {
       <header className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-[720px] mx-auto px-4 py-4">
           <div className="flex items-center gap-2 mb-3">
-            <Mountain className="text-blue-600" size={24} />
+            <MountainSnow className="text-blue-600" size={24} />
             <div>
               <h1 className="text-xl font-bold text-gray-900">슬로프 현황</h1>
               <p className="text-sm text-gray-600">휘닉스 평창 스노우파크</p>

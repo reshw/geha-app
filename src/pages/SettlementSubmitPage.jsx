@@ -1,6 +1,6 @@
 // src/pages/SettlementSubmitPage.jsx
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Camera,
@@ -25,11 +25,19 @@ const SettlementSubmitPage = () => {
   const navigate = useNavigate();
   const { user, isLoggedIn } = useAuth();
   const { selectedSpace } = useStore();
-  
+  const [searchParams] = useSearchParams();
+
+  // 수정 모드 판단
+  const receiptId = searchParams.get('receiptId');
+  const weekId = searchParams.get('weekId');
+  const isEditMode = !!receiptId && !!weekId;
+
   const [loading, setLoading] = useState(false);
+  const [loadingReceipt, setLoadingReceipt] = useState(isEditMode);
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [existingImageUrl, setExistingImageUrl] = useState(null);
   
   // 멤버 목록
   const [members, setMembers] = useState([]);
@@ -64,11 +72,51 @@ const SettlementSubmitPage = () => {
   }, [selectedSpace]);
 
   useEffect(() => {
-    if (user) {
+    if (user && !isEditMode) {
       setPaidBy(user.id);
       setPaidByName(user.displayName);
     }
-  }, [user]);
+  }, [user, isEditMode]);
+
+  // 수정 모드일 때 기존 영수증 데이터 로드
+  useEffect(() => {
+    if (isEditMode && selectedSpace && receiptId && weekId) {
+      loadReceipt();
+    }
+  }, [isEditMode, selectedSpace, receiptId, weekId]);
+
+  const loadReceipt = async () => {
+    try {
+      setLoadingReceipt(true);
+      const receipt = await settlementService.getReceipt(selectedSpace.id, weekId, receiptId);
+
+      // 기존 데이터 설정
+      setPaidBy(receipt.paidBy);
+      setPaidByName(receipt.paidByName);
+      setMemo(receipt.memo || '');
+      setExistingImageUrl(receipt.imageUrl);
+      setImagePreview(receipt.imageUrl);
+
+      // 항목 데이터 복원
+      const loadedItems = receipt.items.map((item, index) => ({
+        id: Date.now() + index,
+        itemName: item.itemName,
+        amount: item.amount.toString(),
+        splitAmong: item.splitAmong,
+        searchQuery: '',
+        showSearchDropdown: false,
+        expanded: true,
+      }));
+      setItems(loadedItems);
+
+    } catch (error) {
+      console.error('영수증 로드 실패:', error);
+      alert('영수증을 불러오는데 실패했습니다.');
+      navigate('/settlement');
+    } finally {
+      setLoadingReceipt(false);
+    }
+  };
 
   const loadMembers = async () => {
     if (!selectedSpace) return;
@@ -238,11 +286,11 @@ const SettlementSubmitPage = () => {
 
   // 제출 유효성 검사
   const validateForm = () => {
-    if (!imageFile) {
+    if (!imageFile && !existingImageUrl) {
       alert('영수증 사진을 첨부해주세요.');
       return false;
     }
-    
+
     for (const item of items) {
       if (!item.itemName.trim()) {
         alert('항목명을 입력해주세요.');
@@ -257,26 +305,27 @@ const SettlementSubmitPage = () => {
         return false;
       }
     }
-    
+
     return true;
   };
 
-  // 제출
+  // 제출/수정
   const handleSubmit = async () => {
     if (!validateForm()) return;
-    
+
     try {
       setLoading(true);
-      
-      // Cloudinary 이미지 업로드
-      setUploading(true);
-      const imageUrl = await uploadImageToCloudinary(imageFile);
-      setUploading(false);
-      
+
+      // 이미지 처리 (새로운 이미지가 있으면 업로드, 없으면 기존 URL 사용)
+      let imageUrl = existingImageUrl;
+      if (imageFile) {
+        setUploading(true);
+        imageUrl = await uploadImageToCloudinary(imageFile);
+        setUploading(false);
+      }
+
       // 영수증 데이터 준비
       const receiptData = {
-        submittedBy: user.id,
-        submittedByName: user.displayName,
         paidBy,
         paidByName,
         memo,
@@ -287,16 +336,24 @@ const SettlementSubmitPage = () => {
           splitAmong: item.splitAmong,
         })),
       };
-      
-      // 제출
-      await settlementService.submitReceipt(selectedSpace.id, receiptData);
-      
-      alert('영수증이 제출되었습니다! 🎉');
+
+      if (isEditMode) {
+        // 수정 모드
+        await settlementService.updateReceipt(selectedSpace.id, weekId, receiptId, receiptData);
+        alert('영수증이 수정되었습니다! ✏️');
+      } else {
+        // 제출 모드
+        receiptData.submittedBy = user.id;
+        receiptData.submittedByName = user.displayName;
+        await settlementService.submitReceipt(selectedSpace.id, receiptData);
+        alert('영수증이 제출되었습니다! 🎉');
+      }
+
       navigate('/settlement');
-      
+
     } catch (error) {
-      console.error('영수증 제출 실패:', error);
-      alert('영수증 제출에 실패했습니다. 다시 시도해주세요.');
+      console.error(isEditMode ? '영수증 수정 실패:' : '영수증 제출 실패:', error);
+      alert(isEditMode ? '영수증 수정에 실패했습니다. 다시 시도해주세요.' : '영수증 제출에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setLoading(false);
       setUploading(false);
@@ -327,6 +384,17 @@ const SettlementSubmitPage = () => {
     );
   }
 
+  if (loadingReceipt) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">영수증을 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       {/* 헤더 */}
@@ -338,7 +406,9 @@ const SettlementSubmitPage = () => {
           >
             <ArrowLeft className="w-6 h-6 text-gray-700" />
           </button>
-          <h1 className="text-xl font-bold text-gray-900">영수증 제출</h1>
+          <h1 className="text-xl font-bold text-gray-900">
+            {isEditMode ? '영수증 수정' : '영수증 제출'}
+          </h1>
         </div>
       </div>
 
@@ -707,12 +777,12 @@ const SettlementSubmitPage = () => {
           {loading || uploading ? (
             <>
               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-              <span>{uploading ? '이미지 업로드 중...' : '제출 중...'}</span>
+              <span>{uploading ? '이미지 업로드 중...' : (isEditMode ? '수정 중...' : '제출 중...')}</span>
             </>
           ) : (
             <>
               <Check className="w-5 h-5" />
-              <span>제출하기</span>
+              <span>{isEditMode ? '수정하기' : '제출하기'}</span>
             </>
           )}
         </button>

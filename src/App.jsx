@@ -15,6 +15,8 @@ import MigrationPage from './pages/MigrationPage';
 // 정산 페이지들
 import SettlementPage from './pages/SettlementPage';
 import SettlementSubmitPage from './pages/SettlementSubmitPage';
+import SettlementSchedulePage from './pages/SettlementSchedulePage';
+import TestDataPage from './pages/TestDataPage';
 
 // 스페이스 관리 페이지들
 import SpaceManagePage from './pages/SpaceManagePage';
@@ -26,6 +28,7 @@ import TransferManagerPage from './pages/TransferManagerPage';
 import SuperAdminPage from './pages/SuperAdminPage';
 import SlopesPage from './pages/SlopesPage';
 import EmailTestPage from './pages/EmailTestPage';
+import MorePage from './pages/MorePage';
 
 
 function App() {
@@ -40,6 +43,7 @@ function App() {
             <Route path="/praise" element={<PraisePage />} />
             <Route path="/expenses" element={<ExpenseListPage />} />
             <Route path="/slopes" element={<SlopesPage />} />
+            <Route path="/more" element={<MorePage />} />
           </Route>
 
           {/* 하단 네비게이션이 없는 독립 페이지들 */}
@@ -50,6 +54,8 @@ function App() {
           <Route path="/join/:code" element={<JoinSpacePage />} />
           <Route path="/expenses/request" element={<ExpenseRequestPage />} />
           <Route path="/settlement/submit" element={<SettlementSubmitPage />} />
+          <Route path="/settlement/schedule" element={<SettlementSchedulePage />} />
+          <Route path="/test-data" element={<TestDataPage />} />
           <Route path="/terms" element={<TermsOfServicePage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/migration" element={<MigrationPage />} />
