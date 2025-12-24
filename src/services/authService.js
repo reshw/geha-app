@@ -211,7 +211,8 @@ class AuthService {
               const d = s.data();
               profiles[userIdStr] = {
                 displayName: d?.displayName ?? '',
-                profileImage: d?.profileImage ?? ''
+                profileImage: d?.profileImage ?? '',
+                gender: d?.gender ?? ''
               };
             }
           } catch (e) {

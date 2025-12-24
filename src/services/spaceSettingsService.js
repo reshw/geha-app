@@ -283,6 +283,217 @@ const spaceSettingsService = {
       console.error('❌ 대기 중인 신청 조회 실패:', error);
       throw error;
     }
+  },
+
+  /**
+   * 슈퍼 어드민: 활성화된 알림톡 스페이스 목록 조회
+   */
+  async getActiveAlimtalkSpaces() {
+    try {
+      console.log('📋 활성화된 알림톡 스페이스 조회 시작');
+
+      // 모든 스페이스 조회
+      const spacesRef = collection(db, 'spaces');
+      const spacesSnapshot = await getDocs(spacesRef);
+
+      const activeSpaces = [];
+
+      // 각 스페이스의 알림톡 설정 확인
+      for (const spaceDoc of spacesSnapshot.docs) {
+        const spaceId = spaceDoc.id;
+        const spaceData = spaceDoc.data();
+
+        // 알림톡 설정 조회
+        const alimtalkRef = doc(db, `spaces/${spaceId}/settings`, 'alimtalk');
+        const alimtalkDoc = await getDoc(alimtalkRef);
+
+        if (alimtalkDoc.exists()) {
+          const alimtalkData = alimtalkDoc.data();
+
+          // enabled: true인 경우만 추가
+          if (alimtalkData.enabled === true) {
+            activeSpaces.push({
+              spaceId,
+              spaceName: spaceData.name || '이름 없음',
+              alimtalkSettings: alimtalkData,
+              spaceData
+            });
+          }
+        }
+      }
+
+      console.log(`✅ 활성화된 알림톡 스페이스 ${activeSpaces.length}개 발견`);
+
+      // 승인일 기준 내림차순 정렬
+      activeSpaces.sort((a, b) => {
+        const aDate = a.alimtalkSettings.approvedAt?.toDate?.() || new Date(0);
+        const bDate = b.alimtalkSettings.approvedAt?.toDate?.() || new Date(0);
+        return bDate - aDate;
+      });
+
+      return activeSpaces;
+    } catch (error) {
+      console.error('❌ 활성화된 알림톡 스페이스 조회 실패:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 슈퍼 어드민: 알림톡 강제 비활성화
+   */
+  async superAdminDeactivateAlimtalk(spaceId, adminId, adminName, reason) {
+    try {
+      console.log('🔒 슈퍼 어드민 알림톡 비활성화 시작:', { spaceId, adminId });
+
+      const alimtalkRef = doc(db, `spaces/${spaceId}/settings`, 'alimtalk');
+
+      const settingsData = {
+        enabled: false,
+        status: 'deactivated_by_admin',
+        deactivatedAt: new Date(),
+        deactivatedBy: {
+          id: adminId,
+          displayName: adminName
+        },
+        deactivationReason: reason,
+        updatedAt: new Date()
+      };
+
+      await updateDoc(alimtalkRef, settingsData);
+
+      console.log('✅ 슈퍼 어드민 알림톡 비활성화 완료');
+
+      return { success: true };
+    } catch (error) {
+      console.error('❌ 슈퍼 어드민 알림톡 비활성화 실패:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 게스트 정책 조회
+   */
+  async getGuestPolicy(spaceId) {
+    try {
+      console.log('📋 게스트 정책 조회:', spaceId);
+
+      const spaceRef = doc(db, 'spaces', spaceId);
+      const spaceDoc = await getDoc(spaceRef);
+
+      if (!spaceDoc.exists()) {
+        throw new Error('스페이스를 찾을 수 없습니다.');
+      }
+
+      const data = spaceDoc.data();
+
+      return {
+        accountBank: data.accountBank || '',
+        accountNumber: data.accountNumber || '',
+        accountHolder: data.accountHolder || '',
+        guestPricePerNight: data.guestPricePerNight || 30000,
+      };
+    } catch (error) {
+      console.error('❌ 게스트 정책 조회 실패:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 게스트 정책 업데이트
+   */
+  async updateGuestPolicy(spaceId, policyData, userId, userName) {
+    try {
+      console.log('💾 게스트 정책 업데이트:', { spaceId, policyData });
+
+      const spaceRef = doc(db, 'spaces', spaceId);
+
+      const updateData = {
+        accountBank: policyData.accountBank,
+        accountNumber: policyData.accountNumber,
+        accountHolder: policyData.accountHolder,
+        guestPricePerNight: policyData.guestPricePerNight,
+        guestPolicyUpdatedAt: new Date(),
+        guestPolicyUpdatedBy: {
+          id: userId,
+          displayName: userName
+        }
+      };
+
+      await updateDoc(spaceRef, updateData);
+
+      console.log('✅ 게스트 정책 업데이트 완료');
+
+      return { success: true };
+    } catch (error) {
+      console.error('❌ 게스트 정책 업데이트 실패:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 이메일 알림 설정 조회
+   */
+  async getEmailSettings(spaceId) {
+    try {
+      console.log('📧 이메일 알림 설정 조회:', spaceId);
+
+      const emailRef = doc(db, `spaces/${spaceId}/settings`, 'email');
+      const emailDoc = await getDoc(emailRef);
+
+      if (!emailDoc.exists()) {
+        // 기본값 반환 (모두 비활성화)
+        return {
+          reservation: {
+            enabled: false,
+            types: [],
+            recipients: []
+          },
+          settlement: {
+            enabled: false,
+            recipients: []
+          },
+          praise: {
+            enabled: false,
+            recipients: []
+          },
+          expense: {
+            enabled: false,
+            recipients: []
+          }
+        };
+      }
+
+      return emailDoc.data();
+    } catch (error) {
+      console.error('❌ 이메일 알림 설정 조회 실패:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 이메일 알림 설정 업데이트
+   */
+  async updateEmailSettings(spaceId, settings, userId) {
+    try {
+      console.log('💾 이메일 알림 설정 업데이트:', { spaceId, settings });
+
+      const emailRef = doc(db, `spaces/${spaceId}/settings`, 'email');
+
+      const updateData = {
+        ...settings,
+        updatedAt: new Date(),
+        updatedBy: userId
+      };
+
+      await setDoc(emailRef, updateData);
+
+      console.log('✅ 이메일 알림 설정 업데이트 완료');
+
+      return { success: true };
+    } catch (error) {
+      console.error('❌ 이메일 알림 설정 업데이트 실패:', error);
+      throw error;
+    }
   }
 };
 

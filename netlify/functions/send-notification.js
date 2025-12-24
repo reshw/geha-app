@@ -1,6 +1,6 @@
 /**
  * NHN Cloud 카카오 알림톡 발송 Netlify Function
- * 
+ *
  * 환경변수 필요:
  * - NHN_APPKEY
  * - NHN_SECRET_KEY
@@ -8,6 +8,7 @@
  * - NHN_PLUS_FRIEND_ID
  * - NHN_SENDER_KEY
  * - NHN_TEMPLATE_GUEST_CONFIRM
+ * - NHN_TEMPLATE_SETTLEMENT_COMPLETE
  */
 
 const fetch = require('node-fetch');
@@ -83,21 +84,45 @@ exports.handler = async (event) => {
     }
 
     // 알림톡 타입별 처리
-    const { type, reservationData } = data;
+    const { type, reservationData, settlementData } = data;
 
     let templateCode;
     let templateParams = {};
+    let recipientNo;
 
     switch (type) {
       case 'guest_confirmation':
         templateCode = NHN_TEMPLATE_GUEST_CONFIRM;
         templateParams = createGuestConfirmationParams(reservationData);
+        recipientNo = reservationData.phone;
+        break;
+
+      case 'settlement_receive':
+        templateCode = 'JH8637'; // 받을 돈 템플릿
+        templateParams = createSettlementReceiveParams(settlementData);
+        recipientNo = settlementData.phone;
+        console.log('📞 정산 받을 돈 알림 발송:', {
+          name: settlementData.name,
+          phone: recipientNo,
+          balance: settlementData.balance
+        });
+        break;
+
+      case 'settlement_pay':
+        templateCode = 'JH8638'; // 낼 돈 템플릿
+        templateParams = createSettlementPayParams(settlementData);
+        recipientNo = settlementData.phone;
+        console.log('📞 정산 낼 돈 알림 발송:', {
+          name: settlementData.name,
+          phone: recipientNo,
+          balance: settlementData.balance
+        });
         break;
 
       // 추가 템플릿 타입들...
       // case 'guest_checkin':
       // case 'reservation_cancelled':
-      
+
       default:
         throw new Error(`알 수 없는 알림톡 타입: ${type}`);
     }
@@ -109,7 +134,7 @@ exports.handler = async (event) => {
       apiUrl: NHN_API_URL,
       senderKey: NHN_SENDER_KEY,
       templateCode,
-      recipientNo: reservationData.phone,
+      recipientNo,
       templateParams,
     });
 
@@ -145,14 +170,15 @@ exports.handler = async (event) => {
  * 게스트 예약 확인 템플릿 파라미터 생성
  */
 function createGuestConfirmationParams(data) {
-  const { 
-    name, 
+  const {
+    name,
     loungeName,
-    checkIn, 
-    checkOut, 
-    nights, 
-    days, 
-    cost, 
+    checkIn,
+    checkOut,
+    nights,
+    days,
+    cost,
+    pricePerNightper10000,
     accountBank,      // 변경: accountInfo → accountBank
     accountNumber,    // 추가
     accountHolder,    // 추가
@@ -166,6 +192,7 @@ function createGuestConfirmationParams(data) {
     '입실일': checkIn,
     '퇴실일': checkOut,
     '박수': String(nights),
+    '단가': pricePerNightper10000, // 1박 요금 (만원 단위)
     '일수': String(days),
     '비용': cost.toLocaleString(),
     '은행명': accountBank,        // 변경
@@ -175,6 +202,68 @@ function createGuestConfirmationParams(data) {
   };
 
   console.log('🏷️ 템플릿 파라미터:', params);
+
+  return params;
+}
+
+/**
+ * 정산 완료 - 받을 돈 템플릿 파라미터 생성 (JH8637)
+ * 변수: 성명, 라운지명, 받을금액, 납부금액, 사용금액, 매니저연락처
+ */
+function createSettlementReceiveParams(data) {
+  const {
+    name,
+    loungeName,
+    balance,
+    totalPaid,
+    totalOwed,
+    managerPhone
+  } = data;
+
+  const params = {
+    '성명': name,
+    '라운지명': loungeName,
+    '받을금액': balance.toLocaleString(),
+    '납부금액': totalPaid.toLocaleString(),
+    '사용금액': totalOwed.toLocaleString(),
+    '매니저연락처': managerPhone,
+  };
+
+  console.log('🏷️ 정산 받을 돈 템플릿 파라미터 (JH8637):', params);
+
+  return params;
+}
+
+/**
+ * 정산 완료 - 낼 돈 템플릿 파라미터 생성 (JH8638)
+ * 변수: 성명, 라운지명, 정산금액, 납부금액, 사용금액, 매니저연락처, 은행명, 계좌번호, 예금주명
+ */
+function createSettlementPayParams(data) {
+  const {
+    name,
+    loungeName,
+    balance,
+    totalPaid,
+    totalOwed,
+    managerPhone,
+    accountBank,
+    accountNumber,
+    accountHolder
+  } = data;
+
+  const params = {
+    '성명': name,
+    '라운지명': loungeName,
+    '정산금액': balance.toLocaleString(),
+    '납부금액': totalPaid.toLocaleString(),
+    '사용금액': totalOwed.toLocaleString(),
+    '매니저연락처': managerPhone,
+    '은행명': accountBank,
+    '계좌번호': accountNumber,
+    '예금주명': accountHolder,
+  };
+
+  console.log('🏷️ 정산 낼 돈 템플릿 파라미터 (JH8638):', params);
 
   return params;
 }

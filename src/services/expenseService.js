@@ -151,8 +151,57 @@ const expenseService = {
       };
       
       await setDoc(expenseRef, expenseData);
-      
+
       console.log('✅ 운영비 청구 생성 완료:', expenseId);
+
+      // 🔥 이메일 알림 발송
+      try {
+        console.log('📧 운영비 청구 이메일 발송 시작...');
+
+        // 스페이스 정보 가져오기
+        const spaceDocRef = doc(db, 'spaces', spaceId);
+        const spaceDoc = await getDoc(spaceDocRef);
+        const spaceData = spaceDoc.exists() ? spaceDoc.data() : {};
+
+        // 이메일 알림 설정 가져오기
+        const emailSettingsRef = doc(db, `spaces/${spaceId}/settings`, 'email');
+        const emailSettingsDoc = await getDoc(emailSettingsRef);
+        const emailSettings = emailSettingsDoc.exists() ? emailSettingsDoc.data() : null;
+
+        console.log('이메일 알림 설정:', emailSettings);
+
+        if (emailSettings?.expense?.enabled && emailSettings.expense.recipients.length > 0) {
+          console.log('📧 운영비 청구 이메일 발송 시작');
+
+          const emailResponse = await fetch('/.netlify/functions/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'expense',
+              userName: userName,
+              usedAt: usedAt,
+              createdAt: now,
+              totalAmount: totalAmount,
+              items: expenseData.items,
+              memo: memo,
+              imageUrl: imageUrl,
+              spaceName: spaceData.name || '라운지',
+              recipients: {
+                to: emailSettings.expense.recipients[0],
+                cc: emailSettings.expense.recipients.slice(1)
+              }
+            })
+          });
+
+          const emailResult = await emailResponse.json();
+          console.log('✅ 운영비 청구 이메일 발송 결과:', emailResult);
+        } else {
+          console.log('ℹ️ 운영비 청구 이메일 알림이 비활성화되어 있거나 수신자 없음');
+        }
+      } catch (emailError) {
+        console.error('⚠️ 운영비 청구 이메일 발송 실패 (청구 등록은 완료됨):', emailError);
+      }
+
       return { id: expenseId, ...expenseData };
     } catch (error) {
       console.error('❌ 운영비 청구 생성 실패:', error);

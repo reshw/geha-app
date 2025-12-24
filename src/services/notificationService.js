@@ -1,8 +1,10 @@
 /**
  * 알림 서비스 (NHN Cloud 카카오 알림톡)
- * 
+ *
  * 기존 Solapi 코드를 NHN Cloud로 전환
  */
+
+import spaceSettingsService from './spaceSettingsService';
 
 const NETLIFY_FUNCTION_URL = '/.netlify/functions/send-notification';
 
@@ -55,6 +57,24 @@ export async function sendGuestConfirmation(reservationData) {
       throw new Error('예약자 이름이 없습니다.');
     }
 
+    if (!reservationData.spaceId) {
+      throw new Error('스페이스 ID가 없습니다.');
+    }
+
+    // 게스트 정책 정보 가져오기 (계좌 정보 + 1박 요금)
+    let guestPolicy;
+    try {
+      guestPolicy = await spaceSettingsService.getGuestPolicy(reservationData.spaceId);
+    } catch (error) {
+      console.warn('게스트 정책 조회 실패, 기본값 사용:', error);
+      guestPolicy = {
+        accountBank: '카카오뱅크',
+        accountNumber: '7942-24-38529',
+        accountHolder: '이수진',
+        guestPricePerNight: 30000
+      };
+    }
+
     // 날짜 포맷팅 (YYYY-MM-DD)
     const checkIn = formatDate(reservationData.checkIn);
     const checkOut = formatDate(reservationData.checkOut);
@@ -63,16 +83,18 @@ export async function sendGuestConfirmation(reservationData) {
     const nights = calculateNights(reservationData.checkIn, reservationData.checkOut);
     const days = nights + 1;
 
-    // 금액 계산 (1박 30,000원)
-    const cost = nights * 30000;
+    // 금액 계산 (동적 1박 요금 사용)
+    const pricePerNight = guestPolicy.guestPricePerNight || 30000;
+    const cost = nights * pricePerNight;
+    const pricePerNightper10000 = pricePerNight / 10000;
 
     // 라운지명 (전달받거나 기본값)
     const loungeName = reservationData.spaceName || '조강308호';
 
-    // 계좌 정보 (분리된 필드로 전달받거나 기본값)
-    const accountBank = reservationData.accountBank || '카카오뱅크';
-    const accountNumber = reservationData.accountNumber || '7942-24-38529';
-    const accountHolder = reservationData.accountHolder || '이수진';
+    // 계좌 정보 (게스트 정책에서 가져옴)
+    const accountBank = guestPolicy.accountBank;
+    const accountNumber = guestPolicy.accountNumber;
+    const accountHolder = guestPolicy.accountHolder;
 
     // 현관번호 = 휴대폰 뒷자리 4자리
     // 예: 010-1234-5678 → "5678" 전달 → 템플릿에서 "567811*" 표시
@@ -87,6 +109,7 @@ export async function sendGuestConfirmation(reservationData) {
       nights,
       days,
       cost,
+      pricePerNightper10000,
       accountBank,
       accountNumber,
       accountHolder,
@@ -110,6 +133,7 @@ export async function sendGuestConfirmation(reservationData) {
           nights,
           days,
           cost,
+          pricePerNightper10000,
           accountBank,      // 변경
           accountNumber,    // 추가
           accountHolder,    // 추가
@@ -180,6 +204,169 @@ export async function sendCancellationNotice(reservationData) {
 }
 
 /**
+ * 정산 완료 알림톡 발송
+ * 각 참여자에게 개별적으로 정산 결과 전송
+ * - balance > 0: 받을 돈 있음 (JH8637)
+ * - balance < 0: 낼 돈 있음 (JH8638)
+ * - balance === 0: 알림 발송 안 함
+ */
+export async function sendSettlementComplete(settlementData, options = {}) {
+  try {
+    console.log('💰 정산 완료 알림톡 발송 시작:', {
+      spaceId: settlementData.spaceId,
+      weekId: settlementData.weekId,
+      participantCount: Object.keys(settlementData.participants || {}).length
+    });
+
+    // 알림톡이 비활성화된 경우 건너뛰기
+    if (!options.alimtalkEnabled) {
+      console.log('⚠️ 알림톡 비활성화 상태 - 정산 알림 발송 건너뜀');
+      return { success: true, skipped: true, reason: 'alimtalk_disabled' };
+    }
+
+    // 스페이스 정보 가져오기 (라운지명)
+    const spaceData = options.spaceData || {};
+    const loungeName = spaceData.name || settlementData.spaceName || '라운지';
+
+    // 매니저 전화번호 (필수)
+    const managerPhone = settlementData.managerPhone;
+    if (!managerPhone) {
+      console.warn('⚠️ 매니저 전화번호가 없습니다. 정산 알림을 발송할 수 없습니다.');
+      return { success: false, error: 'manager_phone_missing' };
+    }
+
+    // 게스트 정책 정보 가져오기 (계좌 정보)
+    let guestPolicy;
+    try {
+      guestPolicy = await spaceSettingsService.getGuestPolicy(settlementData.spaceId);
+    } catch (error) {
+      console.warn('게스트 정책 조회 실패, 기본값 사용:', error);
+      guestPolicy = {
+        accountBank: '카카오뱅크',
+        accountNumber: '7942-24-38529',
+        accountHolder: '이수진',
+      };
+    }
+
+    const results = [];
+    const errors = [];
+    let skippedCount = 0;
+
+    // 참여자 목록 상세 로그
+    console.log('📋 참여자 목록 상세:', Object.entries(settlementData.participants).map(([userId, p]) => ({
+      userId,
+      name: p.name,
+      phone: p.phone || '❌ 없음',
+      balance: p.balance
+    })));
+
+    // 각 참여자에게 개별 발송
+    for (const [userId, participant] of Object.entries(settlementData.participants)) {
+      const balance = participant.balance || 0;
+
+      console.log(`👤 참여자 처리 중:`, {
+        userId,
+        name: participant.name,
+        phone: participant.phone || '❌ 없음',
+        balance,
+        hasPhone: !!participant.phone
+      });
+
+      // balance가 0이면 스킵
+      if (balance === 0) {
+        console.log(`ℹ️ [${participant.name}] 정산 완료 (balance: 0) - 발송 건너뜀`);
+        skippedCount++;
+        continue;
+      }
+
+      // 전화번호가 없으면 스킵
+      if (!participant.phone) {
+        console.log(`⚠️ [${participant.name}] 전화번호 없음 - 발송 건너뜀`, {
+          participantObject: participant
+        });
+        skippedCount++;
+        continue;
+      }
+
+      try {
+        // balance에 따라 type 결정
+        let notificationType;
+        if (balance > 0) {
+          notificationType = 'settlement_receive'; // JH8637
+          console.log(`📱 [${participant.name}] 받을 돈 알림 발송 (${balance.toLocaleString()}원)`);
+        } else {
+          notificationType = 'settlement_pay'; // JH8638
+          console.log(`📱 [${participant.name}] 낼 돈 알림 발송 (${Math.abs(balance).toLocaleString()}원)`);
+        }
+
+        // Netlify Function 호출
+        const response = await fetch(NETLIFY_FUNCTION_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            type: notificationType,
+            settlementData: {
+              name: participant.name,
+              phone: participant.phone,
+              loungeName,
+              weekId: settlementData.weekId,
+              totalPaid: participant.totalPaid || 0,
+              totalOwed: participant.totalOwed || 0,
+              balance: Math.abs(balance),
+              managerPhone,
+              accountBank: guestPolicy.accountBank,
+              accountNumber: guestPolicy.accountNumber,
+              accountHolder: guestPolicy.accountHolder,
+            },
+          }),
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          console.log(`✅ [${participant.name}] 정산 알림 발송 성공`);
+          results.push({
+            userId,
+            name: participant.name,
+            phone: participant.phone,
+            balance: participant.balance,
+            type: notificationType,
+            status: 'sent'
+          });
+        } else {
+          throw new Error(result.error || '알림톡 발송 실패');
+        }
+
+      } catch (error) {
+        console.error(`❌ [${participant.name}] 정산 알림 발송 실패:`, error);
+        errors.push({
+          userId,
+          name: participant.name,
+          error: error.message
+        });
+      }
+    }
+
+    return {
+      success: true,
+      message: `${results.length}명에게 정산 알림을 발송했습니다.`,
+      sentCount: results.length,
+      errorCount: errors.length,
+      skippedCount,
+      results,
+      errors
+    };
+
+  } catch (error) {
+    console.error('❌ 정산 완료 알림톡 발송 실패:', error);
+    // 알림 실패해도 정산 완료는 성공으로 처리
+    return { success: false, error: error.message };
+  }
+}
+
+/**
  * 날짜 포맷팅 (YYYY-MM-DD)
  */
 function formatDate(date) {
@@ -213,18 +400,42 @@ function calculateNights(checkIn, checkOut) {
 }
 
 /**
- * 전화번호 포맷팅 (하이픈 추가)
+ * 전화번호 정규화 (다양한 형식 → 010-XXXX-XXXX)
+ *
+ * 입력 형식:
+ * - +82 10-3114-8626
+ * - 01031148626
+ * - 010-3114-8626
+ *
+ * 출력: 010-3114-8626
  */
-export function formatPhoneNumber(phone) {
-  // 하이픈 제거
-  const cleaned = phone.replace(/-/g, '');
+export function normalizePhoneNumber(phone) {
+  if (!phone) return null;
 
-  // 010-XXXX-XXXX 형식으로 변환
+  // 모든 공백, 하이픈, + 제거
+  let cleaned = phone.replace(/[\s\-+]/g, '');
+
+  // +82로 시작하면 82를 0으로 변환
+  if (cleaned.startsWith('82')) {
+    cleaned = '0' + cleaned.slice(2);
+  }
+
+  // 010으로 시작하는 11자리 숫자인지 확인
   if (cleaned.length === 11 && cleaned.startsWith('010')) {
     return `${cleaned.slice(0, 3)}-${cleaned.slice(3, 7)}-${cleaned.slice(7)}`;
   }
 
-  return phone;
+  // 형식이 올바르지 않으면 null 반환
+  console.warn('⚠️ 올바르지 않은 전화번호 형식:', phone);
+  return null;
+}
+
+/**
+ * 전화번호 포맷팅 (하이픈 추가)
+ * @deprecated normalizePhoneNumber 사용 권장
+ */
+export function formatPhoneNumber(phone) {
+  return normalizePhoneNumber(phone);
 }
 
 /**

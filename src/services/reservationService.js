@@ -133,37 +133,87 @@ class ReservationService {
       // 🔥 알림 발송 추가 (이메일 + 알림톡)
       try {
         console.log('📧 알림 발송 시작...');
-        
+
         // Firebase에서 알림톡 설정 가져오기
         const alimtalkDocRef = doc(db, 'spaces', spaceId, 'settings', 'alimtalk');
         const alimtalkDoc = await getDoc(alimtalkDocRef);
         const alimtalkData = alimtalkDoc.exists() ? alimtalkDoc.data() : {};
         const alimtalkEnabled = alimtalkData.enabled === true; // enabled 필드 확인
-        
+
         // 스페이스 정보 가져오기 (이름, 계좌번호)
         const spaceDocRef = doc(db, 'spaces', spaceId);
         const spaceDoc = await getDoc(spaceDocRef);
         const spaceData = spaceDoc.exists() ? spaceDoc.data() : {};
-        
+
+        // 이메일 알림 설정 가져오기
+        const emailSettingsRef = doc(db, 'spaces', spaceId, 'settings', 'email');
+        const emailSettingsDoc = await getDoc(emailSettingsRef);
+        const emailSettings = emailSettingsDoc.exists() ? emailSettingsDoc.data() : null;
+
         console.log('알림톡 활성화 여부:', alimtalkEnabled);
         console.log('알림톡 설정 데이터:', alimtalkData);
         console.log('스페이스 데이터:', spaceData);
-        
+        console.log('이메일 알림 설정:', emailSettings);
+
         const notificationData = {
           ...reservationData,
-          spaceName: spaceData.name || '조강308호',          
-          accountBank: spaceData.accountBank || '카카오뱅크 7942-24-38529 이수진',  // ← 추가
-          accountNumber: spaceData.accountNumber || '카카오뱅크 7942-24-38529 이수진',  // ← 추가
-          accountHolder: spaceData.accountHolder || '카카오뱅크 7942-24-38529 이수진',  // ← 추가
+          spaceId: spaceId,  // ← notificationService에서 게스트 정책 조회에 필요
+          spaceName: spaceData.name || '조강308호',
           hostDisplayName: reservationData.hostDisplayName || ''
         };
-        
+
+        // 알림톡 발송
         const result = await notificationService.sendReservationConfirm(
           notificationData,
           { alimtalkEnabled }
         );
-        
-        console.log('📬 알림 발송 결과:', result);
+
+        console.log('📬 알림톡 발송 결과:', result);
+
+        // 이메일 발송
+        if (emailSettings?.reservation?.enabled) {
+          const reservationType = reservationData.type; // 'guest', 'shareholder', 'manager', 'sub_manager'
+          const shouldSendEmail = emailSettings.reservation.types.includes(reservationType);
+
+          if (shouldSendEmail && emailSettings.reservation.recipients.length > 0) {
+            console.log(`📧 이메일 발송 시작 (${reservationType} 예약)`);
+
+            try {
+              const emailResponse = await fetch('/.netlify/functions/send-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  type: 'guest_reservation',
+                  name: reservationData.name,
+                  phone: reservationData.phone,
+                  checkIn: reservationData.checkIn,
+                  checkOut: reservationData.checkOut,
+                  gender: reservationData.gender,
+                  birthYear: reservationData.birthYear,
+                  hostDisplayName: reservationData.hostDisplayName,
+                  memo: reservationData.memo,
+                  spaceName: spaceData.name || '조강308호',
+                  accountInfo: spaceData.accountBank && spaceData.accountNumber
+                    ? `${spaceData.accountBank} ${spaceData.accountNumber} ${spaceData.accountHolder}`
+                    : undefined,
+                  recipients: {
+                    to: emailSettings.reservation.recipients[0],
+                    cc: emailSettings.reservation.recipients.slice(1)
+                  }
+                })
+              });
+
+              const emailResult = await emailResponse.json();
+              console.log('✅ 이메일 발송 결과:', emailResult);
+            } catch (emailError) {
+              console.error('⚠️ 이메일 발송 실패 (예약은 완료됨):', emailError);
+            }
+          } else {
+            console.log(`ℹ️ 이메일 발송 건너뜀: ${reservationType} 타입이 설정에 포함되지 않음 또는 수신자 없음`);
+          }
+        } else {
+          console.log('ℹ️ 이메일 알림이 비활성화되어 있음');
+        }
       } catch (notifyError) {
         // 알림 실패해도 예약은 성공으로 처리
         console.error('⚠️ 알림 발송 실패 (예약은 완료됨):', notifyError);
@@ -183,6 +233,59 @@ class ReservationService {
 
   const reserveRef = doc(db, 'spaces', spaceId, 'reserves', reservationId);
   await deleteDoc(reserveRef);
+  }
+
+  // 통계용: 전체 예약 데이터 조회 (기간 필터링 가능)
+  async getAllReservations(spaceId, startDate = null, endDate = null) {
+    try {
+      console.log('📊 통계용 예약 조회 시작, spaceId:', spaceId);
+
+      const reservesRef = collection(db, `spaces/${spaceId}/reserves`);
+
+      let q;
+
+      if (startDate && endDate) {
+        // 기간 필터링
+        const start = Timestamp.fromDate(startDate);
+        const end = Timestamp.fromDate(endDate);
+
+        q = query(
+          reservesRef,
+          where('checkIn', '<=', end),
+          where('checkOut', '>=', start),
+          orderBy('checkIn', 'desc')
+        );
+      } else {
+        // 전체 조회
+        q = query(reservesRef, orderBy('checkIn', 'desc'));
+      }
+
+      const snapshot = await getDocs(q);
+
+      console.log('📋 조회된 예약 수:', snapshot.size);
+
+      const reservations = [];
+
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+
+        if (!data.checkIn || !data.checkOut) {
+          return;
+        }
+
+        reservations.push({
+          id: docSnap.id,
+          ...data,
+          checkIn: data.checkIn.toDate(),
+          checkOut: data.checkOut.toDate()
+        });
+      });
+
+      return reservations;
+    } catch (error) {
+      console.error('❌ getAllReservations 에러:', error);
+      return [];
+    }
   }
 }
 

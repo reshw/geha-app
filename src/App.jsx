@@ -12,14 +12,26 @@ import ExpenseListPage from './pages/ExpenseListPage';
 import ExpenseRequestPage from './pages/ExpenseRequestPage';
 import MigrationPage from './pages/MigrationPage';
 
+// 정산 페이지들
+import SettlementPage from './pages/SettlementPage';
+import SettlementSubmitPage from './pages/SettlementSubmitPage';
+import SettlementSchedulePage from './pages/SettlementSchedulePage';
+import TestDataPage from './pages/TestDataPage';
+
 // 스페이스 관리 페이지들
 import SpaceManagePage from './pages/SpaceManagePage';
 import SpaceSettingsPage from './pages/SpaceSettingsPage';
 import MemberManagePage from './pages/MemberManagePage';
 import AlimtalkSettingsPage from './pages/AlimtalkSettingsPage';
+import GuestPolicySettingsPage from './pages/GuestPolicySettingsPage';
 import TransferManagerPage from './pages/TransferManagerPage';
 import SuperAdminPage from './pages/SuperAdminPage';
 import SlopesPage from './pages/SlopesPage';
+import EmailTestPage from './pages/EmailTestPage';
+import MorePage from './pages/MorePage';
+import IntroductionPage from './pages/IntroductionPage';
+import UserGuidePage from './pages/UserGuidePage';
+import ReservationStatsPage from './pages/ReservationStatsPage';
 
 
 function App() {
@@ -30,9 +42,11 @@ function App() {
           {/* 하단 네비게이션이 있는 메인 페이지들 */}
           <Route element={<MainLayout />}>
             <Route path="/" element={<WeeklyList />} />
+            <Route path="/settlement" element={<SettlementPage />} />
             <Route path="/praise" element={<PraisePage />} />
             <Route path="/expenses" element={<ExpenseListPage />} />
             <Route path="/slopes" element={<SlopesPage />} />
+            <Route path="/more" element={<MorePage />} />
           </Route>
 
           {/* 하단 네비게이션이 없는 독립 페이지들 */}
@@ -42,8 +56,14 @@ function App() {
           <Route path="/join" element={<JoinSpacePage />} />
           <Route path="/join/:code" element={<JoinSpacePage />} />
           <Route path="/expenses/request" element={<ExpenseRequestPage />} />
+          <Route path="/settlement/submit" element={<SettlementSubmitPage />} />
+          <Route path="/settlement/schedule" element={<SettlementSchedulePage />} />
+          <Route path="/test-data" element={<TestDataPage />} />
           <Route path="/terms" element={<TermsOfServicePage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/introduction" element={<IntroductionPage />} />
+          <Route path="/user-guide" element={<UserGuidePage />} />
+          <Route path="/reservation-stats" element={<ReservationStatsPage />} />
           <Route path="/migration" element={<MigrationPage />} />
           
           {/* 스페이스 관리 */}
@@ -51,10 +71,14 @@ function App() {
           <Route path="/space/settings" element={<SpaceSettingsPage />} />
           <Route path="/space/members" element={<MemberManagePage />} />
           <Route path="/space/alimtalk" element={<AlimtalkSettingsPage />} />
+          <Route path="/space/guestpolicy" element={<GuestPolicySettingsPage />} />
           <Route path="/space/transfer-manager" element={<TransferManagerPage />} />
           
           {/* 슈퍼 어드민 */}
           <Route path="/super-admin" element={<SuperAdminPage />} />
+
+          {/* 이메일 테스트 */}
+          <Route path="/email-test" element={<EmailTestPage />} />
         </Routes>
       </div>
     </BrowserRouter>

@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import useStore from '../store/useStore';
-import { ArrowLeft, Settings, Users, Bell, Info, Crown } from 'lucide-react';
+import { ArrowLeft, Settings, Users, Bell, Info, Crown, DollarSign } from 'lucide-react';
 import { canManageSpace } from '../utils/permissions';
 import { USER_TYPES } from '../utils/constants';
 import { useEffect } from 'react';
@@ -57,6 +57,14 @@ export default function SpaceManagePage() {
       icon: Bell,
       color: 'from-green-500 to-green-600',
       path: '/space/alimtalk'
+    },
+    {
+      id: 'guest-policy',
+      title: '게스트 정책 관리',
+      description: '게스트 요금 및 계좌 정보 설정',
+      icon: DollarSign,
+      color: 'from-yellow-500 to-orange-600',
+      path: '/space/guestpolicy'
     },
     {
       id: 'transfer-manager',
