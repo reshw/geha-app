@@ -830,9 +830,10 @@ const SettlementPage = () => {
       {settlement?.status === 'active' && receipts.length > 0 && (
         <button
           onClick={() => navigate('/settlement/submit')}
-          className="fixed right-4 bottom-20 w-14 h-14 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center transition-all active:scale-95 z-40"
+          className="fixed right-4 bottom-32 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg px-4 py-3 flex items-center gap-2 transition-all active:scale-95 z-40"
         >
-          <Plus size={24} />
+          <Plus size={20} />
+          <span className="font-semibold text-sm">영수증 제출</span>
         </button>
       )}
 

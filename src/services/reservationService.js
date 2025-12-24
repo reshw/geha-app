@@ -234,6 +234,59 @@ class ReservationService {
   const reserveRef = doc(db, 'spaces', spaceId, 'reserves', reservationId);
   await deleteDoc(reserveRef);
   }
+
+  // 통계용: 전체 예약 데이터 조회 (기간 필터링 가능)
+  async getAllReservations(spaceId, startDate = null, endDate = null) {
+    try {
+      console.log('📊 통계용 예약 조회 시작, spaceId:', spaceId);
+
+      const reservesRef = collection(db, `spaces/${spaceId}/reserves`);
+
+      let q;
+
+      if (startDate && endDate) {
+        // 기간 필터링
+        const start = Timestamp.fromDate(startDate);
+        const end = Timestamp.fromDate(endDate);
+
+        q = query(
+          reservesRef,
+          where('checkIn', '<=', end),
+          where('checkOut', '>=', start),
+          orderBy('checkIn', 'desc')
+        );
+      } else {
+        // 전체 조회
+        q = query(reservesRef, orderBy('checkIn', 'desc'));
+      }
+
+      const snapshot = await getDocs(q);
+
+      console.log('📋 조회된 예약 수:', snapshot.size);
+
+      const reservations = [];
+
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+
+        if (!data.checkIn || !data.checkOut) {
+          return;
+        }
+
+        reservations.push({
+          id: docSnap.id,
+          ...data,
+          checkIn: data.checkIn.toDate(),
+          checkOut: data.checkOut.toDate()
+        });
+      });
+
+      return reservations;
+    } catch (error) {
+      console.error('❌ getAllReservations 에러:', error);
+      return [];
+    }
+  }
 }
 
 export default new ReservationService();

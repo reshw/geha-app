@@ -12,7 +12,9 @@ import {
   UserMinus,
   ChevronRight,
   CalendarClock,
-  TestTube
+  TestTube,
+  BookOpen,
+  Users
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import useStore from '../store/useStore';
@@ -206,6 +208,25 @@ const MorePage = () => {
             icon={Shield}
             label="개인정보 처리방침"
             onClick={() => navigate('/privacy')}
+          />
+        </div>
+
+        {/* 앱 정보 메뉴 */}
+        <div className="space-y-3">
+          <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider px-3 mb-4">
+            앱 정보
+          </h3>
+
+          <MenuItem
+            icon={Users}
+            label="사용 가이드"
+            onClick={() => navigate('/user-guide')}
+          />
+
+          <MenuItem
+            icon={BookOpen}
+            label="앱 소개"
+            onClick={() => navigate('/introduction')}
           />
         </div>
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, ChevronDown, Plus, Check, X, Settings2, Share2, GripVertical, User, LogOut, FileText, Shield, UserCog, UserMinus, Wallet, ShieldCheck, List, Calendar, Users, Mars, Venus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Plus, Check, X, Settings2, Share2, GripVertical, User, LogOut, FileText, Shield, UserCog, UserMinus, Wallet, ShieldCheck, List, Calendar, Users, Mars, Venus, Trophy } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useReservations } from '../../hooks/useReservations';
 import useStore from '../../store/useStore';
@@ -494,8 +494,17 @@ const WeeklyList = () => {
               )}
             </div>
 
-            {/* 우측: 뷰 모드 토글 + 프로필 */}
+            {/* 우측: 통계 + 뷰 모드 토글 + 프로필 */}
             <div className="flex items-center gap-2">
+              {/* 통계 버튼 */}
+              <button
+                onClick={() => navigate('/reservation-stats')}
+                className="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors"
+                title="예약 통계"
+              >
+                <Trophy className="w-4 h-4 text-white" />
+              </button>
+
               {/* 뷰 모드 토글 */}
               <div className="flex items-center bg-white/20 rounded-lg p-1">
                 <button

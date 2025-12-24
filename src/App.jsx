@@ -29,6 +29,9 @@ import SuperAdminPage from './pages/SuperAdminPage';
 import SlopesPage from './pages/SlopesPage';
 import EmailTestPage from './pages/EmailTestPage';
 import MorePage from './pages/MorePage';
+import IntroductionPage from './pages/IntroductionPage';
+import UserGuidePage from './pages/UserGuidePage';
+import ReservationStatsPage from './pages/ReservationStatsPage';
 
 
 function App() {
@@ -58,6 +61,9 @@ function App() {
           <Route path="/test-data" element={<TestDataPage />} />
           <Route path="/terms" element={<TermsOfServicePage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/introduction" element={<IntroductionPage />} />
+          <Route path="/user-guide" element={<UserGuidePage />} />
+          <Route path="/reservation-stats" element={<ReservationStatsPage />} />
           <Route path="/migration" element={<MigrationPage />} />
           
           {/* 스페이스 관리 */}
