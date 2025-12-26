@@ -2,9 +2,18 @@ import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import Modal from '../common/Modal';
 import { formatDate, formatWeekDay, getWeekDates } from '../../utils/dateUtils';
-import HostSearchInput from './HostSearchInput';
 
-const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReservations = {}, user, selectedSpace }) => {
+/**
+ * 예약 수정 모달
+ * - 기존 예약의 체크인/체크아웃 날짜 변경
+ */
+const ReservationEditModal = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  reservation,
+  existingReservations = {}
+}) => {
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     const today = new Date();
     const day = today.getDay();
@@ -14,37 +23,41 @@ const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReserva
     monday.setHours(0, 0, 0, 0);
     return monday;
   });
-  
+
   const [checkIn, setCheckIn] = useState(null);
   const [checkOut, setCheckOut] = useState(null);
-  const [selectedHost, setSelectedHost] = useState(null);
   const [isDayTrip, setIsDayTrip] = useState(false);
 
-  // 카카오 로그인 정보
-  const userName = user?.displayName || user?.name || '사용자';
-  
-  // 디버깅: selectedSpace 확인
+  // 기존 예약 정보로 초기화
   useEffect(() => {
-    console.log('🔍 [ReservationModal] selectedSpace:', selectedSpace);
-    console.log('🔍 [ReservationModal] selectedSpace?.userType:', selectedSpace?.userType);
-  }, [selectedSpace]);
-  
-  const memberType = selectedSpace?.userType || 'guest';
-  
-  // 멤버 타입별 라벨 (주주, 매니저, 부매니저는 "주주"로 표시)
-  const getMemberTypeLabel = (type) => {
-    const memberTypes = ['shareholder', 'manager', 'vice-manager'];
-    return memberTypes.includes(type) ? '주주' : '게스트';
-  };
-  
-  const memberTypeLabel = getMemberTypeLabel(memberType);
-  const isGuest = memberType === 'guest';
-  
-  useEffect(() => {
-    console.log('🔍 [ReservationModal] memberType:', memberType);
-    console.log('🔍 [ReservationModal] memberTypeLabel:', memberTypeLabel);
-    console.log('🔍 [ReservationModal] isGuest:', isGuest);
-  }, [memberType, memberTypeLabel, isGuest]);
+    console.log('🔍 [ReservationEditModal] 초기화:', {
+      reservation,
+      isOpen
+    });
+
+    if (reservation && isOpen) {
+      const checkInDate = reservation.checkIn?.toDate?.() || reservation.checkIn;
+      const checkOutDate = reservation.checkOut?.toDate?.() || reservation.checkOut;
+
+      console.log('📅 [ReservationEditModal] 날짜 설정:', {
+        checkInDate,
+        checkOutDate,
+        isDayTrip: reservation.isDayTrip || reservation.nights === 0
+      });
+
+      setCheckIn(checkInDate);
+      setCheckOut(checkOutDate);
+      setIsDayTrip(reservation.isDayTrip || reservation.nights === 0);
+
+      // 주간 시작일을 체크인 날짜가 포함된 주로 설정
+      const day = checkInDate.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      const monday = new Date(checkInDate);
+      monday.setDate(checkInDate.getDate() + diff);
+      monday.setHours(0, 0, 0, 0);
+      setCurrentWeekStart(monday);
+    }
+  }, [reservation, isOpen]);
 
   const weekDates = getWeekDates(currentWeekStart);
 
@@ -66,12 +79,13 @@ const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReserva
     today.setHours(0, 0, 0, 0);
     if (date < today) return true;
 
-    // 이미 예약된 날짜 확인
+    // 이미 예약된 날짜 확인 (본인 예약 제외)
     const dateStr = formatDate(date);
     const dayReservations = existingReservations[dateStr] || [];
-    
-    // 예약이 10개 이상이면 비활성화
-    return dayReservations.length >= 10;
+
+    // 본인 예약 제외한 예약 개수 확인
+    const otherReservations = dayReservations.filter(r => r.id !== reservation?.id);
+    return otherReservations.length >= 10;
   };
 
   const isDateInRange = (date) => {
@@ -93,7 +107,7 @@ const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReserva
       // 첫 선택 or 재선택
       setCheckIn(date);
       setCheckOut(null);
-      setIsDayTrip(false); // 새로 선택 시 당일치기 체크 해제
+      setIsDayTrip(false);
     } else if (isDayTrip) {
       // 당일치기 모드에서는 날짜 변경만 가능
       setCheckIn(date);
@@ -125,7 +139,7 @@ const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReserva
   const checkDateRangeValid = (start, end) => {
     let current = new Date(start);
     current.setDate(current.getDate() + 1);
-    
+
     while (current < end) {
       if (isDateDisabled(current)) {
         return false;
@@ -141,74 +155,47 @@ const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReserva
     return Math.ceil(diff / (1000 * 60 * 60 * 24));
   };
 
-  // ReservationModal.jsx의 handleConfirm 함수
   const handleConfirm = () => {
-  // 당일치기 체크 시 자동으로 checkOut 설정
-  const finalCheckOut = isDayTrip ? checkIn : checkOut;
+    const finalCheckOut = isDayTrip ? checkIn : checkOut;
 
-  if (!checkIn) {
-    alert('체크인 날짜를 선택해주세요.');
-    return;
-  }
+    if (!checkIn) {
+      alert('체크인 날짜를 선택해주세요.');
+      return;
+    }
 
-  if (!isDayTrip && !checkOut) {
-    alert('체크아웃 날짜를 선택하거나 당일치기를 선택해주세요.');
-    return;
-  }
+    if (!isDayTrip && !checkOut) {
+      alert('체크아웃 날짜를 선택하거나 당일치기를 선택해주세요.');
+      return;
+    }
 
-  if (isGuest && !selectedHost) {
-    alert('초대해주신 주주님을 선택해주세요.');
-    return;
-  }
+    const nights = isDayTrip ? 0 : getNights();
 
-  const nights = isDayTrip ? 0 : getNights();
+    onConfirm({
+      checkIn,
+      checkOut: finalCheckOut,
+      nights: nights,
+      isDayTrip: nights === 0
+    });
 
-  console.log('✅ [ReservationModal] 예약 확정 - type:', memberType);
-  console.log('✅ [ReservationModal] isDayTrip:', isDayTrip);
-  console.log('✅ [ReservationModal] nights:', nights);
-  console.log('✅ [ReservationModal] selectedHost:', selectedHost);
-  console.log('✅ [ReservationModal] 계좌정보:', {
-    accountBank: selectedSpace?.accountBank,
-    accountNumber: selectedSpace?.accountNumber,
-    accountHolder: selectedSpace?.accountHolder,
-  });
-
-  onConfirm({
-    userId: user?.id,
-    checkIn,
-    checkOut: finalCheckOut,
-    name: userName,
-    type: memberType,
-    nights: nights,
-    phone: user?.phoneNumber || '',
-    hostId: selectedHost?.id || null,
-    hostDisplayName: selectedHost?.displayName || null,
-    spaceName: selectedSpace?.name,
-    // 계좌 정보 추가
-    accountBank: selectedSpace?.accountBank,
-    accountNumber: selectedSpace?.accountNumber,
-    accountHolder: selectedSpace?.accountHolder,
-  });
-
-  // 초기화
-  setCheckIn(null);
-  setCheckOut(null);
-  setSelectedHost(null);
-  setIsDayTrip(false);
-};
+    // 초기화
+    setCheckIn(null);
+    setCheckOut(null);
+    setIsDayTrip(false);
+  };
 
   const handleClose = () => {
     setCheckIn(null);
     setCheckOut(null);
-    setSelectedHost(null);
     setIsDayTrip(false);
     onClose();
   };
 
+  if (!reservation) return null;
+
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="예약하기">
+    <Modal isOpen={isOpen} onClose={handleClose} title="예약 수정">
       <div className="space-y-4">
-        <p className="text-sm text-gray-600">체크인/체크아웃 날짜를 선택하세요</p>
+        <p className="text-sm text-gray-600">변경할 체크인/체크아웃 날짜를 선택하세요</p>
 
         {/* 주 네비게이션 */}
         <div className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
@@ -291,56 +278,13 @@ const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReserva
                 onChange={(e) => {
                   setIsDayTrip(e.target.checked);
                   if (e.target.checked) {
-                    setCheckOut(null); // 당일치기 체크 시 checkOut 초기화
+                    setCheckOut(null);
                   }
                 }}
                 className="w-5 h-5 text-orange-600 rounded focus:ring-orange-500"
               />
               <span className="font-semibold text-gray-900">당일치기로 예약</span>
             </label>
-          </div>
-        )}
-
-        {/* 예약 정보 표시 */}
-        {checkIn && (checkOut || isDayTrip) && (
-          <div className="space-y-3 pt-2 border-t">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                이름 (카카오 로그인)
-              </label>
-              <input
-                type="text"
-                value={userName}
-                readOnly
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed font-semibold"
-                title="카카오 로그인 정보로 자동 입력됩니다"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                예약 유형
-              </label>
-              <input
-                type="text"
-                value={memberTypeLabel}
-                readOnly
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed font-semibold"
-                title="사용자 권한에 따라 자동으로 결정됩니다"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                {getMemberTypeLabel(memberType) === '주주' ? '주주로 예약됩니다 (무료)' : '게스트로 예약됩니다 (유료)'}
-              </p>
-            </div>
-
-            {/* 게스트인 경우 초대자 선택 필수 */}
-            {isGuest && (
-              <HostSearchInput
-                spaceId={spaceId}
-                onSelect={setSelectedHost}
-                selectedHost={selectedHost}
-              />
-            )}
           </div>
         )}
 
@@ -354,10 +298,10 @@ const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReserva
           </button>
           <button
             onClick={handleConfirm}
-            disabled={!checkIn || (!isDayTrip && !checkOut) || (isGuest && !selectedHost)}
+            disabled={!checkIn || (!isDayTrip && !checkOut)}
             className="px-4 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
           >
-            예약하기
+            수정 완료
           </button>
         </div>
       </div>
@@ -365,4 +309,4 @@ const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReserva
   );
 };
 
-export default ReservationModal;
+export default ReservationEditModal;

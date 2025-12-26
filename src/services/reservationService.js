@@ -55,22 +55,42 @@ class ReservationService {
         }
         
         userIds.add(data.userId);
-        
+
         const checkIn = data.checkIn.toDate();
         const checkOut = data.checkOut.toDate();
-        
-        // 체크인부터 체크아웃 전날까지
-        let current = new Date(checkIn);
-        const lastDay = new Date(checkOut);
-        lastDay.setDate(lastDay.getDate() - 1);
-        
-        while (current <= lastDay) {
-          const dateStr = formatDate(current);
-          
+
+        // 당일치기 처리 (nights === 0 또는 isDayTrip === true)
+        if (data.nights === 0 || data.isDayTrip) {
+          const dateStr = formatDate(checkIn);
+
           if (!reserveData[dateStr]) {
             reserveData[dateStr] = [];
           }
-          
+
+          reserveData[dateStr].push({
+            id: docSnap.id,
+            ...data,
+            checkIn,
+            checkOut,
+            isCheckIn: true,
+            isDayTrip: true
+          });
+
+          return;
+        }
+
+        // 체크인부터 체크아웃 전날까지 (기존 숙박 로직)
+        let current = new Date(checkIn);
+        const lastDay = new Date(checkOut);
+        lastDay.setDate(lastDay.getDate() - 1);
+
+        while (current <= lastDay) {
+          const dateStr = formatDate(current);
+
+          if (!reserveData[dateStr]) {
+            reserveData[dateStr] = [];
+          }
+
           reserveData[dateStr].push({
             id: docSnap.id,
             ...data,
@@ -78,7 +98,7 @@ class ReservationService {
             checkOut,
             isCheckIn: current.getTime() === checkIn.getTime()
           });
-          
+
           current.setDate(current.getDate() + 1);
         }
       });
@@ -115,7 +135,8 @@ class ReservationService {
         type: reservationData.type,
         checkIn: Timestamp.fromDate(reservationData.checkIn),
         checkOut: Timestamp.fromDate(reservationData.checkOut),
-        nights: reservationData.nights || 1,
+        nights: reservationData.nights ?? 1,  // 0 허용 (당일치기)
+        isDayTrip: reservationData.nights === 0,  // 당일치기 플래그
         memo: reservationData.memo || '',
         phone: reservationData.phone || '',
         hostDisplayName: reservationData.hostDisplayName || '',  // 초대자 이름
@@ -233,6 +254,45 @@ class ReservationService {
 
   const reserveRef = doc(db, 'spaces', spaceId, 'reserves', reservationId);
   await deleteDoc(reserveRef);
+  }
+
+  /**
+   * 예약 수정 (체크인/체크아웃 날짜 변경)
+   */
+  async updateReservation(spaceId, reservationId, updateData) {
+    if (!spaceId || !reservationId) {
+      throw new Error('spaceId 또는 reservationId가 없습니다.');
+    }
+
+    const reserveRef = doc(db, 'spaces', spaceId, 'reserves', reservationId);
+
+    try {
+      // 기존 예약 정보 조회
+      const reserveDoc = await getDoc(reserveRef);
+      if (!reserveDoc.exists()) {
+        throw new Error('예약을 찾을 수 없습니다.');
+      }
+
+      const existingData = reserveDoc.data();
+
+      // 업데이트할 데이터 준비
+      const dataToUpdate = {
+        checkIn: Timestamp.fromDate(updateData.checkIn),
+        checkOut: Timestamp.fromDate(updateData.checkOut),
+        nights: updateData.nights ?? 0,
+        isDayTrip: updateData.isDayTrip ?? false,
+        updatedAt: Timestamp.now()
+      };
+
+      // 예약 문서 업데이트
+      await setDoc(reserveRef, dataToUpdate, { merge: true });
+
+      console.log('✅ 예약 수정 성공:', reservationId);
+      return { success: true };
+    } catch (error) {
+      console.error('❌ 예약 수정 실패:', error);
+      throw error;
+    }
   }
 
   // 통계용: 전체 예약 데이터 조회 (기간 필터링 가능)
