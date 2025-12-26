@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { X, Calendar, AlertTriangle } from 'lucide-react';
 import Modal from '../common/Modal';
-import { formatDate, formatWeekDay, getWeekDates } from '../../utils/dateUtils';
+import { formatDate } from '../../utils/dateUtils';
 
 /**
  * 예약 수정 모달
- * - 기존 예약의 체크인/체크아웃 날짜 변경
+ * - 입실일/아웃일을 date picker로 개별 수정
+ * - 과거 날짜 선택 시 확인 요청
  */
 const ReservationEditModal = ({
   isOpen,
@@ -14,298 +15,281 @@ const ReservationEditModal = ({
   reservation,
   existingReservations = {}
 }) => {
-  const [currentWeekStart, setCurrentWeekStart] = useState(() => {
-    const today = new Date();
-    const day = today.getDay();
-    const diff = day === 0 ? -6 : 1 - day;
-    const monday = new Date(today);
-    monday.setDate(today.getDate() + diff);
-    monday.setHours(0, 0, 0, 0);
-    return monday;
-  });
-
-  const [checkIn, setCheckIn] = useState(null);
-  const [checkOut, setCheckOut] = useState(null);
+  const [checkInDate, setCheckInDate] = useState('');
+  const [checkOutDate, setCheckOutDate] = useState('');
   const [isDayTrip, setIsDayTrip] = useState(false);
+  const [showPastDateConfirm, setShowPastDateConfirm] = useState(false);
+  const [pendingCheckInDate, setPendingCheckInDate] = useState('');
 
   // 기존 예약 정보로 초기화
   useEffect(() => {
-    console.log('🔍 [ReservationEditModal] 초기화:', {
-      reservation,
-      isOpen
-    });
-
     if (reservation && isOpen) {
-      const checkInDate = reservation.checkIn?.toDate?.() || reservation.checkIn;
-      const checkOutDate = reservation.checkOut?.toDate?.() || reservation.checkOut;
+      const checkIn = reservation.checkIn?.toDate?.() || reservation.checkIn;
+      const checkOut = reservation.checkOut?.toDate?.() || reservation.checkOut;
 
-      console.log('📅 [ReservationEditModal] 날짜 설정:', {
-        checkInDate,
-        checkOutDate,
-        isDayTrip: reservation.isDayTrip || reservation.nights === 0
-      });
-
-      setCheckIn(checkInDate);
-      setCheckOut(checkOutDate);
+      // YYYY-MM-DD 형식으로 변환
+      setCheckInDate(formatDate(checkIn));
+      setCheckOutDate(formatDate(checkOut));
       setIsDayTrip(reservation.isDayTrip || reservation.nights === 0);
-
-      // 주간 시작일을 체크인 날짜가 포함된 주로 설정
-      const day = checkInDate.getDay();
-      const diff = day === 0 ? -6 : 1 - day;
-      const monday = new Date(checkInDate);
-      monday.setDate(checkInDate.getDate() + diff);
-      monday.setHours(0, 0, 0, 0);
-      setCurrentWeekStart(monday);
     }
   }, [reservation, isOpen]);
 
-  const weekDates = getWeekDates(currentWeekStart);
-
-  const prevWeek = () => {
-    const newDate = new Date(currentWeekStart);
-    newDate.setDate(newDate.getDate() - 7);
-    setCurrentWeekStart(newDate);
-  };
-
-  const nextWeek = () => {
-    const newDate = new Date(currentWeekStart);
-    newDate.setDate(newDate.getDate() + 7);
-    setCurrentWeekStart(newDate);
-  };
-
-  const isDateDisabled = (date) => {
-    // 과거 날짜 비활성화
+  // 과거 날짜인지 확인
+  const isPastDate = (dateStr) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    if (date < today) return true;
-
-    // 이미 예약된 날짜 확인 (본인 예약 제외)
-    const dateStr = formatDate(date);
-    const dayReservations = existingReservations[dateStr] || [];
-
-    // 본인 예약 제외한 예약 개수 확인
-    const otherReservations = dayReservations.filter(r => r.id !== reservation?.id);
-    return otherReservations.length >= 10;
+    const selectedDate = new Date(dateStr);
+    selectedDate.setHours(0, 0, 0, 0);
+    return selectedDate < today;
   };
 
-  const isDateInRange = (date) => {
-    if (!checkIn || !checkOut) return false;
-    return date > checkIn && date < checkOut;
-  };
+  // 입실일 변경 핸들러
+  const handleCheckInChange = (e) => {
+    const newDate = e.target.value;
 
-  const isDateSelected = (date) => {
-    if (!checkIn) return false;
-    if (checkIn && date.getTime() === checkIn.getTime()) return true;
-    if (checkOut && date.getTime() === checkOut.getTime()) return true;
-    return false;
-  };
-
-  const handleDateClick = (date) => {
-    if (isDateDisabled(date)) return;
-
-    if (!checkIn || (checkIn && checkOut)) {
-      // 첫 선택 or 재선택
-      setCheckIn(date);
-      setCheckOut(null);
-      setIsDayTrip(false);
-    } else if (isDayTrip) {
-      // 당일치기 모드에서는 날짜 변경만 가능
-      setCheckIn(date);
-      setCheckOut(null);
+    if (isPastDate(newDate)) {
+      // 과거 날짜인 경우 확인 모달 표시
+      setPendingCheckInDate(newDate);
+      setShowPastDateConfirm(true);
     } else {
-      // 두 번째 선택 (일반 숙박)
-      if (date.getTime() === checkIn.getTime()) {
-        // 같은 날짜 선택 시 체크아웃 설정 (당일치기로 간주)
-        setCheckOut(date);
-        setIsDayTrip(true);
-        return;
-      }
-      if (date > checkIn) {
-        // 체크인과 체크아웃 사이에 예약 불가 날짜가 있는지 확인
-        const hasDisabledInRange = checkDateRangeValid(checkIn, date);
-        if (!hasDisabledInRange) {
-          alert('선택한 기간 내에 예약 불가능한 날짜가 있습니다.');
-          return;
-        }
-        setCheckOut(date);
-      } else {
-        // 더 이른 날짜 선택 → 체크아웃을 체크인으로, 새 날짜를 체크인으로
-        setCheckOut(checkIn);
-        setCheckIn(date);
+      setCheckInDate(newDate);
+
+      // 당일치기가 아니고 아웃일이 입실일보다 이르면 조정
+      if (!isDayTrip && checkOutDate && newDate >= checkOutDate) {
+        const nextDay = new Date(newDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        setCheckOutDate(formatDate(nextDay));
       }
     }
   };
 
-  const checkDateRangeValid = (start, end) => {
-    let current = new Date(start);
-    current.setDate(current.getDate() + 1);
+  // 과거 날짜 확인 후 적용
+  const confirmPastDate = () => {
+    setCheckInDate(pendingCheckInDate);
+    setShowPastDateConfirm(false);
+    setPendingCheckInDate('');
 
-    while (current < end) {
-      if (isDateDisabled(current)) {
-        return false;
-      }
-      current.setDate(current.getDate() + 1);
+    // 당일치기가 아니고 아웃일이 입실일보다 이르면 조정
+    if (!isDayTrip && checkOutDate && pendingCheckInDate >= checkOutDate) {
+      const nextDay = new Date(pendingCheckInDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+      setCheckOutDate(formatDate(nextDay));
     }
-    return true;
   };
 
-  const getNights = () => {
-    if (!checkIn || !checkOut) return 0;
-    const diff = checkOut.getTime() - checkIn.getTime();
-    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  // 과거 날짜 취소
+  const cancelPastDate = () => {
+    setShowPastDateConfirm(false);
+    setPendingCheckInDate('');
   };
 
-  const handleConfirm = () => {
-    const finalCheckOut = isDayTrip ? checkIn : checkOut;
+  // 아웃일 변경 핸들러
+  const handleCheckOutChange = (e) => {
+    const newDate = e.target.value;
+    setCheckOutDate(newDate);
+  };
 
-    if (!checkIn) {
-      alert('체크인 날짜를 선택해주세요.');
+  // 당일치기 토글
+  const handleDayTripToggle = (e) => {
+    const checked = e.target.checked;
+    setIsDayTrip(checked);
+
+    if (checked && checkInDate) {
+      // 당일치기 활성화 시 아웃일을 입실일과 동일하게
+      setCheckOutDate(checkInDate);
+    } else if (!checked && checkInDate) {
+      // 당일치기 비활성화 시 아웃일을 입실일 다음날로
+      const nextDay = new Date(checkInDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+      setCheckOutDate(formatDate(nextDay));
+    }
+  };
+
+  // 저장 핸들러
+  const handleSave = () => {
+    if (!checkInDate || !checkOutDate) {
+      alert('입실일과 아웃일을 모두 선택해주세요.');
       return;
     }
 
-    if (!isDayTrip && !checkOut) {
-      alert('체크아웃 날짜를 선택하거나 당일치기를 선택해주세요.');
+    const checkIn = new Date(checkInDate);
+    const checkOut = new Date(checkOutDate);
+
+    if (!isDayTrip && checkIn >= checkOut) {
+      alert('아웃일은 입실일보다 이후여야 합니다.');
       return;
     }
 
-    const nights = isDayTrip ? 0 : getNights();
+    // 박수 계산
+    let nights = 0;
+    if (isDayTrip) {
+      nights = 0;
+    } else {
+      const timeDiff = checkOut - checkIn;
+      nights = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+    }
 
     onConfirm({
       checkIn,
-      checkOut: finalCheckOut,
-      nights: nights,
-      isDayTrip: nights === 0
+      checkOut,
+      nights,
+      isDayTrip
     });
-
-    // 초기화
-    setCheckIn(null);
-    setCheckOut(null);
-    setIsDayTrip(false);
   };
 
-  const handleClose = () => {
-    setCheckIn(null);
-    setCheckOut(null);
-    setIsDayTrip(false);
-    onClose();
-  };
+  if (!isOpen || !reservation) return null;
 
-  if (!reservation) return null;
+  // 현재 예약 정보
+  const currentCheckIn = reservation.checkIn?.toDate?.() || reservation.checkIn;
+  const currentCheckOut = reservation.checkOut?.toDate?.() || reservation.checkOut;
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="예약 수정">
-      <div className="space-y-4">
-        <p className="text-sm text-gray-600">변경할 체크인/체크아웃 날짜를 선택하세요</p>
-
-        {/* 주 네비게이션 */}
-        <div className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
-          <button onClick={prevWeek} className="p-2 hover:bg-gray-200 rounded-lg">
-            <ChevronLeft className="w-5 h-5 text-blue-600" />
-          </button>
-          <span className="font-semibold text-gray-700">
-            {currentWeekStart.getFullYear()}년 {currentWeekStart.getMonth() + 1}월 {Math.ceil(currentWeekStart.getDate() / 7)}주
-          </span>
-          <button onClick={nextWeek} className="p-2 hover:bg-gray-200 rounded-lg">
-            <ChevronRight className="w-5 h-5 text-blue-600" />
-          </button>
-        </div>
-
-        {/* 요일 레이블 */}
-        <div className="grid grid-cols-7 gap-2 text-center text-xs font-medium text-gray-500">
-          <div>월</div>
-          <div>화</div>
-          <div>수</div>
-          <div>목</div>
-          <div>금</div>
-          <div className="text-blue-500">토</div>
-          <div className="text-red-500">일</div>
-        </div>
-
-        {/* 날짜 그리드 */}
-        <div className="grid grid-cols-7 gap-2">
-          {weekDates.map((date, index) => {
-            const disabled = isDateDisabled(date);
-            const selected = isDateSelected(date);
-            const inRange = isDateInRange(date);
-            const isToday = new Date().toDateString() === date.toDateString();
-
-            return (
-              <button
-                key={index}
-                onClick={() => handleDateClick(date)}
-                disabled={disabled}
-                className={`
-                  aspect-square rounded-xl text-base font-medium transition-all
-                  ${disabled ? 'bg-red-50 text-red-300 cursor-not-allowed' : 'bg-gray-50 text-gray-700 hover:bg-gray-200 hover:scale-105'}
-                  ${selected ? 'bg-blue-600 text-white scale-110 shadow-lg' : ''}
-                  ${inRange ? 'bg-blue-100 text-blue-700' : ''}
-                  ${isToday && !selected ? 'ring-2 ring-blue-600' : ''}
-                `}
-              >
-                {date.getDate()}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* 선택 정보 */}
-        {checkIn && (
-          <div className="space-y-3">
-            <div className="bg-blue-50 border-2 border-blue-600 rounded-xl p-4 text-center">
-              <div className="text-xs text-blue-600 mb-1">선택한 날짜</div>
-              <div className="text-lg font-bold text-blue-900">
-                {checkIn.getMonth() + 1}/{checkIn.getDate()}
-                {!isDayTrip && checkOut && ` ~ ${checkOut.getMonth() + 1}/${checkOut.getDate()}`}
-                {!isDayTrip && !checkOut && ' (체크아웃 선택)'}
-              </div>
-              {!isDayTrip && checkOut && (
-                <div className="text-sm text-blue-600 mt-1">
-                  {getNights()}박 {getNights() + 1}일
-                </div>
-              )}
-              {isDayTrip && (
-                <div className="text-sm text-blue-600 mt-1">
+    <>
+      <Modal isOpen={isOpen} onClose={onClose} title="예약 수정">
+        <div className="space-y-6">
+          {/* 현재 예약 정보 */}
+          <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
+            <div className="text-sm font-semibold text-blue-900 mb-2">현재 예약</div>
+            <div className="text-lg font-bold text-gray-900 mb-1">{reservation.name}</div>
+            <div className="text-sm text-gray-600">
+              {currentCheckIn.getMonth() + 1}/{currentCheckIn.getDate()} ~ {currentCheckOut.getMonth() + 1}/{currentCheckOut.getDate()}
+              {reservation.isDayTrip || reservation.nights === 0 ? (
+                <span className="ml-2 px-2 py-0.5 bg-orange-100 text-orange-700 rounded-md text-xs font-semibold">
                   당일치기
-                </div>
+                </span>
+              ) : (
+                <span className="ml-2 text-gray-500">
+                  ({reservation.nights}박 {reservation.nights + 1}일)
+                </span>
               )}
             </div>
+          </div>
 
-            {/* 당일치기 체크박스 */}
-            <label className="flex items-center justify-center gap-2 p-3 bg-orange-50 rounded-xl cursor-pointer border-2 border-orange-200 hover:bg-orange-100 transition-colors">
+          {/* 입실일 */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              입실일
+            </label>
+            <input
+              type="date"
+              value={checkInDate}
+              onChange={handleCheckInChange}
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none text-base"
+            />
+            {checkInDate && isPastDate(checkInDate) && (
+              <div className="mt-2 text-xs text-orange-600 flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" />
+                과거 날짜입니다
+              </div>
+            )}
+          </div>
+
+          {/* 아웃일 */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              아웃일
+            </label>
+            <input
+              type="date"
+              value={checkOutDate}
+              onChange={handleCheckOutChange}
+              disabled={isDayTrip}
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none text-base disabled:bg-gray-100 disabled:cursor-not-allowed"
+            />
+            {isDayTrip && (
+              <div className="mt-2 text-xs text-gray-500">
+                당일치기 예약은 아웃일이 입실일과 동일합니다
+              </div>
+            )}
+          </div>
+
+          {/* 당일치기 옵션 */}
+          <div>
+            <label className="flex items-center gap-3 p-4 bg-orange-50 rounded-xl cursor-pointer hover:bg-orange-100 transition-colors border-2 border-orange-200">
               <input
                 type="checkbox"
                 checked={isDayTrip}
-                onChange={(e) => {
-                  setIsDayTrip(e.target.checked);
-                  if (e.target.checked) {
-                    setCheckOut(null);
-                  }
-                }}
+                onChange={handleDayTripToggle}
                 className="w-5 h-5 text-orange-600 rounded focus:ring-orange-500"
               />
-              <span className="font-semibold text-gray-900">당일치기로 예약</span>
+              <div className="flex-1">
+                <span className="font-semibold text-gray-900">당일치기 예약</span>
+                <div className="text-xs text-gray-600 mt-0.5">
+                  입실일과 아웃일이 동일한 예약입니다
+                </div>
+              </div>
             </label>
           </div>
-        )}
 
-        {/* 버튼 */}
-        <div className="grid grid-cols-2 gap-3 pt-4">
-          <button
-            onClick={handleClose}
-            className="px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200"
-          >
-            취소
-          </button>
-          <button
-            onClick={handleConfirm}
-            disabled={!checkIn || (!isDayTrip && !checkOut)}
-            className="px-4 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-          >
-            수정 완료
-          </button>
+          {/* 버튼 */}
+          <div className="grid grid-cols-2 gap-3 pt-4">
+            <button
+              onClick={onClose}
+              className="px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+            >
+              취소
+            </button>
+            <button
+              onClick={handleSave}
+              className="px-4 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors"
+            >
+              저장
+            </button>
+          </div>
         </div>
-      </div>
-    </Modal>
+      </Modal>
+
+      {/* 과거 날짜 확인 모달 */}
+      {showPastDateConfirm && (
+        <>
+          <div className="fixed inset-0 bg-black/50 z-[70]" onClick={cancelPastDate} />
+          <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl z-[71] p-6 w-[380px] max-w-[90vw]">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-6 h-6 text-orange-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">과거 날짜 선택</h3>
+                <p className="text-sm text-gray-600 mt-0.5">과거 날짜입니다</p>
+              </div>
+            </div>
+
+            <div className="bg-orange-50 border-2 border-orange-200 rounded-xl p-4 mb-6">
+              <div className="text-sm text-gray-700 mb-2">선택한 입실일:</div>
+              <div className="text-lg font-bold text-gray-900">
+                {new Date(pendingCheckInDate).toLocaleDateString('ko-KR', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                  weekday: 'short'
+                })}
+              </div>
+            </div>
+
+            <div className="text-sm text-gray-600 mb-6">
+              이 날짜가 맞나요? 계속하시겠습니까?
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={cancelPastDate}
+                className="px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={confirmPastDate}
+                className="px-4 py-3 bg-orange-600 text-white rounded-xl font-semibold hover:bg-orange-700 transition-colors"
+              >
+                확인
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </>
   );
 };
 
