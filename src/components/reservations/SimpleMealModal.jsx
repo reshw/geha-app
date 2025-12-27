@@ -126,7 +126,7 @@ const SimpleMealModal = ({
             <div className="flex items-center gap-3">
               <Utensils className="w-6 h-6 text-blue-600" />
               <div>
-                <h3 className="text-xl font-bold text-gray-900">식사</h3>
+                <h3 className="text-xl font-bold text-gray-900">밥</h3>
                 <div className="text-sm text-gray-600">{dateLabel}</div>
               </div>
             </div>

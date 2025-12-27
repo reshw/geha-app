@@ -828,7 +828,7 @@ const WeeklyList = () => {
                       setShowMealModal(true);
                     }}
                     className="p-1.5 hover:bg-orange-100 rounded-lg transition-colors"
-                    title="식사 보기"
+                    title="밥 보기"
                   >
                     <Utensils className="w-4 h-4 text-orange-600" />
                   </button>
