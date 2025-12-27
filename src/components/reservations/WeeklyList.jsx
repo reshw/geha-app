@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, ChevronDown, Plus, Check, X, Settings2, Share2, GripVertical, User, LogOut, FileText, Shield, UserCog, UserMinus, Wallet, ShieldCheck, List, Calendar, Users, Mars, Venus, Trophy } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Plus, Check, X, Settings2, Share2, GripVertical, User, LogOut, FileText, Shield, UserCog, UserMinus, Wallet, ShieldCheck, List, Calendar, Users, Mars, Venus, Trophy, Utensils } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useReservations } from '../../hooks/useReservations';
 import useStore from '../../store/useStore';
 import spaceService from '../../services/spaceService';
 import reservationService from '../../services/reservationService';
-import mealService from '../../services/mealService';
+import simpleMealService from '../../services/simpleMealService';
 import LoginOverlay from '../auth/LoginOverlay';
 import Loading from '../common/Loading';
 import Modal from '../common/Modal';
@@ -18,6 +18,7 @@ import SpaceDropdown from '../space/SpaceDropdown';
 import MealIndicator from './MealIndicator';
 import ReservationManageModal from './ReservationManageModal';
 import ReservationEditModal from './ReservationEditModal';
+import SimpleMealModal from './SimpleMealModal';
 import { formatDate, formatWeekDay, getWeekDates, isToday } from '../../utils/dateUtils';
 import { canManageSpace } from '../../utils/permissions';
 import { USER_TYPE_LABELS } from '../../utils/constants';
@@ -125,7 +126,9 @@ const WeeklyList = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedReservationForManage, setSelectedReservationForManage] = useState(null);
   const [currentDateStrForManage, setCurrentDateStrForManage] = useState(null); // dateStr로 저장
-  const [mealsByDate, setMealsByDate] = useState({}); // 날짜별 식사 정보
+  const [mealsByDate, setMealsByDate] = useState({}); // 날짜별 식사 참여자 정보
+  const [showMealModal, setShowMealModal] = useState(false);
+  const [selectedDateForMeal, setSelectedDateForMeal] = useState(null);
 
   const { reservations: reservationsObj, loading: reservationsLoading, createReservation, cancelReservation, refresh } = useReservations(selectedSpace?.id, currentWeekStart);
   
@@ -173,26 +176,27 @@ const WeeklyList = () => {
     loadSpaces();
   }, [user, setSelectedSpace]);
 
-  // 식사 정보 로드
+  // 식사 참여자 정보 로드 함수
+  const loadMeals = async () => {
+    if (!selectedSpace?.id) return;
+
+    try {
+      const weekDates = getWeekDates(currentWeekStart);
+      const dateStrings = weekDates.map(date => formatDate(date));
+
+      const mealsData = await simpleMealService.getMealsByDateRange(
+        selectedSpace.id,
+        dateStrings
+      );
+
+      setMealsByDate(mealsData);
+    } catch (error) {
+      console.error('❌ 식사 정보 로드 실패:', error);
+    }
+  };
+
+  // 식사 참여자 정보 자동 로드
   useEffect(() => {
-    const loadMeals = async () => {
-      if (!selectedSpace?.id) return;
-
-      try {
-        const weekDates = getWeekDates(currentWeekStart);
-        const dateStrings = weekDates.map(date => formatDate(date));
-
-        const mealsData = await mealService.getMealsByDateRange(
-          selectedSpace.id,
-          dateStrings
-        );
-
-        setMealsByDate(mealsData);
-      } catch (error) {
-        console.error('❌ 식사 정보 로드 실패:', error);
-      }
-    };
-
     loadMeals();
   }, [selectedSpace, currentWeekStart]);
 
@@ -816,6 +820,18 @@ const WeeklyList = () => {
                   }`}>
                     ({formatWeekDay(date)})
                   </span>
+                  {/* 포크 아이콘 (식사 열기) */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedDateForMeal(date);
+                      setShowMealModal(true);
+                    }}
+                    className="p-1.5 hover:bg-orange-100 rounded-lg transition-colors"
+                    title="식사 보기"
+                  >
+                    <Utensils className="w-4 h-4 text-orange-600" />
+                  </button>
                   {/* 게스트용 체크인/체크아웃 표시 */}
                   {isGuest && myReservations.length > 0 && myReservations.map(r => {
                     const isCheckInDay = formatDate(r.checkIn) === dateStr;
@@ -830,12 +846,12 @@ const WeeklyList = () => {
                 </div>
                 
                 {/* 인원수 */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center justify-end gap-3">
                   {allReservations.length > 0 ? (
                     <>
-                      <div className="flex flex-col gap-1">
+                      <div className="flex flex-col gap-1 items-end">
                         <div className="text-sm text-gray-600">
-                          주주 {stats.weekdayCount} / 게스트 {stats.guestCount} / 당일 {stats.memberDayTrip + stats.guestDayTrip}
+                          게스트 {stats.guestCount} / 당일 {stats.memberDayTrip + stats.guestDayTrip}
                         </div>
                         <div className="text-xs text-gray-500 flex items-center gap-1.5">
                           <span className="flex items-center gap-0.5 text-blue-600">
@@ -871,8 +887,10 @@ const WeeklyList = () => {
                           const isMine = String(reservation.userId) === String(user.id);
                           const ringColor = 'ring-green-500';
                           const bgColor = 'bg-green-500';
-                          const dateMeal = mealsByDate[dateStr]?.[reservation.userId];
-                          const hasMeal = dateMeal !== undefined && (dateMeal.lunch || dateMeal.dinner);
+                          const dateMeals = mealsByDate[dateStr] || { lunch: [], dinner: [] };
+                          const hasLunch = dateMeals.lunch.includes(reservation.userId);
+                          const hasDinner = dateMeals.dinner.includes(reservation.userId);
+                          const hasMeal = hasLunch || hasDinner;
 
                           return (
                             <div key={reservation.id} className="relative group">
@@ -895,8 +913,8 @@ const WeeklyList = () => {
                                   />
                                   {hasMeal && (
                                     <MealIndicator
-                                      lunch={dateMeal.lunch}
-                                      dinner={dateMeal.dinner}
+                                      lunch={hasLunch}
+                                      dinner={hasDinner}
                                     />
                                   )}
                                 </div>
@@ -919,8 +937,8 @@ const WeeklyList = () => {
                                   </div>
                                   {hasMeal && (
                                     <MealIndicator
-                                      lunch={dateMeal.lunch}
-                                      dinner={dateMeal.dinner}
+                                      lunch={hasLunch}
+                                      dinner={hasDinner}
                                     />
                                   )}
                                 </div>
@@ -983,8 +1001,10 @@ const WeeklyList = () => {
                           const isMine = String(reservation.userId) === String(user.id);
                           const ringColor = isMine ? 'ring-green-500' : (profile?.gender === 'female' ? 'ring-pink-500' : 'ring-blue-500');
                           const bgColor = isMine ? 'bg-green-500' : (profile?.gender === 'female' ? 'bg-pink-500' : 'bg-blue-500');
-                          const dateMeal = mealsByDate[dateStr]?.[reservation.userId];
-                          const hasMeal = dateMeal !== undefined && (dateMeal.lunch || dateMeal.dinner);
+                          const dateMeals = mealsByDate[dateStr] || { lunch: [], dinner: [] };
+                          const hasLunch = dateMeals.lunch.includes(reservation.userId);
+                          const hasDinner = dateMeals.dinner.includes(reservation.userId);
+                          const hasMeal = hasLunch || hasDinner;
 
                           return (
                             <div key={reservation.id} className="relative group">
@@ -1007,8 +1027,8 @@ const WeeklyList = () => {
                                   />
                                   {hasMeal && (
                                     <MealIndicator
-                                      lunch={dateMeal.lunch}
-                                      dinner={dateMeal.dinner}
+                                      lunch={hasLunch}
+                                      dinner={hasDinner}
                                     />
                                   )}
                                 </div>
@@ -1031,8 +1051,8 @@ const WeeklyList = () => {
                                   </div>
                                   {hasMeal && (
                                     <MealIndicator
-                                      lunch={dateMeal.lunch}
-                                      dinner={dateMeal.dinner}
+                                      lunch={hasLunch}
+                                      dinner={hasDinner}
                                     />
                                   )}
                                 </div>
@@ -1180,14 +1200,8 @@ const WeeklyList = () => {
         spaceId={selectedSpace?.id}
         onRefresh={async () => {
           await refresh();
-          // 식사 정보도 다시 로드
-          const weekDates = getWeekDates(currentWeekStart);
-          const dateStrings = weekDates.map(date => formatDate(date));
-          const mealsData = await mealService.getMealsByDateRange(
-            selectedSpace.id,
-            dateStrings
-          );
-          setMealsByDate(mealsData);
+          // 식사 참여자 정보도 다시 로드
+          await loadMeals();
         }}
         onEdit={(reservation) => {
           console.log('📝 [WeeklyList] 예약 수정 버튼 클릭:', {
@@ -1245,7 +1259,6 @@ const WeeklyList = () => {
         reservations={selectedReservationsForDetail}
         profiles={profiles}
         user={user}
-        mealsByDate={mealsByDate}
         onProfileClick={(reservation, clickedDate) => {
           console.log('👤 [WeeklyList] 상세 모달에서 본인 프로필 클릭:', {
             reservation,
@@ -1280,6 +1293,20 @@ const WeeklyList = () => {
           <span className="font-semibold">예약하기</span>
         </button>
       )}
+
+      {/* 식사 모달 */}
+      <SimpleMealModal
+        isOpen={showMealModal}
+        onClose={() => {
+          setShowMealModal(false);
+          setSelectedDateForMeal(null);
+          loadMeals(); // 식사 정보 새로고침
+        }}
+        date={selectedDateForMeal}
+        spaceId={selectedSpace?.id}
+        currentUser={user}
+        profiles={profiles}
+      />
     </div>
   );
 };
