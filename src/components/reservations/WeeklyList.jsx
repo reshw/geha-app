@@ -5,6 +5,8 @@ import { useAuth } from '../../hooks/useAuth';
 import { useReservations } from '../../hooks/useReservations';
 import useStore from '../../store/useStore';
 import spaceService from '../../services/spaceService';
+import reservationService from '../../services/reservationService';
+import mealService from '../../services/mealService';
 import LoginOverlay from '../auth/LoginOverlay';
 import Loading from '../common/Loading';
 import Modal from '../common/Modal';
@@ -13,6 +15,9 @@ import CancelReservationModal from './CancelReservationModal';
 import ReservationDetailModal from './ReservationDetailModal';
 import WeeklyCalendarView from './WeeklyCalendarView';
 import SpaceDropdown from '../space/SpaceDropdown';
+import MealIndicator from './MealIndicator';
+import ReservationManageModal from './ReservationManageModal';
+import ReservationEditModal from './ReservationEditModal';
 import { formatDate, formatWeekDay, getWeekDates, isToday } from '../../utils/dateUtils';
 import { canManageSpace } from '../../utils/permissions';
 import { USER_TYPE_LABELS } from '../../utils/constants';
@@ -82,7 +87,7 @@ const NoSpaceNotice = ({ onJoinSpace }) => (
 const WeeklyList = () => {
   const navigate = useNavigate();
   const { user, isLoggedIn, logout } = useAuth();
-  const { selectedSpace, setSelectedSpace, profiles } = useStore();
+  const { selectedSpace, setSelectedSpace, profiles, setReservations } = useStore();
   const hasInitializedSpace = useRef(false);
   
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
@@ -116,8 +121,13 @@ const WeeklyList = () => {
   const [selectedDateForDetail, setSelectedDateForDetail] = useState(null);
   const [selectedReservationsForDetail, setSelectedReservationsForDetail] = useState([]);
   const [viewMode, setViewMode] = useState('list'); // 'list' | 'calendar'
-  
-  const { reservations: reservationsObj, loading: reservationsLoading, createReservation, cancelReservation } = useReservations(selectedSpace?.id, currentWeekStart);
+  const [showManageModal, setShowManageModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedReservationForManage, setSelectedReservationForManage] = useState(null);
+  const [currentDateStrForManage, setCurrentDateStrForManage] = useState(null); // dateStr로 저장
+  const [mealsByDate, setMealsByDate] = useState({}); // 날짜별 식사 정보
+
+  const { reservations: reservationsObj, loading: reservationsLoading, createReservation, cancelReservation, refresh } = useReservations(selectedSpace?.id, currentWeekStart);
   
   // 🆕 스페이스 로드 및 없음 처리
   useEffect(() => {
@@ -162,7 +172,30 @@ const WeeklyList = () => {
     
     loadSpaces();
   }, [user, setSelectedSpace]);
-  
+
+  // 식사 정보 로드
+  useEffect(() => {
+    const loadMeals = async () => {
+      if (!selectedSpace?.id) return;
+
+      try {
+        const weekDates = getWeekDates(currentWeekStart);
+        const dateStrings = weekDates.map(date => formatDate(date));
+
+        const mealsData = await mealService.getMealsByDateRange(
+          selectedSpace.id,
+          dateStrings
+        );
+
+        setMealsByDate(mealsData);
+      } catch (error) {
+        console.error('❌ 식사 정보 로드 실패:', error);
+      }
+    };
+
+    loadMeals();
+  }, [selectedSpace, currentWeekStart]);
+
   const prevWeek = () => {
     const newDate = new Date(currentWeekStart);
     newDate.setDate(newDate.getDate() - 7);
@@ -698,10 +731,16 @@ const WeeklyList = () => {
       {/* 리스트 뷰 */}
       {viewMode === 'list' && (
         <div className="max-w-2xl mx-auto p-4 pb-24">
-        {weekDates.map((date) => {
+        {weekDates.map((date, dateIndex) => {
           const dateStr = formatDate(date);
           const isCurrentDay = isToday(date);
-          
+
+          console.log(`🗓️ [WeeklyList] 카드 렌더링 [${dateIndex}]:`, {
+            dateStr,
+            date: date.toISOString(),
+            dateObject: date
+          });
+
           // 날짜별 예약 가져오기 (객체에서 직접 접근)
           const dateReservations = reservationsObj[dateStr] || [];
           
@@ -742,13 +781,16 @@ const WeeklyList = () => {
           
           const memberTypes = ['shareholder', 'manager', 'vice-manager'];
           const stats = allReservations.reduce((acc, r) => {
-            if (memberTypes.includes(r.type)) {
-              acc.weekdayCount++;
+            const isMember = memberTypes.includes(r.type);
+            const isDayTrip = r.nights === 0 || r.isDayTrip;
+
+            if (isMember) {
+              isDayTrip ? acc.memberDayTrip++ : acc.weekdayCount++;
             } else {
-              acc.guestCount++;
+              isDayTrip ? acc.guestDayTrip++ : acc.guestCount++;
             }
             return acc;
-          }, { weekdayCount: 0, guestCount: 0 });
+          }, { weekdayCount: 0, guestCount: 0, memberDayTrip: 0, guestDayTrip: 0 });
           
           return (
             <details 
@@ -793,7 +835,7 @@ const WeeklyList = () => {
                     <>
                       <div className="flex flex-col gap-1">
                         <div className="text-sm text-gray-600">
-                          주주 {stats.weekdayCount} · 게스트 {stats.guestCount}
+                          주주 {stats.weekdayCount} / 게스트 {stats.guestCount} / 당일 {stats.memberDayTrip + stats.guestDayTrip}
                         </div>
                         <div className="text-xs text-gray-500 flex items-center gap-1.5">
                           <span className="flex items-center gap-0.5 text-blue-600">
@@ -808,7 +850,7 @@ const WeeklyList = () => {
                         </div>
                       </div>
                       <div className="text-2xl font-bold text-gray-900">
-                        {allReservations.length}
+                        {allReservations.filter(r => !r.isDayTrip && r.nights !== 0).length}
                       </div>
                     </>
                   ) : (
@@ -824,41 +866,64 @@ const WeeklyList = () => {
                   <div className="pt-3 space-y-2">
                     {myReservations.length > 0 ? (
                       <div className="flex items-center gap-2 flex-wrap">
-                        {myReservations.map((reservation) => {
+                        {myReservations.filter(r => !r.isDayTrip && r.nights !== 0).map((reservation) => {
                           const profile = profiles[reservation.userId];
                           const isMine = String(reservation.userId) === String(user.id);
                           const ringColor = 'ring-green-500';
                           const bgColor = 'bg-green-500';
+                          const dateMeal = mealsByDate[dateStr]?.[reservation.userId];
+                          const hasMeal = dateMeal !== undefined && (dateMeal.lunch || dateMeal.dinner);
 
                           return (
                             <div key={reservation.id} className="relative group">
                               {profile?.profileImage ? (
-                                <img
-                                  src={profile.profileImage}
-                                  alt={reservation.name}
-                                  className={`w-12 h-12 rounded-full object-cover ring-2 ${ringColor} cursor-pointer`}
-          onClick={() => {
-            if (!isMine) return;
-            setSelectedReservationForCancel(reservation);
-            setShowCancelModal(true);}}
-                                />
-                              ) : (
-                                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold ring-2 ${ringColor} ${bgColor}`}>
-                                  {reservation.name?.[0]}
+                                <div className="relative">
+                                  <img
+                                    src={profile.profileImage}
+                                    alt={reservation.name}
+                                    className={`w-12 h-12 rounded-full object-cover ring-2 ${ringColor} ${isMine ? 'cursor-pointer' : ''}`}
+                                    onClick={() => {
+                                      if (!isMine) return;
+                                      console.log('📅 프로필 클릭 (이미지 있음):', {
+                                        dateStr,
+                                        reservationId: reservation.id
+                                      });
+                                      setSelectedReservationForManage(reservation);
+                                      setCurrentDateStrForManage(dateStr);
+                                      setShowManageModal(true);
+                                    }}
+                                  />
+                                  {hasMeal && (
+                                    <MealIndicator
+                                      lunch={dateMeal.lunch}
+                                      dinner={dateMeal.dinner}
+                                    />
+                                  )}
                                 </div>
-                              )}
-                              {/* ✅ 내 예약이면 X 배지 */}
-                              {isMine && (
-                                <button
-                                  onClick={() => {
-                                    setSelectedReservationForCancel(reservation);
-                                    setShowCancelModal(true);
-                                  }}
-                                  className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center text-xs font-bold shadow-md hover:bg-red-600"
-                                  aria-label="예약 취소"
-                                >
-                                  ×
-                                </button>
+                              ) : (
+                                <div className="relative">
+                                  <div
+                                    className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold ring-2 ${ringColor} ${bgColor} ${isMine ? 'cursor-pointer' : ''}`}
+                                    onClick={() => {
+                                      if (!isMine) return;
+                                      console.log('📅 프로필 클릭 (이미지 없음):', {
+                                        dateStr,
+                                        reservationId: reservation.id
+                                      });
+                                      setSelectedReservationForManage(reservation);
+                                      setCurrentDateStrForManage(dateStr);
+                                      setShowManageModal(true);
+                                    }}
+                                  >
+                                    {reservation.name?.[0]}
+                                  </div>
+                                  {hasMeal && (
+                                    <MealIndicator
+                                      lunch={dateMeal.lunch}
+                                      dinner={dateMeal.dinner}
+                                    />
+                                  )}
+                                </div>
                               )}
                               {/* 호버시 이름 + 초대자 표시 */}
                               <div className="absolute bottom-full left-0 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap">
@@ -880,19 +945,23 @@ const WeeklyList = () => {
                     )}
 
                     {/* 전체 예약자 보기 버튼 */}
-                    {allReservations.length > 0 && (
-                      <button
-                        onClick={() => {
-                          setSelectedDateForDetail(date);
-                          setSelectedReservationsForDetail(allReservations);
-                          setShowReservationDetailModal(true);
-                        }}
-                        className="w-full py-1.5 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
-                      >
-                        <Users className="w-3.5 h-3.5" />
-                        전체보기 ({allReservations.length})
-                      </button>
-                    )}
+                    {allReservations.length > 0 && (() => {
+                      const regularCount = allReservations.filter(r => !r.isDayTrip && r.nights !== 0).length;
+                      const dayTripCount = allReservations.filter(r => r.isDayTrip || r.nights === 0).length;
+                      return (
+                        <button
+                          onClick={() => {
+                            setSelectedDateForDetail(date);
+                            setSelectedReservationsForDetail(allReservations);
+                            setShowReservationDetailModal(true);
+                          }}
+                          className="w-full py-1.5 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
+                        >
+                          <Users className="w-3.5 h-3.5" />
+                          전체보기 ({regularCount}{dayTripCount > 0 ? `+${dayTripCount}` : ''})
+                        </button>
+                      );
+                    })()}
                   </div>
                 ) : (
                   // 주주: 전체 예약 (프로필 사진 최대 5개 + 더보기)
@@ -900,8 +969,8 @@ const WeeklyList = () => {
                     <div className="pt-3 space-y-2">
                       {/* 프로필 사진 가로 나열 (최대 5개, 내 프로필 우선) */}
                       <div className="flex items-center gap-2">
-                        {/* 내 예약 우선 정렬 */}
-                        {[...allReservations].sort((a, b) => {
+                        {/* 내 예약 우선 정렬, 당일치기 제외 */}
+                        {[...allReservations].filter(r => !r.isDayTrip && r.nights !== 0).sort((a, b) => {
                           const aIsMine = String(a.userId) === String(user.id);
                           const bIsMine = String(b.userId) === String(user.id);
                           if (aIsMine && !bIsMine) return -1;
@@ -914,39 +983,59 @@ const WeeklyList = () => {
                           const isMine = String(reservation.userId) === String(user.id);
                           const ringColor = isMine ? 'ring-green-500' : (profile?.gender === 'female' ? 'ring-pink-500' : 'ring-blue-500');
                           const bgColor = isMine ? 'bg-green-500' : (profile?.gender === 'female' ? 'bg-pink-500' : 'bg-blue-500');
+                          const dateMeal = mealsByDate[dateStr]?.[reservation.userId];
+                          const hasMeal = dateMeal !== undefined && (dateMeal.lunch || dateMeal.dinner);
 
                           return (
                             <div key={reservation.id} className="relative group">
                               {profile?.profileImage ? (
-                                <img
-                                  src={profile.profileImage}
-                                  alt={reservation.name}
-                                  className={`w-12 h-12 rounded-full object-cover ring-2 ${ringColor} cursor-pointer`}
-                                  onClick={() => {
-                                    if (!isMine) return;
-                                    setSelectedReservationForCancel(reservation);
-                                    setShowCancelModal(true);
-                                  }}
-                                />
-                              ) : (
-                                <div
-                                  className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold ring-2 ${ringColor} ${bgColor}`}
-                                >
-                                  {reservation.name?.[0]}
+                                <div className="relative">
+                                  <img
+                                    src={profile.profileImage}
+                                    alt={reservation.name}
+                                    className={`w-12 h-12 rounded-full object-cover ring-2 ${ringColor} ${isMine ? 'cursor-pointer' : ''}`}
+                                    onClick={() => {
+                                      if (!isMine) return;
+                                      console.log('📅 프로필 클릭 (캘린더 뷰, 이미지 있음):', {
+                                        dateStr,
+                                        reservationId: reservation.id
+                                      });
+                                      setSelectedReservationForManage(reservation);
+                                      setCurrentDateStrForManage(dateStr);
+                                      setShowManageModal(true);
+                                    }}
+                                  />
+                                  {hasMeal && (
+                                    <MealIndicator
+                                      lunch={dateMeal.lunch}
+                                      dinner={dateMeal.dinner}
+                                    />
+                                  )}
                                 </div>
-                              )}
-                              {/* ✅ 내 예약이면 X 배지 */}
-                              {isMine && (
-                                <button
-                                  onClick={() => {
-                                    setSelectedReservationForCancel(reservation);
-                                    setShowCancelModal(true);
-                                  }}
-                                  className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center text-xs font-bold shadow-md hover:bg-red-600"
-                                  aria-label="예약 취소"
-                                >
-                                  ×
-                                </button>
+                              ) : (
+                                <div className="relative">
+                                  <div
+                                    className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold ring-2 ${ringColor} ${bgColor} ${isMine ? 'cursor-pointer' : ''}`}
+                                    onClick={() => {
+                                      if (!isMine) return;
+                                      console.log('📅 프로필 클릭 (캘린더 뷰, 이미지 없음):', {
+                                        dateStr,
+                                        reservationId: reservation.id
+                                      });
+                                      setSelectedReservationForManage(reservation);
+                                      setCurrentDateStrForManage(dateStr);
+                                      setShowManageModal(true);
+                                    }}
+                                  >
+                                    {reservation.name?.[0]}
+                                  </div>
+                                  {hasMeal && (
+                                    <MealIndicator
+                                      lunch={dateMeal.lunch}
+                                      dinner={dateMeal.dinner}
+                                    />
+                                  )}
+                                </div>
                               )}
                               {/* 호버시 이름 + 초대자 표시 */}
                               <div className="absolute bottom-full left-0 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap">
@@ -962,32 +1051,43 @@ const WeeklyList = () => {
                         })}
 
                         {/* 더보기 버튼 */}
-                        {allReservations.length > 5 && (
+                        {(() => {
+                          const regularReservations = allReservations.filter(r => !r.isDayTrip && r.nights !== 0);
+                          const remainingRegular = Math.max(0, regularReservations.length - 5);
+
+                          return remainingRegular > 0 ? (
+                            <button
+                              onClick={() => {
+                                setSelectedDateForDetail(date);
+                                setSelectedReservationsForDetail(allReservations);
+                                setShowReservationDetailModal(true);
+                              }}
+                              className="w-12 h-12 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-gray-700 font-bold text-sm transition-colors"
+                            >
+                              +{remainingRegular}
+                            </button>
+                          ) : null;
+                        })()}
+                      </div>
+
+                      {/* 전체 보기 버튼 (항상 표시) */}
+                      {(() => {
+                        const regularCount = allReservations.filter(r => !r.isDayTrip && r.nights !== 0).length;
+                        const dayTripCount = allReservations.filter(r => r.isDayTrip || r.nights === 0).length;
+                        return (
                           <button
                             onClick={() => {
                               setSelectedDateForDetail(date);
                               setSelectedReservationsForDetail(allReservations);
                               setShowReservationDetailModal(true);
                             }}
-                            className="w-12 h-12 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-gray-700 font-bold text-sm transition-colors"
+                            className="w-full py-1.5 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
                           >
-                            +{allReservations.length - 5}
+                            <Users className="w-3.5 h-3.5" />
+                            전체보기 ({regularCount}{dayTripCount > 0 ? `+${dayTripCount}` : ''})
                           </button>
-                        )}
-                      </div>
-
-                      {/* 전체 보기 버튼 (항상 표시) */}
-                      <button
-                        onClick={() => {
-                          setSelectedDateForDetail(date);
-                          setSelectedReservationsForDetail(allReservations);
-                          setShowReservationDetailModal(true);
-                        }}
-                        className="w-full py-1.5 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
-                      >
-                        <Users className="w-3.5 h-3.5" />
-                        전체보기 ({allReservations.length})
-                      </button>
+                        );
+                      })()}
                     </div>
                   ) : (
                     <div className="py-4 text-center text-gray-400 text-sm">
@@ -1067,6 +1167,72 @@ const WeeklyList = () => {
    onConfirm={handleCancelConfirm}
  />
 
+      {/* 예약 관리 모달 */}
+      <ReservationManageModal
+        isOpen={showManageModal}
+        onClose={() => {
+          setShowManageModal(false);
+          setSelectedReservationForManage(null);
+          setCurrentDateStrForManage(null);
+        }}
+        reservation={selectedReservationForManage}
+        currentDateStr={currentDateStrForManage}
+        spaceId={selectedSpace?.id}
+        onRefresh={async () => {
+          await refresh();
+          // 식사 정보도 다시 로드
+          const weekDates = getWeekDates(currentWeekStart);
+          const dateStrings = weekDates.map(date => formatDate(date));
+          const mealsData = await mealService.getMealsByDateRange(
+            selectedSpace.id,
+            dateStrings
+          );
+          setMealsByDate(mealsData);
+        }}
+        onEdit={(reservation) => {
+          console.log('📝 [WeeklyList] 예약 수정 버튼 클릭:', {
+            reservation,
+            currentDateStrForManage
+          });
+          // ManageModal을 먼저 닫고 EditModal 열기
+          setShowManageModal(false);
+          setSelectedReservationForManage(reservation);
+          setShowEditModal(true);
+        }}
+        onCancel={(reservation) => {
+          setSelectedReservationForCancel(reservation);
+          setShowCancelModal(true);
+        }}
+        showToast={setToast}
+      />
+
+      {/* 예약 수정 모달 */}
+      <ReservationEditModal
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+        }}
+        reservation={selectedReservationForManage}
+        existingReservations={reservationsObj}
+        onConfirm={async (updateData) => {
+          try {
+            await reservationService.updateReservation(
+              selectedSpace.id,
+              selectedReservationForManage.id,
+              updateData
+            );
+
+            await refresh();
+            setToast({ message: '예약이 수정되었습니다', type: 'success' });
+            setShowEditModal(false);
+            setShowManageModal(false);
+          } catch (error) {
+            console.error('예약 수정 실패:', error);
+            setToast({ message: '수정에 실패했습니다', type: 'error' });
+          }
+        }}
+      />
+
       {/* 예약자 상세 모달 */}
       <ReservationDetailModal
         isOpen={showReservationDetailModal}
@@ -1079,6 +1245,19 @@ const WeeklyList = () => {
         reservations={selectedReservationsForDetail}
         profiles={profiles}
         user={user}
+        mealsByDate={mealsByDate}
+        onProfileClick={(reservation, clickedDate) => {
+          console.log('👤 [WeeklyList] 상세 모달에서 본인 프로필 클릭:', {
+            reservation,
+            clickedDate,
+            dateStr: formatDate(clickedDate)
+          });
+          // 상세 모달 닫고 예약관리 모달 열기
+          setShowReservationDetailModal(false);
+          setSelectedReservationForManage(reservation);
+          setCurrentDateStrForManage(formatDate(clickedDate));
+          setShowManageModal(true);
+        }}
       />
       
       {/* 토스트 */}
