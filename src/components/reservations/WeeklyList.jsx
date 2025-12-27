@@ -15,7 +15,6 @@ import CancelReservationModal from './CancelReservationModal';
 import ReservationDetailModal from './ReservationDetailModal';
 import WeeklyCalendarView from './WeeklyCalendarView';
 import SpaceDropdown from '../space/SpaceDropdown';
-import MealIndicator from './MealIndicator';
 import ReservationManageModal from './ReservationManageModal';
 import ReservationEditModal from './ReservationEditModal';
 import SimpleMealModal from './SimpleMealModal';
@@ -821,17 +820,39 @@ const WeeklyList = () => {
                     ({formatWeekDay(date)})
                   </span>
                   {/* 포크 아이콘 (식사 열기) */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedDateForMeal(date);
-                      setShowMealModal(true);
-                    }}
-                    className="p-1.5 hover:bg-orange-100 rounded-lg transition-colors"
-                    title="밥 보기"
-                  >
-                    <Utensils className="w-4 h-4 text-orange-600" />
-                  </button>
+                  <div className="relative">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedDateForMeal(date);
+                        setShowMealModal(true);
+                      }}
+                      className="p-1.5 hover:bg-orange-100 rounded-lg transition-colors"
+                      title="밥 보기"
+                    >
+                      <Utensils className="w-4 h-4 text-orange-600" />
+                    </button>
+                    {/* 본인 식사 상태 표시 */}
+                    {(() => {
+                      const dateMeals = mealsByDate[dateStr] || { lunch: [], dinner: [] };
+                      const myLunch = dateMeals.lunch.includes(user.id);
+                      const myDinner = dateMeals.dinner.includes(user.id);
+                      const hasMyMeal = myLunch || myDinner;
+
+                      if (!hasMyMeal) return null;
+
+                      return (
+                        <div className="absolute -top-0.5 -right-0.5 flex gap-0.5">
+                          {myLunch && (
+                            <div className="w-1.5 h-1.5 rounded-full bg-green-500 border border-white" title="점심" />
+                          )}
+                          {myDinner && (
+                            <div className="w-1.5 h-1.5 rounded-full bg-orange-500 border border-white" title="저녁" />
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
                   {/* 게스트용 체크인/체크아웃 표시 */}
                   {isGuest && myReservations.length > 0 && myReservations.map(r => {
                     const isCheckInDay = formatDate(r.checkIn) === dateStr;
@@ -887,10 +908,6 @@ const WeeklyList = () => {
                           const isMine = String(reservation.userId) === String(user.id);
                           const ringColor = 'ring-green-500';
                           const bgColor = 'bg-green-500';
-                          const dateMeals = mealsByDate[dateStr] || { lunch: [], dinner: [] };
-                          const hasLunch = dateMeals.lunch.includes(reservation.userId);
-                          const hasDinner = dateMeals.dinner.includes(reservation.userId);
-                          const hasMeal = hasLunch || hasDinner;
 
                           return (
                             <div key={reservation.id} className="relative group">
@@ -911,12 +928,6 @@ const WeeklyList = () => {
                                       setShowManageModal(true);
                                     }}
                                   />
-                                  {hasMeal && (
-                                    <MealIndicator
-                                      lunch={hasLunch}
-                                      dinner={hasDinner}
-                                    />
-                                  )}
                                 </div>
                               ) : (
                                 <div className="relative">
@@ -935,12 +946,6 @@ const WeeklyList = () => {
                                   >
                                     {reservation.name?.[0]}
                                   </div>
-                                  {hasMeal && (
-                                    <MealIndicator
-                                      lunch={hasLunch}
-                                      dinner={hasDinner}
-                                    />
-                                  )}
                                 </div>
                               )}
                               {/* 호버시 이름 + 초대자 표시 */}
@@ -1001,10 +1006,6 @@ const WeeklyList = () => {
                           const isMine = String(reservation.userId) === String(user.id);
                           const ringColor = isMine ? 'ring-green-500' : (profile?.gender === 'female' ? 'ring-pink-500' : 'ring-blue-500');
                           const bgColor = isMine ? 'bg-green-500' : (profile?.gender === 'female' ? 'bg-pink-500' : 'bg-blue-500');
-                          const dateMeals = mealsByDate[dateStr] || { lunch: [], dinner: [] };
-                          const hasLunch = dateMeals.lunch.includes(reservation.userId);
-                          const hasDinner = dateMeals.dinner.includes(reservation.userId);
-                          const hasMeal = hasLunch || hasDinner;
 
                           return (
                             <div key={reservation.id} className="relative group">
@@ -1025,12 +1026,6 @@ const WeeklyList = () => {
                                       setShowManageModal(true);
                                     }}
                                   />
-                                  {hasMeal && (
-                                    <MealIndicator
-                                      lunch={hasLunch}
-                                      dinner={hasDinner}
-                                    />
-                                  )}
                                 </div>
                               ) : (
                                 <div className="relative">
@@ -1049,12 +1044,6 @@ const WeeklyList = () => {
                                   >
                                     {reservation.name?.[0]}
                                   </div>
-                                  {hasMeal && (
-                                    <MealIndicator
-                                      lunch={hasLunch}
-                                      dinner={hasDinner}
-                                    />
-                                  )}
                                 </div>
                               )}
                               {/* 호버시 이름 + 초대자 표시 */}
