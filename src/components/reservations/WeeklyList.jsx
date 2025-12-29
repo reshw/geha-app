@@ -820,7 +820,7 @@ const WeeklyList = () => {
                     ({formatWeekDay(date)})
                   </span>
                   {/* 포크 아이콘 (식사 열기) */}
-                  <div className="relative">
+                  <div className="relative meal-check-button">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -906,8 +906,8 @@ const WeeklyList = () => {
                         {myReservations.filter(r => !r.isDayTrip && r.nights !== 0).map((reservation) => {
                           const profile = profiles[reservation.userId];
                           const isMine = String(reservation.userId) === String(user.id);
-                          const ringColor = 'ring-green-500';
-                          const bgColor = 'bg-green-500';
+                          const ringColor = profile?.gender === 'female' ? 'ring-pink-500' : 'ring-blue-500';
+                          const bgColor = profile?.gender === 'female' ? 'bg-pink-500' : 'bg-blue-500';
 
                           return (
                             <div key={reservation.id} className="relative group">
@@ -928,6 +928,12 @@ const WeeklyList = () => {
                                       setShowManageModal(true);
                                     }}
                                   />
+                                  {/* 내 예약 배지 */}
+                                  {isMine && (
+                                    <div className="absolute bottom-0 left-0 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center ring-2 ring-white">
+                                      <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
+                                    </div>
+                                  )}
                                 </div>
                               ) : (
                                 <div className="relative">
@@ -946,6 +952,12 @@ const WeeklyList = () => {
                                   >
                                     {reservation.name?.[0]}
                                   </div>
+                                  {/* 내 예약 배지 */}
+                                  {isMine && (
+                                    <div className="absolute bottom-0 left-0 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center ring-2 ring-white">
+                                      <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
+                                    </div>
+                                  )}
                                 </div>
                               )}
                               {/* 호버시 이름 + 초대자 표시 */}
@@ -1004,8 +1016,8 @@ const WeeklyList = () => {
                           const memberTypes = ['shareholder', 'manager', 'vice-manager'];
                           const isMember = memberTypes.includes(reservation.type);
                           const isMine = String(reservation.userId) === String(user.id);
-                          const ringColor = isMine ? 'ring-green-500' : (profile?.gender === 'female' ? 'ring-pink-500' : 'ring-blue-500');
-                          const bgColor = isMine ? 'bg-green-500' : (profile?.gender === 'female' ? 'bg-pink-500' : 'bg-blue-500');
+                          const ringColor = profile?.gender === 'female' ? 'ring-pink-500' : 'ring-blue-500';
+                          const bgColor = profile?.gender === 'female' ? 'bg-pink-500' : 'bg-blue-500';
 
                           return (
                             <div key={reservation.id} className="relative group">
@@ -1026,6 +1038,12 @@ const WeeklyList = () => {
                                       setShowManageModal(true);
                                     }}
                                   />
+                                  {/* 내 예약 배지 */}
+                                  {isMine && (
+                                    <div className="absolute bottom-0 left-0 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center ring-2 ring-white">
+                                      <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
+                                    </div>
+                                  )}
                                 </div>
                               ) : (
                                 <div className="relative">
@@ -1044,6 +1062,12 @@ const WeeklyList = () => {
                                   >
                                     {reservation.name?.[0]}
                                   </div>
+                                  {/* 내 예약 배지 */}
+                                  {isMine && (
+                                    <div className="absolute bottom-0 left-0 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center ring-2 ring-white">
+                                      <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
+                                    </div>
+                                  )}
                                 </div>
                               )}
                               {/* 호버시 이름 + 초대자 표시 */}

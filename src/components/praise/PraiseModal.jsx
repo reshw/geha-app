@@ -4,7 +4,7 @@ import { X, Loader2, Upload } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import useStore from '../../store/useStore';
 import praiseService from '../../services/praiseService';
-import { getWeeklyNickname } from '../../utils/nicknameUtils';
+import { getWeeklyNickname, getWeeklyAnimalEmoji } from '../../utils/nicknameUtils';
 
 export default function PraiseModal({ onClose, onSuccess }) {
   const { user } = useAuth();
@@ -99,10 +99,13 @@ export default function PraiseModal({ onClose, onSuccess }) {
 
       // 3. Firebase에 저장
       const weeklyNickname = getWeeklyNickname(user.id);
-      
+      const weeklyAnimalEmoji = getWeeklyAnimalEmoji(user.id);
+
       const praiseData = {
         userId: user.id,
         userName: weeklyNickname,
+        animalEmoji: weeklyAnimalEmoji,
+        nickname: weeklyNickname,
         userType: selectedSpace.userType,
         originalText: aiResult.originalText,
         refinedText: aiResult.refinedText,

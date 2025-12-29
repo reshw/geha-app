@@ -44,7 +44,7 @@ const MealParticipantListModal = ({
         </div>
 
         {/* 참여자 리스트 (참여한 사람만) */}
-        <div className="p-6">
+        <div className="p-6 meal-participants">
           {participants.length > 0 ? (
             <div className="space-y-2 mb-4">
               {participants.map((userId) => {

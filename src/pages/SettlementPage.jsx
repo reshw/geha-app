@@ -36,7 +36,7 @@ const SettlementPage = () => {
   const [selectedParticipantId, setSelectedParticipantId] = useState(null);
   const [showParticipantModal, setShowParticipantModal] = useState(false);
   const [viewMode, setViewMode] = useState('card'); // 'card' | 'table'
-  const [activeTab, setActiveTab] = useState('receipts'); // 'receipts' | 'participants'
+  const [activeTab, setActiveTab] = useState('myReceipts'); // 'myReceipts' | 'participants' | 'allReceipts'
   const [allSettlements, setAllSettlements] = useState([]); // 모든 정산 목록
   const [showWeekList, setShowWeekList] = useState(false); // 주차 목록 표시 여부
 
@@ -424,10 +424,11 @@ const SettlementPage = () => {
               </div>
 
               {/* 정산 완료 버튼 (매니저만, active 상태일 때만) */}
-              {isManager && settlement?.status === 'active' && isCurrentWeek() && (
+              {isManager && settlement?.status === 'active' && (
                 <button
                   onClick={handleCompleteSettlement}
                   className="flex px-3 py-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transition-all items-center gap-1.5 sm:gap-2"
+                  data-tour="settlement-complete-button"
                 >
                   <CheckCircle className="w-4 h-4" />
                   <span className="text-sm sm:text-base">정산완료</span>
@@ -560,35 +561,162 @@ const SettlementPage = () => {
               {/* 탭 헤더 */}
               <div className="flex border-b border-gray-200">
                 <button
-                  onClick={() => setActiveTab('receipts')}
-                  className={`flex-1 py-3 px-4 font-semibold transition-colors ${
-                    activeTab === 'receipts'
+                  onClick={() => setActiveTab('myReceipts')}
+                  className={`flex-1 py-3 px-2 sm:px-4 font-semibold transition-colors ${
+                    activeTab === 'myReceipts'
                       ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50'
                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                   }`}
+                  data-tour="my-receipts-tab"
                 >
-                  <div className="flex items-center justify-center gap-2">
-                    <Calendar className="w-4 h-4" />
-                    <span>참여 내역</span>
+                  <div className="flex items-center justify-center gap-1 sm:gap-2">
+                    <User className="w-4 h-4" />
+                    <span className="text-sm sm:text-base">내 참여내역</span>
                   </div>
                 </button>
                 <button
                   onClick={() => setActiveTab('participants')}
-                  className={`flex-1 py-3 px-4 font-semibold transition-colors ${
+                  className={`flex-1 py-3 px-2 sm:px-4 font-semibold transition-colors ${
                     activeTab === 'participants'
                       ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50'
                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                   }`}
                 >
-                  <div className="flex items-center justify-center gap-2">
+                  <div className="flex items-center justify-center gap-1 sm:gap-2">
                     <Users className="w-4 h-4" />
-                    <span>참여자별</span>
+                    <span className="text-sm sm:text-base">참여자별</span>
+                  </div>
+                </button>
+                <button
+                  onClick={() => setActiveTab('allReceipts')}
+                  className={`flex-1 py-3 px-2 sm:px-4 font-semibold transition-colors ${
+                    activeTab === 'allReceipts'
+                      ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-1 sm:gap-2">
+                    <Calendar className="w-4 h-4" />
+                    <span className="text-sm sm:text-base">전체 내역</span>
                   </div>
                 </button>
               </div>
 
               {/* 탭 컨텐츠 */}
               <div className="p-4">
+                {/* 내 참여내역 탭 */}
+                {activeTab === 'myReceipts' && (
+                  <>
+                    {(() => {
+                      const myReceipts = receipts.filter(receipt =>
+                        receipt.items.some(item => item.splitAmong?.includes(user?.id))
+                      );
+
+                      if (myReceipts.length === 0) {
+                        return (
+                          <div className="text-center py-12">
+                            <Receipt className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                            <p className="text-gray-600 font-medium mb-2">참여한 내역이 없습니다</p>
+                            <p className="text-sm text-gray-500">영수증 제출 시 분담자로 추가되면 여기에 표시됩니다</p>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="space-y-3">
+                          {myReceipts.map((receipt) => {
+                            const myItems = receipt.items.filter(item => item.splitAmong?.includes(user?.id));
+                            const myShare = myItems.reduce((sum, item) => sum + (item.perPerson || 0), 0);
+                            const isPayer = receipt.paidBy === user?.id;
+
+                            return (
+                              <div
+                                key={receipt.id}
+                                className={`border-2 rounded-lg p-4 hover:shadow-md transition-all cursor-pointer ${
+                                  isPayer ? 'border-green-200 bg-green-50/30' : 'border-gray-200 bg-white'
+                                }`}
+                                onClick={() => handleReceiptClick(receipt)}
+                              >
+                                {/* 상호명/메모 */}
+                                <div className="flex items-start justify-between mb-3">
+                                  <div className="flex-1">
+                                    {receipt.memo && (
+                                      <h4 className="font-bold text-gray-900 text-base mb-1">
+                                        {receipt.memo}
+                                      </h4>
+                                    )}
+                                    <p className="text-xs text-gray-500">
+                                      {formatDateTime(receipt.createdAt)}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {/* 내가 분담한 품목만 표시 */}
+                                <div className="mb-3 space-y-1.5">
+                                  {myItems.map((item, idx) => (
+                                    <div
+                                      key={idx}
+                                      className="flex justify-between items-start text-sm py-2 px-2 rounded bg-blue-50"
+                                    >
+                                      <span className="font-semibold text-blue-900 flex-1">
+                                        {item.itemName}
+                                      </span>
+                                      <div className="flex flex-col items-end gap-0.5 ml-2">
+                                        <div className="flex items-baseline gap-1">
+                                          <span className="font-bold text-blue-600">
+                                            {formatCurrency(item.perPerson || 0)}
+                                          </span>
+                                          <span className="text-xs text-gray-500">
+                                            / {formatCurrency(item.amount || 0)}
+                                          </span>
+                                        </div>
+                                        <span className="text-xs text-gray-500">
+                                          {item.splitAmong?.length || 0}명 분담
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+
+                                {/* 하단: 내가 분담한 금액 / 낸 사람 정보 */}
+                                <div className="pt-3 border-t border-gray-200">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs text-gray-600">낸 사람</span>
+                                      <span className={`font-bold ${isPayer ? 'text-green-600' : 'text-gray-900'}`}>
+                                        {receipt.paidByName}
+                                        {isPayer && (
+                                          <span className="ml-1 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
+                                            나
+                                          </span>
+                                        )}
+                                      </span>
+                                      {isPayer && (
+                                        <span className="text-lg font-bold text-green-600">
+                                          {formatCurrency(receipt.totalAmount)}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {!isPayer && myShare > 0 && (
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs text-gray-600">내 분담액</span>
+                                        <span className="text-lg font-bold text-blue-600">
+                                          {formatCurrency(myShare)}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </>
+                )}
+
+                {/* 참여자별 탭 */}
                 {activeTab === 'participants' && settlement?.participants && Object.keys(settlement.participants).length > 0 && (
                   <div className="space-y-2">
                     {Object.entries(settlement.participants)
@@ -649,7 +777,8 @@ const SettlementPage = () => {
                   </div>
                 )}
 
-                {activeTab === 'receipts' && (
+                {/* 전체 내역 탭 */}
+                {activeTab === 'allReceipts' && (
                   <>
                     {receipts.length === 0 ? (
                 <div className="text-center py-12">
@@ -827,10 +956,11 @@ const SettlementPage = () => {
       </div>
 
       {/* 플로팅 영수증 제출 버튼 */}
-      {settlement?.status === 'active' && receipts.length > 0 && (
+      {(!settlement || settlement.status !== 'settled') && (
         <button
           onClick={() => navigate('/settlement/submit')}
-          className="fixed right-4 bottom-32 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg px-4 py-3 flex items-center gap-2 transition-all active:scale-95 z-40"
+          className="fixed right-4 bottom-32 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg px-4 py-3 flex items-center gap-2 transition-all active:scale-95 z-[9998]"
+          data-tour="submit-receipt-button"
         >
           <Plus size={20} />
           <span className="font-semibold text-sm">영수증 제출</span>

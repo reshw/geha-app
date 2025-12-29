@@ -4,7 +4,8 @@ import { formatDate } from '../../utils/dateUtils';
 import { getWeeklyAnimalEmoji } from '../../utils/nicknameUtils';
 
 export default function PraiseDetailModal({ praise, onClose }) {
-  const animalEmoji = getWeeklyAnimalEmoji(praise.userId);
+  // 저장된 값 사용 (없으면 동적 생성 - 하위호환성)
+  const animalEmoji = praise.animalEmoji || getWeeklyAnimalEmoji(praise.userId);
 
   const getCategoryIcon = (category) => {
     switch(category) {

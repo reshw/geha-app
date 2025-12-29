@@ -244,7 +244,7 @@ const settlementService = {
   async submitReceipt(spaceId, receiptData) {
     try {
       console.log('🧾 영수증 제출:', { spaceId, receiptData });
-      
+
       const {
         submittedBy,      // 등록자 UID
         submittedByName,  // 등록자 이름
@@ -253,11 +253,61 @@ const settlementService = {
         memo,
         imageUrl,
         items,            // [{ itemName, amount, splitAmong: [userId, ...] }]
+        belongsToDate,    // 귀속일 (YYYY-MM-DD)
       } = receiptData;
-      
+
       const now = new Date();
-      const weekId = getWeekId(now);
       const receiptId = generateReceiptId(now);
+
+      // 귀속일 처리
+      let targetWeekId;
+      let belongsToWeekId;
+      let actualBelongsToDate = belongsToDate;
+
+      if (belongsToDate) {
+        const belongsDate = new Date(belongsToDate);
+        belongsToWeekId = getWeekId(belongsDate);
+
+        // 귀속 주차의 정산 상태 확인
+        const belongsSettlement = await this.getWeekSettlement(spaceId, belongsToWeekId);
+
+        if (belongsSettlement?.status === 'settled') {
+          // 귀속 주차가 마감되었으면 가장 최근의 active 주차 찾기
+          console.log(`⚠️ 귀속 주차(${belongsToWeekId})가 마감됨 - active 주차 검색 중...`);
+
+          const activeSettlement = await this.findLatestActiveSettlement(spaceId);
+
+          if (activeSettlement) {
+            targetWeekId = activeSettlement.weekId;
+            console.log(`✅ 가장 최근 active 주차(${targetWeekId})에 등록`);
+          } else {
+            // active 주차가 없으면 현재 주차 확인
+            const currentWeekId = getWeekId(now);
+            const currentSettlement = await this.getWeekSettlement(spaceId, currentWeekId);
+
+            if (currentSettlement?.status === 'settled') {
+              // 현재 주차도 settled면 다음 주차로 이동
+              const nextWeekDate = new Date(now);
+              nextWeekDate.setDate(nextWeekDate.getDate() + 7);
+              targetWeekId = getWeekId(nextWeekDate);
+              console.log(`🔜 현재 주차도 마감됨 - 다음 주차(${targetWeekId})에 등록`);
+            } else {
+              // 현재 주차가 active이거나 없으면 현재 주차에 등록
+              targetWeekId = currentWeekId;
+              console.log(`🆕 현재 주차(${targetWeekId})에 등록`);
+            }
+          }
+        } else {
+          // 귀속 주차가 마감되지 않았으면 귀속 주차에 등록
+          targetWeekId = belongsToWeekId;
+          console.log(`✅ 귀속 주차(${belongsToWeekId})에 등록`);
+        }
+      } else {
+        // 귀속일이 없으면 현재 주차에 등록
+        targetWeekId = getWeekId(now);
+        belongsToWeekId = targetWeekId;
+        actualBelongsToDate = now.toISOString().split('T')[0];
+      }
       
       // 총액 계산
       const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
@@ -278,18 +328,20 @@ const settlementService = {
         paidBy,
         paidByName,
         createdAt: Timestamp.fromDate(now),
+        belongsToDate: actualBelongsToDate,  // 귀속일
+        belongsToWeekId,                     // 귀속 주차 ID
         memo: memo || '',
         imageUrl: imageUrl || '',
         items: processedItems,
         totalAmount,
       };
-      
+
       // Settlement > receipts 서브컬렉션에 추가
-      const receiptRef = doc(db, 'spaces', spaceId, 'settlement', weekId, 'receipts', receiptId);
+      const receiptRef = doc(db, 'spaces', spaceId, 'settlement', targetWeekId, 'receipts', receiptId);
       await setDoc(receiptRef, receipt);
-      
+
       // Settlement 문서 업데이트 (참여자 목록, 총액)
-      await this.updateSettlementCalculation(spaceId, weekId);
+      await this.updateSettlementCalculation(spaceId, targetWeekId);
 
       // 이메일 알림 발송
       try {
@@ -721,6 +773,45 @@ const settlementService = {
     } catch (error) {
       console.error('❌ settleWeek 실패:', error);
       throw error;
+    }
+  },
+
+  /**
+   * 가장 최근의 active 상태인 정산 주차 찾기
+   */
+  async findLatestActiveSettlement(spaceId) {
+    try {
+      console.log('🔍 가장 최근 active 정산 주차 검색:', spaceId);
+
+      const settlementsRef = collection(db, 'spaces', spaceId, 'settlement');
+      const q = query(
+        settlementsRef,
+        where('status', '==', 'active'),
+        orderBy('weekStart', 'desc')
+      );
+      const snapshot = await getDocs(q);
+
+      if (snapshot.empty) {
+        console.log('❌ active 정산 주차 없음');
+        return null;
+      }
+
+      const doc = snapshot.docs[0];
+      const data = doc.data();
+
+      console.log('✅ 최근 active 주차 발견:', doc.id);
+      return {
+        id: doc.id,
+        weekId: doc.id,
+        ...data,
+        weekStart: data.weekStart?.toDate(),
+        weekEnd: data.weekEnd?.toDate(),
+        createdAt: data.createdAt?.toDate(),
+        settledAt: data.settledAt?.toDate(),
+      };
+    } catch (error) {
+      console.error('❌ findLatestActiveSettlement 실패:', error);
+      return null;
     }
   },
 

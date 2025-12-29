@@ -11,10 +11,11 @@ export default function PraiseCard({ praise, isManager, onApprove, onReject, onU
   const [editedCategory, setEditedCategory] = useState(praise.category || '기타');
   const [editedItemName, setEditedItemName] = useState(praise.itemName || '');
   const [showDetailModal, setShowDetailModal] = useState(false);
-  
+
   const isPending = praise.status === 'pending';
-  const animalEmoji = getWeeklyAnimalEmoji(praise.userId);
-  const nickname = getWeeklyNickname(praise.userId);
+  // 저장된 값 사용 (없으면 동적 생성 - 하위호환성)
+  const animalEmoji = praise.animalEmoji || getWeeklyAnimalEmoji(praise.userId);
+  const nickname = praise.nickname || getWeeklyNickname(praise.userId);
 
   const handleSave = async () => {
     try {

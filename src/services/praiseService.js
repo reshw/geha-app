@@ -48,6 +48,8 @@ const praiseService = {
         id,
         userId: data.userId,
         userName: data.userName,
+        animalEmoji: data.animalEmoji || '',
+        nickname: data.nickname || data.userName,
         userType: data.userType,
         originalText: data.originalText,
         refinedText: data.refinedText,

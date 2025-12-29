@@ -14,18 +14,22 @@ import {
   CalendarClock,
   TestTube,
   BookOpen,
-  Users
+  Users,
+  Play
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import useStore from '../store/useStore';
 import { canManageSpace } from '../utils/permissions';
 import { USER_TYPE_LABELS } from '../utils/constants';
 import LoginOverlay from '../components/auth/LoginOverlay';
+import { useTour } from '../contexts/TourContext';
+import { TOUR_IDS, tours } from '../data/tourData';
 
 const MorePage = () => {
   const navigate = useNavigate();
   const { user, isLoggedIn, logout } = useAuth();
   const { selectedSpace } = useStore();
+  const { startTour, isTourCompleted } = useTour();
 
   if (!isLoggedIn) {
     return <LoginOverlay />;
@@ -228,6 +232,37 @@ const MorePage = () => {
             label="앱 소개"
             onClick={() => navigate('/introduction')}
           />
+
+          {/* 투어 다시보기 */}
+          <div className="bg-white rounded-2xl p-4 border border-gray-100">
+            <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <Play className="w-5 h-5 text-blue-600" />
+              기능 안내 다시보기
+            </h4>
+            <div className="space-y-2">
+              {Object.values(tours).map((tour) => (
+                <button
+                  key={tour.id}
+                  onClick={() => startTour(tour.id)}
+                  className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-blue-50 rounded-xl transition-colors group"
+                >
+                  <div className="flex-1 text-left">
+                    <p className="font-medium text-gray-900 group-hover:text-blue-600 mb-1">
+                      {tour.title}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {tour.description}
+                    </p>
+                  </div>
+                  {isTourCompleted(tour.id) && (
+                    <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium ml-2">
+                      완료
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* 슈퍼어드민 메뉴 */}

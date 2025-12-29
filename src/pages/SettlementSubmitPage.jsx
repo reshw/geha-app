@@ -13,7 +13,8 @@ import {
   X,
   Search,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Calendar
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import useStore from '../store/useStore';
@@ -43,6 +44,14 @@ const SettlementSubmitPage = () => {
   const [members, setMembers] = useState([]);
   const [userProfiles, setUserProfiles] = useState({}); // userId -> {displayName, profileImage}
 
+  // 귀속일 (기본: 오늘)
+  const [belongsToDate, setBelongsToDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0]; // YYYY-MM-DD
+  });
+  const [targetWeekSettlement, setTargetWeekSettlement] = useState(null);
+  const [isTargetWeekSettled, setIsTargetWeekSettled] = useState(false);
+
   // 납부자 (기본: 본인)
   const [paidBy, setPaidBy] = useState('');
   const [paidByName, setPaidByName] = useState('');
@@ -71,10 +80,29 @@ const SettlementSubmitPage = () => {
     }
   }, [selectedSpace]);
 
+  // 귀속일 변경 시 해당 주차 정산 상태 확인
+  useEffect(() => {
+    if (selectedSpace && belongsToDate && !isEditMode) {
+      checkTargetWeekSettlement();
+    }
+  }, [selectedSpace, belongsToDate, isEditMode]);
+
   useEffect(() => {
     if (user && !isEditMode) {
       setPaidBy(user.id);
       setPaidByName(user.displayName);
+
+      // 초기 항목에 본인을 분담자로 자동 추가
+      setItems(prevItems => {
+        // 첫 번째 항목이 비어있고 분담자가 없으면 본인 추가
+        if (prevItems.length === 1 && prevItems[0].splitAmong.length === 0) {
+          return [{
+            ...prevItems[0],
+            splitAmong: [user.id]
+          }];
+        }
+        return prevItems;
+      });
     }
   }, [user, isEditMode]);
 
@@ -136,6 +164,23 @@ const SettlementSubmitPage = () => {
     }
   };
 
+  // 귀속일에 해당하는 주차의 정산 상태 확인
+  const checkTargetWeekSettlement = async () => {
+    if (!selectedSpace || !belongsToDate) return;
+
+    try {
+      const targetDate = new Date(belongsToDate);
+      const settlement = await settlementService.getSettlementByDate(selectedSpace.id, targetDate);
+
+      setTargetWeekSettlement(settlement);
+      setIsTargetWeekSettled(settlement?.status === 'settled');
+    } catch (error) {
+      console.error('주차 정산 상태 확인 실패:', error);
+      setTargetWeekSettlement(null);
+      setIsTargetWeekSettled(false);
+    }
+  };
+
   // 이미지 선택
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -184,7 +229,7 @@ const SettlementSubmitPage = () => {
         id: Date.now(),
         itemName: '',
         amount: '',
-        splitAmong: [],
+        splitAmong: user?.id ? [user.id] : [], // 새 항목에도 본인 자동 추가
         searchQuery: '',
         showSearchDropdown: false,
         expanded: true,
@@ -330,6 +375,7 @@ const SettlementSubmitPage = () => {
         paidByName,
         memo,
         imageUrl,
+        belongsToDate,  // 귀속일 추가
         items: items.map(item => ({
           itemName: item.itemName,
           amount: parseInt(item.amount),
@@ -413,8 +459,37 @@ const SettlementSubmitPage = () => {
       </div>
 
       <div className="p-4 space-y-4">
+        {/* 귀속일 선택 */}
+        {!isEditMode && (
+          <div className="bg-white rounded-xl p-4 shadow-sm" data-tour="belongs-date-section">
+            <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-blue-600" />
+              귀속일
+            </h3>
+            <input
+              type="date"
+              value={belongsToDate}
+              onChange={(e) => setBelongsToDate(e.target.value)}
+              max={new Date().toISOString().split('T')[0]}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              data-tour="belongs-date-input"
+            />
+            {isTargetWeekSettled && (
+              <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-sm text-amber-800">
+                  ⚠️ 해당 주차 정산이 마감되어 이번 주 정산에 추가됩니다.
+                  <br />
+                  <span className="text-xs text-amber-600 mt-1 block">
+                    귀속일은 {belongsToDate}로 기록되지만, 정산은 이번 주차에 포함됩니다.
+                  </span>
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* 영수증 사진 */}
-        <div className="bg-white rounded-xl p-4 shadow-sm">
+        <div className="bg-white rounded-xl p-4 shadow-sm receipt-image-upload">
           <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
             <Camera className="w-5 h-5 text-blue-600" />
             영수증 사진
@@ -452,7 +527,7 @@ const SettlementSubmitPage = () => {
         </div>
 
         {/* 납부자 선택 */}
-        <div className="bg-white rounded-xl p-4 shadow-sm">
+        <div className="bg-white rounded-xl p-4 shadow-sm paid-by-section">
           <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
             <User className="w-5 h-5 text-blue-600" />
             돈 낸 사람
@@ -546,12 +621,13 @@ const SettlementSubmitPage = () => {
 
         {/* 메모 */}
         <div className="bg-white rounded-xl p-4 shadow-sm">
+          
           <h3 className="font-bold text-gray-900 mb-3">사용처</h3>
           <input
             type="text"
             value={memo}
             onChange={(e) => setMemo(e.target.value)}
-            placeholder="예: 치킨집 회식"
+            placeholder="예: 산밑에집, 노랑통닭, 태양반점 ..."
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -625,7 +701,7 @@ const SettlementSubmitPage = () => {
                   </div>
 
                   {/* 분담자 선택 */}
-                  <div>
+                  <div className="item-split-section">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       분담자 선택
                     </label>

@@ -118,7 +118,7 @@ const SimpleMealModal = ({
     <>
       <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
         <div
-          className="bg-white rounded-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto"
+          className="bg-white rounded-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto meal-section"
           onClick={(e) => e.stopPropagation()}
         >
           {/* 헤더 */}
@@ -143,7 +143,7 @@ const SimpleMealModal = ({
               로딩 중...
             </div>
           ) : (
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4 meal-section-tabs">
               {/* 점심 */}
               <div
                 onClick={() => handleSectionClick('lunch')}

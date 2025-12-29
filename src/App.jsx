@@ -12,6 +12,11 @@ import ExpenseListPage from './pages/ExpenseListPage';
 import ExpenseRequestPage from './pages/ExpenseRequestPage';
 import MigrationPage from './pages/MigrationPage';
 
+// 투어 관련
+import { TourProvider } from './contexts/TourContext';
+import TourOverlay from './components/tour/TourOverlay';
+import TourAutoLauncher from './components/tour/TourAutoLauncher';
+
 // 정산 페이지들
 import SettlementPage from './pages/SettlementPage';
 import SettlementSubmitPage from './pages/SettlementSubmitPage';
@@ -37,8 +42,11 @@ import ReservationStatsPage from './pages/ReservationStatsPage';
 function App() {
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-gray-50">
-        <Routes>
+      <TourProvider>
+        <div className="min-h-screen bg-gray-50">
+          <TourAutoLauncher />
+          <TourOverlay />
+          <Routes>
           {/* 하단 네비게이션이 있는 메인 페이지들 */}
           <Route element={<MainLayout />}>
             <Route path="/" element={<WeeklyList />} />
@@ -79,8 +87,9 @@ function App() {
 
           {/* 이메일 테스트 */}
           <Route path="/email-test" element={<EmailTestPage />} />
-        </Routes>
-      </div>
+          </Routes>
+        </div>
+      </TourProvider>
     </BrowserRouter>
   );
 }
