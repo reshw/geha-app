@@ -235,16 +235,27 @@ export async function sendSettlementComplete(settlementData, options = {}) {
       return { success: false, error: 'manager_phone_missing' };
     }
 
-    // 게스트 정책 정보 가져오기 (계좌 정보)
-    let guestPolicy;
+    // 정산 계좌 정보 가져오기
+    let settlementAccount;
     try {
-      guestPolicy = await spaceSettingsService.getGuestPolicy(settlementData.spaceId);
+      settlementAccount = await spaceSettingsService.getSettlementAccount(settlementData.spaceId);
+
+      // 정산 계좌가 설정되지 않은 경우 게스트 정책 계좌 사용
+      if (!settlementAccount.accountBank_settle || !settlementAccount.accountNumber_settle || !settlementAccount.accountHolder_settle) {
+        console.warn('⚠️ 정산 계좌 미설정, 게스트 계좌 사용');
+        const guestPolicy = await spaceSettingsService.getGuestPolicy(settlementData.spaceId);
+        settlementAccount = {
+          accountBank_settle: guestPolicy.accountBank,
+          accountNumber_settle: guestPolicy.accountNumber,
+          accountHolder_settle: guestPolicy.accountHolder,
+        };
+      }
     } catch (error) {
-      console.warn('게스트 정책 조회 실패, 기본값 사용:', error);
-      guestPolicy = {
-        accountBank: '카카오뱅크',
-        accountNumber: '7942-24-38529',
-        accountHolder: '이수진',
+      console.warn('정산 계좌 조회 실패, 기본값 사용:', error);
+      settlementAccount = {
+        accountBank_settle: '카카오뱅크',
+        accountNumber_settle: '7942-24-38529',
+        accountHolder_settle: '이수진',
       };
     }
 
@@ -316,9 +327,9 @@ export async function sendSettlementComplete(settlementData, options = {}) {
               totalOwed: participant.totalOwed || 0,
               balance: Math.abs(balance),
               managerPhone,
-              accountBank: guestPolicy.accountBank,
-              accountNumber: guestPolicy.accountNumber,
-              accountHolder: guestPolicy.accountHolder,
+              accountBank: settlementAccount.accountBank_settle,
+              accountNumber: settlementAccount.accountNumber_settle,
+              accountHolder: settlementAccount.accountHolder_settle,
             },
           }),
         });

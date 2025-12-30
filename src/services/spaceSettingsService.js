@@ -494,6 +494,64 @@ const spaceSettingsService = {
       console.error('❌ 이메일 알림 설정 업데이트 실패:', error);
       throw error;
     }
+  },
+
+  /**
+   * 정산 계좌 정보 조회
+   */
+  async getSettlementAccount(spaceId) {
+    try {
+      console.log('💰 정산 계좌 정보 조회:', spaceId);
+
+      const spaceRef = doc(db, 'spaces', spaceId);
+      const spaceDoc = await getDoc(spaceRef);
+
+      if (!spaceDoc.exists()) {
+        throw new Error('스페이스를 찾을 수 없습니다.');
+      }
+
+      const data = spaceDoc.data();
+
+      return {
+        accountBank_settle: data.accountBank_settle || '',
+        accountNumber_settle: data.accountNumber_settle || '',
+        accountHolder_settle: data.accountHolder_settle || '',
+      };
+    } catch (error) {
+      console.error('❌ 정산 계좌 정보 조회 실패:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 정산 계좌 정보 업데이트
+   */
+  async updateSettlementAccount(spaceId, accountData, userId, userName) {
+    try {
+      console.log('💾 정산 계좌 정보 업데이트:', { spaceId, accountData });
+
+      const spaceRef = doc(db, 'spaces', spaceId);
+
+      const updateData = {
+        accountBank_settle: accountData.accountBank_settle,
+        accountNumber_settle: accountData.accountNumber_settle,
+        accountHolder_settle: accountData.accountHolder_settle,
+        settlementAccountUpdatedAt: new Date(),
+        settlementAccountUpdatedBy: {
+          id: userId,
+          displayName: userName
+        }
+      };
+
+      await updateDoc(spaceRef, updateData);
+
+      console.log('✅ 정산 계좌 정보 업데이트 완료');
+
+      return { success: true };
+    } catch (error) {
+      console.error('❌ 정산 계좌 정보 업데이트 실패:', error);
+      throw error;
+    }
   }
 };
 
