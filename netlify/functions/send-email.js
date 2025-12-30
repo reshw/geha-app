@@ -107,8 +107,18 @@ function generateGuestReservationEmail(data) {
   const accountInfo = data.accountInfo || process.env.ALIGO_ACCOUNT || '카카오뱅크 7979-38-83356 양석환';
   const spaceName = data.spaceName || '조강308호';
 
-  // 제목: [라운지명] 게스트 ㅇㅇㅇ 예약(251224-251225)
-  const subject = `[${spaceName}] 게스트 ${data.name} 예약(${formatDateShort(checkinDate)}-${formatDateShort(checkoutDate)})`;
+  // 예약 타입별 라벨 (guest, shareholder, manager, vice-manager)
+  const reservationType = data.reservationType || 'guest';
+  const reservationTypeLabels = {
+    'guest': '게스트',
+    'shareholder': '주주',
+    'manager': '매니저',
+    'vice-manager': '부매니저'
+  };
+  const typeLabel = reservationTypeLabels[reservationType] || '게스트';
+
+  // 제목: [라운지명] 주주/매니저/부매니저/게스트 ㅇㅇㅇ 예약(251224-251225)
+  const subject = `[${spaceName}] ${typeLabel} ${data.name} 예약(${formatDateShort(checkinDate)}-${formatDateShort(checkoutDate)})`;
 
   // HTML 이메일 템플릿 (Inline CSS)
   const html = `
@@ -127,7 +137,7 @@ function generateGuestReservationEmail(data) {
           <!-- 헤더 -->
           <tr>
             <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px 40px; text-align: center;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">🏠 게스트 예약 안내</h1>
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">🏠 ${typeLabel} 예약 안내</h1>
               <p style="margin: 10px 0 0 0; color: #ffffff; font-size: 16px; opacity: 0.95;">${spaceName}</p>
             </td>
           </tr>
@@ -153,10 +163,10 @@ function generateGuestReservationEmail(data) {
             </td>
           </tr>
 
-          <!-- 게스트 정보 -->
+          <!-- 예약자 정보 -->
           <tr>
             <td style="padding: 0 40px 40px 40px;">
-              <h2 style="margin: 0 0 20px 0; font-size: 20px; color: #333333; font-weight: 600; border-bottom: 2px solid #667eea; padding-bottom: 10px;">👤 게스트 정보</h2>
+              <h2 style="margin: 0 0 20px 0; font-size: 20px; color: #333333; font-weight: 600; border-bottom: 2px solid #667eea; padding-bottom: 10px;">👤 예약자 정보</h2>
               <table width="100%" cellpadding="12" cellspacing="0" border="0" style="border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden;">
                 <tr style="background-color: #f9f9f9;">
                   <td style="width: 35%; font-weight: 600; color: #555555; border-right: 1px solid #e0e0e0; border-bottom: 1px solid #e0e0e0;">이름</td>
@@ -174,15 +184,18 @@ function generateGuestReservationEmail(data) {
                   <td style="font-weight: 600; color: #555555; border-right: 1px solid #e0e0e0; border-bottom: 1px solid #e0e0e0;">생년</td>
                   <td style="color: #333333; border-bottom: 1px solid #e0e0e0;">${data.birthYear || '-'}</td>
                 </tr>
+                ${reservationType === 'guest' ? `
                 <tr style="background-color: #f9f9f9;">
                   <td style="font-weight: 600; color: #555555; border-right: 1px solid #e0e0e0;">초대 주주</td>
                   <td style="color: #333333;">${data.hostDisplayName || '-'}</td>
                 </tr>
+                ` : ''}
               </table>
             </td>
           </tr>
 
-          <!-- 이용료 정보 -->
+          <!-- 이용료 정보 (게스트만 표시) -->
+          ${reservationType === 'guest' ? `
           <tr>
             <td style="padding: 0 40px 40px 40px;">
               <h2 style="margin: 0 0 20px 0; font-size: 20px; color: #333333; font-weight: 600; border-bottom: 2px solid #667eea; padding-bottom: 10px;">💰 이용료 정보</h2>
@@ -198,6 +211,7 @@ function generateGuestReservationEmail(data) {
               </table>
             </td>
           </tr>
+          ` : ''}
 
           ${data.memo ? `
           <!-- 메모 -->

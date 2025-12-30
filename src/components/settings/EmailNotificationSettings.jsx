@@ -135,7 +135,7 @@ const EmailNotificationSettings = ({ spaceId, settings, onSave }) => {
     guest: '게스트',
     shareholder: '주주',
     manager: '매니저',
-    sub_manager: '부매니저'
+    'vice-manager': '부매니저'
   };
 
   return (

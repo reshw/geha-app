@@ -193,7 +193,7 @@ class ReservationService {
 
         // 이메일 발송
         if (emailSettings?.reservation?.enabled) {
-          const reservationType = reservationData.type; // 'guest', 'shareholder', 'manager', 'sub_manager'
+          const reservationType = reservationData.type; // 'guest', 'shareholder', 'manager', 'vice-manager'
           const shouldSendEmail = emailSettings.reservation.types.includes(reservationType);
 
           if (shouldSendEmail && emailSettings.reservation.recipients.length > 0) {
@@ -205,6 +205,7 @@ class ReservationService {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   type: 'guest_reservation',
+                  reservationType: reservationType, // 실제 예약 타입 전달 (guest, shareholder, manager, vice-manager)
                   name: reservationData.name,
                   phone: reservationData.phone,
                   checkIn: reservationData.checkIn,
