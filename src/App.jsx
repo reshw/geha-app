@@ -81,7 +81,7 @@ function App() {
           <Route path="/space/members" element={<MemberManagePage />} />
           <Route path="/space/alimtalk" element={<AlimtalkSettingsPage />} />
           <Route path="/space/guestpolicy" element={<GuestPolicySettingsPage />} />
-          <Route path="/spaces/:spaceId/settings/settlement" element={<SettlementSettingsPage />} />
+          <Route path="/space/settlement" element={<SettlementSettingsPage />} />
           <Route path="/space/transfer-manager" element={<TransferManagerPage />} />
           
           {/* 슈퍼 어드민 */}

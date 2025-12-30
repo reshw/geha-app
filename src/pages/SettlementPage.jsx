@@ -67,6 +67,16 @@ const SettlementPage = () => {
       // 선택된 주차의 Settlement 가져오기
       let weekSettlement = await settlementService.getSettlementByDate(selectedSpace.id, selectedWeekStart);
 
+      // 현재 주차를 보고 있고 settlement이 없으면 자동 생성
+      const today = new Date();
+      const { weekStart: currentWeekStart } = getWeekRange(today);
+      const isCurrentWeek = selectedWeekStart.getTime() === currentWeekStart.getTime();
+
+      if (!weekSettlement && isCurrentWeek) {
+        console.log('🆕 현재 주차의 settlement이 없음 → 자동 생성');
+        weekSettlement = await settlementService.getCurrentWeekSettlement(selectedSpace.id);
+      }
+
       // 영수증 목록 가져오기
       let weekReceipts = [];
       if (weekSettlement?.weekId) {
@@ -423,8 +433,8 @@ const SettlementPage = () => {
                 </button>
               </div>
 
-              {/* 정산 완료 버튼 (매니저만, active 상태일 때만) */}
-              {isManager && settlement?.status === 'active' && (
+              {/* 정산 완료 버튼 (매니저만, settled 아니면 표시) */}
+              {isManager && settlement && settlement.status !== 'settled' && (
                 <button
                   onClick={handleCompleteSettlement}
                   className="flex px-3 py-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transition-all items-center gap-1.5 sm:gap-2"

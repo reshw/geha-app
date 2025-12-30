@@ -161,6 +161,50 @@ const settlementService = {
   },
 
   /**
+   * 귀속 주차가 암묵적으로 마감되었는지 확인
+   * 귀속 주차보다 미래 주차 중 하나라도 settled가 있으면 true 반환
+   */
+  async isImplicitlyClosed(spaceId, belongsToWeekId) {
+    try {
+      console.log('🔍 암묵적 마감 여부 확인:', belongsToWeekId);
+
+      // belongsToWeekId의 날짜 계산
+      const [year, week] = belongsToWeekId.split('-W').map(Number);
+      const belongsDate = new Date(year, 0, 1 + (week - 1) * 7);
+
+      // 현재 날짜
+      const now = new Date();
+      const currentWeekId = getWeekId(now);
+
+      // belongsToWeekId부터 현재까지 모든 주차 확인
+      const checkDate = new Date(belongsDate);
+      checkDate.setDate(checkDate.getDate() + 7); // 다음 주부터 시작
+
+      while (checkDate <= now) {
+        const checkWeekId = getWeekId(checkDate);
+
+        // 현재 주차보다 미래면 중단
+        if (checkWeekId > currentWeekId) break;
+
+        const settlement = await this.getWeekSettlement(spaceId, checkWeekId);
+
+        if (settlement && settlement.status === 'settled') {
+          console.log(`⚠️ 미래 주차(${checkWeekId})가 settled 상태 → ${belongsToWeekId}는 암묵적 마감`);
+          return true;
+        }
+
+        checkDate.setDate(checkDate.getDate() + 7);
+      }
+
+      console.log(`✅ ${belongsToWeekId}는 암묵적 마감 아님`);
+      return false;
+    } catch (error) {
+      console.error('❌ isImplicitlyClosed 확인 실패:', error);
+      return false;
+    }
+  },
+
+  /**
    * 특정 주차 Settlement 가져오기 (없으면 null 반환, 생성하지 않음)
    */
   async getWeekSettlement(spaceId, weekId) {
@@ -271,36 +315,40 @@ const settlementService = {
         // 귀속 주차의 정산 상태 확인
         const belongsSettlement = await this.getWeekSettlement(spaceId, belongsToWeekId);
 
-        if (belongsSettlement?.status === 'settled') {
-          // 귀속 주차가 마감되었으면 가장 최근의 active 주차 찾기
-          console.log(`⚠️ 귀속 주차(${belongsToWeekId})가 마감됨 - active 주차 검색 중...`);
+        // 1. 직접 마감 여부 확인
+        const isDirectlyClosed = belongsSettlement?.status === 'settled';
 
-          const activeSettlement = await this.findLatestActiveSettlement(spaceId);
+        // 2. 암묵적 마감 여부 확인 (귀속 주차보다 미래에 settled가 있는지)
+        const isImplicitClosed = await this.isImplicitlyClosed(spaceId, belongsToWeekId);
 
-          if (activeSettlement) {
-            targetWeekId = activeSettlement.weekId;
-            console.log(`✅ 가장 최근 active 주차(${targetWeekId})에 등록`);
+        if (isDirectlyClosed) {
+          console.log(`⚠️ 귀속 주차(${belongsToWeekId})가 명시적으로 마감됨`);
+        }
+
+        if (isImplicitClosed) {
+          console.log(`⚠️ 귀속 주차(${belongsToWeekId})가 암묵적으로 마감됨 (미래 주차 중 settled 존재)`);
+        }
+
+        if (isDirectlyClosed || isImplicitClosed) {
+          // 명시적/암묵적 마감이면 현재 주차에 등록
+          const currentWeekId = getWeekId(now);
+          const currentSettlement = await this.getWeekSettlement(spaceId, currentWeekId);
+
+          if (currentSettlement?.status === 'settled') {
+            // 현재 주차도 마감되었으면 다음 주차로
+            const nextWeekDate = new Date(now);
+            nextWeekDate.setDate(nextWeekDate.getDate() + 7);
+            targetWeekId = getWeekId(nextWeekDate);
+            console.log(`🔜 현재 주차도 마감됨 → 다음 주차(${targetWeekId})에 등록`);
           } else {
-            // active 주차가 없으면 현재 주차 확인
-            const currentWeekId = getWeekId(now);
-            const currentSettlement = await this.getWeekSettlement(spaceId, currentWeekId);
-
-            if (currentSettlement?.status === 'settled') {
-              // 현재 주차도 settled면 다음 주차로 이동
-              const nextWeekDate = new Date(now);
-              nextWeekDate.setDate(nextWeekDate.getDate() + 7);
-              targetWeekId = getWeekId(nextWeekDate);
-              console.log(`🔜 현재 주차도 마감됨 - 다음 주차(${targetWeekId})에 등록`);
-            } else {
-              // 현재 주차가 active이거나 없으면 현재 주차에 등록
-              targetWeekId = currentWeekId;
-              console.log(`🆕 현재 주차(${targetWeekId})에 등록`);
-            }
+            // 현재 주차가 active이거나 없으면 현재 주차에 등록
+            targetWeekId = currentWeekId;
+            console.log(`🆕 귀속 주차 마감됨 → 현재 주차(${currentWeekId})에 등록`);
           }
         } else {
-          // 귀속 주차가 마감되지 않았으면 귀속 주차에 등록
+          // 명시적/암묵적 마감 모두 아니면 귀속 주차에 등록
           targetWeekId = belongsToWeekId;
-          console.log(`✅ 귀속 주차(${belongsToWeekId})에 등록`);
+          console.log(`✅ 귀속 주차(${belongsToWeekId})는 마감 안됨 → 귀속 주차에 등록`);
         }
       } else {
         // 귀속일이 없으면 현재 주차에 등록
@@ -583,13 +631,13 @@ const settlementService = {
         }
       }
 
-      // Settlement 문서 업데이트
+      // Settlement 문서 업데이트 (없으면 생성, 있으면 병합)
       const settlementRef = doc(db, 'spaces', spaceId, 'settlement', weekId);
-      await updateDoc(settlementRef, {
+      await setDoc(settlementRef, {
         participants,
         totalAmount,
         updatedAt: Timestamp.now(),
-      });
+      }, { merge: true });
 
       console.log('✅ 정산 계산 완료:', participants);
       return participants;

@@ -3,7 +3,23 @@
     "allow": [
       "Bash(npm install:*)",
       "Bash(ls:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(npx netlify status)",
+      "Bash(npx netlify:*)",
+      "Bash(cat:*)",
+      "Bash(if [ -f .netlify/state.json ])",
+      "Bash(then cat .netlify/state.json)",
+      "Bash(else echo \"state.json not found\")",
+      "Bash(fi)",
+      "Bash(if [ -f netlify.toml ])",
+      "Bash(then cat netlify.toml)",
+      "Bash(else echo \"netlify.toml not found\")",
+      "WebFetch(domain:undongs.netlify.app)",
+      "Bash(netlify login:*)",
+      "Bash(netlify switch:*)",
+      "Bash(netlify logout:*)",
+      "Bash(netlify sites:create:*)",
+      "Bash(netlify init:*)"
     ]
   }
 }

@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import useStore from '../store/useStore';
-import { ArrowLeft, Settings, Users, Bell, Info, Crown, DollarSign } from 'lucide-react';
+import { ArrowLeft, Settings, Users, Bell, Info, Crown, DollarSign, CreditCard } from 'lucide-react';
 import { canManageSpace } from '../utils/permissions';
 import { USER_TYPES } from '../utils/constants';
 import { useEffect } from 'react';
@@ -65,6 +65,14 @@ export default function SpaceManagePage() {
       icon: DollarSign,
       color: 'from-yellow-500 to-orange-600',
       path: '/space/guestpolicy'
+    },
+    {
+      id: 'settlement-account',
+      title: '정산 계좌 관리',
+      description: '정산 알림톡용 계좌 정보 설정',
+      icon: CreditCard,
+      color: 'from-emerald-500 to-teal-600',
+      path: '/space/settlement'
     },
     {
       id: 'transfer-manager',
