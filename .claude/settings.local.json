@@ -19,7 +19,9 @@
       "Bash(netlify switch:*)",
       "Bash(netlify logout:*)",
       "Bash(netlify sites:create:*)",
-      "Bash(netlify init:*)"
+      "Bash(netlify init:*)",
+      "Bash(node test-week-calc.js:*)",
+      "Bash(del test-week-calc.js)"
     ]
   }
 }

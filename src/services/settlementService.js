@@ -17,16 +17,32 @@ import * as notificationService from './notificationService';
 import { normalizePhoneNumber } from './notificationService';
 
 /**
- * 주차 ID 생성 (ISO Week)
+ * 주차 ID 생성 (ISO 8601 Week)
  * 형식: YYYY-Wxx
  * 예: 2025-W51
+ *
+ * ISO 8601 표준:
+ * - 한 주는 월요일부터 일요일까지
+ * - 연도의 첫 번째 주(W01)는 그 해의 첫 번째 목요일을 포함하는 주
+ * - 연말-새해 전환 시 같은 주는 같은 주차 번호를 가짐
+ *   예: 2025-12-29(월) ~ 2026-01-04(일) = 2026-W01
  */
 const getWeekId = (date = new Date()) => {
-  const year = date.getFullYear();
-  const startOfYear = new Date(year, 0, 1);
-  const days = Math.floor((date - startOfYear) / (24 * 60 * 60 * 1000));
-  const weekNumber = Math.ceil((days + startOfYear.getDay() + 1) / 7);
-  
+  const target = new Date(date.valueOf());
+
+  // 그 주의 목요일로 이동 (ISO 8601 기준: 목요일이 속한 연도가 주차의 연도)
+  const dayOfWeek = (target.getDay() + 6) % 7; // 월요일=0, 일요일=6
+  target.setDate(target.getDate() - dayOfWeek + 3);
+
+  // 해당 연도의 첫 번째 목요일 계산
+  const year = target.getFullYear();
+  const firstThursday = new Date(year, 0, 4); // 1월 4일은 항상 첫 주에 속함
+  const firstThursdayDay = (firstThursday.getDay() + 6) % 7;
+  firstThursday.setDate(firstThursday.getDate() - firstThursdayDay + 3);
+
+  // 첫 번째 목요일부터 경과한 주 수 계산
+  const weekNumber = 1 + Math.floor((target - firstThursday) / 604800000); // 7일 = 604800000ms
+
   return `${year}-W${String(weekNumber).padStart(2, '0')}`;
 };
 
