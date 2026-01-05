@@ -39,6 +39,11 @@ import IntroductionPage from './pages/IntroductionPage';
 import UserGuidePage from './pages/UserGuidePage';
 import ReservationStatsPage from './pages/ReservationStatsPage';
 
+// 바텐더 페이지들
+import BartenderMenuPage from './pages/BartenderMenuPage';
+import BartenderManagePage from './pages/BartenderManagePage';
+import BartenderOrderListPage from './pages/BartenderOrderListPage';
+
 
 function App() {
   return (
@@ -89,6 +94,11 @@ function App() {
 
           {/* 이메일 테스트 */}
           <Route path="/email-test" element={<EmailTestPage />} />
+
+          {/* 바텐더 */}
+          <Route path="/bartender/menu" element={<BartenderMenuPage />} />
+          <Route path="/bartender/manage" element={<BartenderManagePage />} />
+          <Route path="/bartender/orders" element={<BartenderOrderListPage />} />
           </Routes>
         </div>
       </TourProvider>

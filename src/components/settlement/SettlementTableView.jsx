@@ -14,12 +14,14 @@ const SettlementTableView = ({
   const tableRef = useRef(null);
   const [isCapturing, setIsCapturing] = useState(false);
 
-  // 날짜별로 영수증 그룹핑
+  // 날짜별로 영수증 그룹핑 (귀속일 기준)
   const groupedByDate = useMemo(() => {
     const groups = {};
 
     receipts.forEach(receipt => {
-      const dateKey = formatDate(receipt.createdAt);
+      // belongsToDate는 YYYY-MM-DD 형식 문자열
+      const belongsDate = receipt.belongsToDate ? new Date(receipt.belongsToDate) : receipt.createdAt;
+      const dateKey = formatDate(belongsDate);
       if (!groups[dateKey]) {
         groups[dateKey] = [];
       }

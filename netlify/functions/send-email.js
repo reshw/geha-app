@@ -29,6 +29,8 @@ exports.handler = async (event) => {
       emailContent = generateSettlementEmail(data);
     } else if (type === 'expense') {
       emailContent = generateExpenseEmail(data);
+    } else if (type === 'bartender_order') {
+      emailContent = generateBartenderOrderEmail(data);
     } else {
       throw new Error(`Unknown email type: ${type}`);
     }
@@ -608,6 +610,120 @@ function generateExpenseEmail(data) {
             <td style="background-color: #f9f9f9; padding: 20px 40px; text-align: center; border-top: 1px solid #e0e0e0;">
               <p style="margin: 0; color: #999999; font-size: 13px;">이 이메일은 자동으로 발송되었습니다.</p>
               <p style="margin: 8px 0 0 0; color: #999999; font-size: 13px;">운영비 페이지에서 청구를 승인하거나 거부할 수 있습니다.</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  return { subject, html };
+}
+
+/**
+ * 바텐더 주문 접수 이메일 생성
+ */
+function generateBartenderOrderEmail(data) {
+  const spaceName = data.spaceName || '라운지';
+  const orderedAt = new Date(data.orderedAt);
+
+  // 날짜 포맷팅
+  const formatDateTime = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}년 ${month}월 ${day}일 ${hours}:${minutes}`;
+  };
+
+  const subject = `[${spaceName}] 바텐더 주문: ${data.userName} - ${data.totalAmount.toLocaleString()}원`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f5f5f5; padding: 20px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+
+          <!-- 헤더 -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #ff8a00 0%, #da1b60 100%); padding: 30px 40px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">🍸 바텐더 주문 접수</h1>
+              <p style="margin: 10px 0 0 0; color: #ffffff; font-size: 16px; opacity: 0.95;">${spaceName}</p>
+            </td>
+          </tr>
+
+          <!-- 주문 정보 -->
+          <tr>
+            <td style="padding: 40px;">
+              <h2 style="margin: 0 0 20px 0; font-size: 20px; color: #333333; font-weight: 600; border-bottom: 2px solid #ff8a00; padding-bottom: 10px;">📋 주문 정보</h2>
+              <table width="100%" cellpadding="12" cellspacing="0" border="0" style="border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden;">
+                <tr style="background-color: #f9f9f9;">
+                  <td style="width: 35%; font-weight: 600; color: #555555; border-right: 1px solid #e0e0e0; border-bottom: 1px solid #e0e0e0;">주문자</td>
+                  <td style="color: #333333; border-bottom: 1px solid #e0e0e0;">${data.userName}</td>
+                </tr>
+                <tr style="background-color: #ffffff;">
+                  <td style="font-weight: 600; color: #555555; border-right: 1px solid #e0e0e0; border-bottom: 1px solid #e0e0e0;">주문일시</td>
+                  <td style="color: #333333; border-bottom: 1px solid #e0e0e0;">${formatDateTime(orderedAt)}</td>
+                </tr>
+                <tr style="background-color: #fff5e8;">
+                  <td style="font-weight: 600; color: #555555; border-right: 1px solid #e0e0e0;">총 금액</td>
+                  <td style="color: #ff8a00; font-weight: 700; font-size: 18px;">${data.totalAmount.toLocaleString()}원</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- 주문 항목 -->
+          <tr>
+            <td style="padding: 0 40px 40px 40px;">
+              <h2 style="margin: 0 0 20px 0; font-size: 20px; color: #333333; font-weight: 600; border-bottom: 2px solid #ff8a00; padding-bottom: 10px;">🛒 주문 항목</h2>
+              <table width="100%" cellpadding="12" cellspacing="0" border="0" style="border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden;">
+                <tr style="background-color: #f9f9f9;">
+                  <th style="font-weight: 600; color: #555555; border-right: 1px solid #e0e0e0; border-bottom: 1px solid #e0e0e0; text-align: left;">메뉴</th>
+                  <th style="font-weight: 600; color: #555555; border-right: 1px solid #e0e0e0; border-bottom: 1px solid #e0e0e0; text-align: center;">수량</th>
+                  <th style="font-weight: 600; color: #555555; border-right: 1px solid #e0e0e0; border-bottom: 1px solid #e0e0e0; text-align: center;">단가</th>
+                  <th style="font-weight: 600; color: #555555; border-bottom: 1px solid #e0e0e0; text-align: right;">금액</th>
+                </tr>
+                ${data.items.map((item, index) => `
+                <tr style="background-color: ${index % 2 === 0 ? '#ffffff' : '#f9f9f9'};">
+                  <td style="color: #333333; border-right: 1px solid #e0e0e0; ${index < data.items.length - 1 ? 'border-bottom: 1px solid #e0e0e0;' : ''}">${item.menuName}</td>
+                  <td style="color: #333333; text-align: center; border-right: 1px solid #e0e0e0; ${index < data.items.length - 1 ? 'border-bottom: 1px solid #e0e0e0;' : ''}">${item.quantity}</td>
+                  <td style="color: #333333; text-align: center; border-right: 1px solid #e0e0e0; ${index < data.items.length - 1 ? 'border-bottom: 1px solid #e0e0e0;' : ''}">${item.price.toLocaleString()}원</td>
+                  <td style="color: #333333; text-align: right; ${index < data.items.length - 1 ? 'border-bottom: 1px solid #e0e0e0;' : ''}">${item.total.toLocaleString()}원</td>
+                </tr>
+                `).join('')}
+              </table>
+            </td>
+          </tr>
+
+          ${data.memo ? `
+          <!-- 요청사항 -->
+          <tr>
+            <td style="padding: 0 40px 40px 40px;">
+              <h2 style="margin: 0 0 20px 0; font-size: 20px; color: #333333; font-weight: 600; border-bottom: 2px solid #ff8a00; padding-bottom: 10px;">📝 요청 사항</h2>
+              <div style="background-color: #fff5e8; padding: 16px; border-radius: 6px; border-left: 4px solid #ff8a00;">
+                <p style="margin: 0; color: #555555; line-height: 1.6; white-space: pre-wrap;">${data.memo}</p>
+              </div>
+            </td>
+          </tr>
+          ` : ''}
+
+          <!-- 푸터 -->
+          <tr>
+            <td style="background-color: #f9f9f9; padding: 20px 40px; text-align: center; border-top: 1px solid #e0e0e0;">
+              <p style="margin: 0; color: #999999; font-size: 13px;">이 이메일은 자동으로 발송되었습니다.</p>
+              <p style="margin: 8px 0 0 0; color: #999999; font-size: 13px;">주문 내역을 확인하고 준비해주세요.</p>
             </td>
           </tr>
 

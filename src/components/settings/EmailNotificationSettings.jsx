@@ -20,6 +20,10 @@ const EmailNotificationSettings = ({ spaceId, settings, onSave }) => {
     expense: {
       enabled: false,
       recipients: []
+    },
+    bartender_order: {
+      enabled: false,
+      recipients: []
     }
   });
 
@@ -27,7 +31,8 @@ const EmailNotificationSettings = ({ spaceId, settings, onSave }) => {
     reservation: '',
     settlement: '',
     praise: '',
-    expense: ''
+    expense: '',
+    bartender_order: ''
   });
 
   const [saving, setSaving] = useState(false);
@@ -55,6 +60,11 @@ const EmailNotificationSettings = ({ spaceId, settings, onSave }) => {
           enabled: false,
           recipients: [],
           ...settings.expense
+        },
+        bartender_order: {
+          enabled: false,
+          recipients: [],
+          ...settings.bartender_order
         }
       }));
     }
@@ -439,6 +449,72 @@ const EmailNotificationSettings = ({ spaceId, settings, onSave }) => {
               />
               <button
                 onClick={() => addEmail('expense')}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                추가
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 바텐더 주문 알림 */}
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-gray-900">🍸 바텐더 주문 알림</h3>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={emailSettings.bartender_order.enabled}
+              onChange={() => toggleEnabled('bartender_order')}
+              className="sr-only peer"
+            />
+            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+          </label>
+        </div>
+
+        <p className="text-sm text-gray-600 mb-4">
+          바텐더 주문이 들어올 때 이메일 알림을 받습니다.
+        </p>
+
+        {emailSettings.bartender_order.enabled && (
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              수신자 이메일
+            </label>
+            <div className="space-y-2 mb-3">
+              {emailSettings.bartender_order.recipients.map((email, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-lg"
+                >
+                  <span className="text-sm text-gray-700">{email}</span>
+                  <button
+                    onClick={() => removeEmail('bartender_order', email)}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="email"
+                value={newEmail.bartender_order}
+                onChange={(e) => setNewEmail(prev => ({ ...prev, bartender_order: e.target.value }))}
+                placeholder="이메일 주소 입력"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addEmail('bartender_order');
+                  }
+                }}
+              />
+              <button
+                onClick={() => addEmail('bartender_order')}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />

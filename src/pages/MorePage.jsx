@@ -15,7 +15,8 @@ import {
   TestTube,
   BookOpen,
   Users,
-  Play
+  Play,
+  Coffee
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import useStore from '../store/useStore';
@@ -181,6 +182,12 @@ const MorePage = () => {
             icon={Wallet}
             label="공용 운영비"
             onClick={() => navigate('/expenses')}
+          />
+
+          <MenuItem
+            icon={Coffee}
+            label="바텐더 주문"
+            onClick={() => navigate('/bartender/menu')}
           />
 
           <MenuItem

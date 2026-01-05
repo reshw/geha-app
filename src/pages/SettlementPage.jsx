@@ -656,7 +656,7 @@ const SettlementPage = () => {
                                       </h4>
                                     )}
                                     <p className="text-xs text-gray-500">
-                                      {formatDateTime(receipt.createdAt)}
+                                      {receipt.belongsToDate ? formatDate(new Date(receipt.belongsToDate)) : formatDate(receipt.createdAt)}
                                     </p>
                                   </div>
                                 </div>
@@ -828,7 +828,7 @@ const SettlementPage = () => {
                               </h4>
                             )}
                             <p className="text-xs text-gray-500">
-                              {formatDateTime(receipt.createdAt)}
+                              {receipt.belongsToDate ? formatDate(new Date(receipt.belongsToDate)) : formatDate(receipt.createdAt)}
                             </p>
                           </div>
                         </div>

@@ -669,11 +669,11 @@ const settlementService = {
   async getWeekReceipts(spaceId, weekId) {
     try {
       console.log('📋 영수증 목록 조회:', { spaceId, weekId });
-      
+
       const receiptsRef = collection(db, 'spaces', spaceId, 'settlement', weekId, 'receipts');
-      const q = query(receiptsRef, orderBy('createdAt', 'desc'));
+      const q = query(receiptsRef, orderBy('belongsToDate', 'desc'), orderBy('createdAt', 'desc'));
       const snapshot = await getDocs(q);
-      
+
       const receipts = [];
       snapshot.forEach((doc) => {
         receipts.push({
@@ -682,7 +682,7 @@ const settlementService = {
           createdAt: doc.data().createdAt?.toDate(),
         });
       });
-      
+
       console.log('✅ 영수증 목록 조회 완료:', receipts.length);
       return receipts;
     } catch (error) {
