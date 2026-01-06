@@ -385,21 +385,37 @@ const SettlementTableView = ({
           </tr>
 
           {/* 낼 돈 */}
-          <tr className="bg-red-50 font-bold">
+          <tr className="bg-orange-50 font-bold">
             <td colSpan="6" className="border border-gray-300 px-3 py-2 text-center">
-              낼 돈
+              입금할 금액
             </td>
             {participantList.map(participant => {
               const balance = participant.balance;
               const amount = Math.abs(balance);
+              const isPaymentConfirmed = participant.paymentConfirmed === true;
               return (
                 <td
                   key={participant.userId}
                   className={`border border-gray-300 px-3 py-2 text-right ${
-                    balance > 0 ? 'text-blue-600' : balance < 0 ? 'text-red-600' : ''
+                    balance > 0 ? 'text-blue-600' : balance < 0 ? (isPaymentConfirmed ? 'text-gray-500' : 'text-orange-600') : ''
                   }`}
                 >
-                  {balance < 0 ? formatCurrency(amount) : balance > 0 ? `(${formatCurrency(amount)})` : '-'}
+                  {balance < 0 ? (
+                    <div className="flex flex-col items-end">
+                      <span className={isPaymentConfirmed ? 'line-through' : ''}>
+                        {formatCurrency(amount)}
+                      </span>
+                      {isPaymentConfirmed && (
+                        <span className="text-xs text-green-600 font-semibold mt-0.5">
+                          ✓ 입금확인
+                        </span>
+                      )}
+                    </div>
+                  ) : balance > 0 ? (
+                    `(${formatCurrency(amount)})`
+                  ) : (
+                    '-'
+                  )}
                 </td>
               );
             })}

@@ -41,7 +41,7 @@ exports.handler = async (event) => {
 
     // 이메일 발송
     const result = await resend.emails.send({
-      from: 'noreply@lunagarden.co.kr',
+      from: '게스트라운지 <noreply@lunagarden.co.kr>',
       to: to,
       cc: cc.length > 0 ? cc : undefined,
       subject: emailContent.subject,

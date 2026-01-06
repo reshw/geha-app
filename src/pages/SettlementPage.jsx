@@ -313,6 +313,50 @@ const SettlementPage = () => {
     }
   };
 
+  // 입금 확인 핸들러
+  const handleConfirmPayment = async (userId, participantName) => {
+    if (!settlement?.weekId) return;
+
+    const confirmed = window.confirm(
+      `${participantName}님의 입금을 확인하시겠습니까?`
+    );
+    if (!confirmed) return;
+
+    try {
+      setLoading(true);
+      await settlementService.confirmPayment(selectedSpace.id, settlement.weekId, userId);
+      await loadSettlement();
+      alert(`${participantName}님의 입금이 확인되었습니다.`);
+    } catch (error) {
+      console.error('입금 확인 실패:', error);
+      alert('입금 확인에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 입금 확인 취소 핸들러
+  const handleCancelPaymentConfirmation = async (userId, participantName) => {
+    if (!settlement?.weekId) return;
+
+    const confirmed = window.confirm(
+      `${participantName}님의 입금 확인을 취소하시겠습니까?`
+    );
+    if (!confirmed) return;
+
+    try {
+      setLoading(true);
+      await settlementService.cancelPaymentConfirmation(selectedSpace.id, settlement.weekId, userId);
+      await loadSettlement();
+      alert(`${participantName}님의 입금 확인이 취소되었습니다.`);
+    } catch (error) {
+      console.error('입금 확인 취소 실패:', error);
+      alert('입금 확인 취소에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 매니저 권한 체크
   const isManager = selectedSpace?.userType && canManageSpace(selectedSpace.userType);
 
@@ -517,9 +561,16 @@ const SettlementPage = () => {
                   <Users className="w-4 h-4" />
                   <span className="font-semibold text-sm">내 정산 현황</span>
                 </div>
-                {settlement?.status === 'active' && (
-                  <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">진행중</span>
-                )}
+                <div className="flex items-center gap-2">
+                  {myBalance?.paymentConfirmed && myBalance?.balance < 0 && (
+                    <span className="text-xs bg-green-400 text-white px-2 py-0.5 rounded-full font-semibold">
+                      ✓ 입금확인
+                    </span>
+                  )}
+                  {settlement?.status === 'active' && (
+                    <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">진행중</span>
+                  )}
+                </div>
               </div>
 
               {/* 정산 결과와 상세 정보를 한 줄로 */}
@@ -537,10 +588,12 @@ const SettlementPage = () => {
                     </>
                   ) : myBalance?.balance < 0 ? (
                     <>
-                      <TrendingDown className="w-5 h-5 text-red-300" />
+                      <TrendingDown className="w-5 h-5 text-orange-300" />
                       <div>
                         <p className="text-xs opacity-75">정산 결과</p>
-                        <span className="text-2xl font-bold text-red-300">
+                        <span className={`text-2xl font-bold ${
+                          myBalance?.paymentConfirmed ? 'text-gray-300 line-through' : 'text-orange-300'
+                        }`}>
                           {formatCurrency(myBalance.balance)}
                         </span>
                       </div>
@@ -736,51 +789,89 @@ const SettlementPage = () => {
                         const memberInfo = getMemberInfo(userId);
                         const displayName = memberInfo.displayName;
                         const profileImage = memberInfo.profileImage;
+                        const needsPayment = participant.balance < 0;
+                        const isPaymentConfirmed = participant.paymentConfirmed === true;
 
                         return (
                           <div
                             key={userId}
-                            onClick={() => handleParticipantClick(userId, participant)}
-                            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:shadow-md transition-shadow ${
-                              userId === user.id ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'
-                            }`}
+                            className={`rounded-lg border ${
+                              userId === user.id ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'
+                            } ${isPaymentConfirmed && needsPayment ? 'opacity-70' : ''}`}
                           >
-                            {/* 프로필 이미지 */}
-                            {profileImage ? (
-                              <img
-                                src={profileImage}
-                                alt={displayName}
-                                className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-                              />
-                            ) : (
-                              <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold flex-shrink-0">
-                                {displayName[0]}
+                            <div
+                              onClick={() => handleParticipantClick(userId, participant)}
+                              className="flex items-center gap-3 p-3 cursor-pointer hover:shadow-md transition-shadow"
+                            >
+                              {/* 프로필 이미지 */}
+                              {profileImage ? (
+                                <img
+                                  src={profileImage}
+                                  alt={displayName}
+                                  className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                                />
+                              ) : (
+                                <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold flex-shrink-0">
+                                  {displayName[0]}
+                                </div>
+                              )}
+
+                              {/* 이름 및 정보 */}
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-gray-900 flex items-center gap-2">
+                                  {displayName}
+                                  {userId === user.id && (
+                                    <span className="text-xs text-blue-600 font-semibold">(나)</span>
+                                  )}
+                                  {isPaymentConfirmed && needsPayment && (
+                                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">
+                                      ✓ 입금확인
+                                    </span>
+                                  )}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  낸 {formatCurrency(participant.totalPaid)} / 부담 {formatCurrency(participant.totalOwed)}
+                                </p>
+                              </div>
+
+                              {/* 잔액 */}
+                              <div className={`font-bold flex-shrink-0 ${
+                                participant.balance > 0
+                                  ? 'text-green-600'
+                                  : participant.balance < 0
+                                  ? isPaymentConfirmed ? 'text-gray-500 line-through' : 'text-orange-600'
+                                  : 'text-gray-600'
+                              }`}>
+                                {participant.balance > 0 ? '+' : ''}{formatCurrency(participant.balance)}
+                              </div>
+                            </div>
+
+                            {/* 입금 확인 버튼 (부매니저 이상, 낼 돈이 있는 경우만) */}
+                            {isManager && needsPayment && (
+                              <div className="px-3 pb-3 pt-0">
+                                {isPaymentConfirmed ? (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleCancelPaymentConfirmation(userId, displayName);
+                                    }}
+                                    className="w-full py-2 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors"
+                                  >
+                                    입금 확인 취소
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleConfirmPayment(userId, displayName);
+                                    }}
+                                    className="w-full py-2 px-3 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm font-semibold transition-colors"
+                                  >
+                                    입금 확인 처리
+                                  </button>
+                                )}
                               </div>
                             )}
-
-                            {/* 이름 및 정보 */}
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-gray-900">
-                                {displayName}
-                                {userId === user.id && (
-                                  <span className="ml-2 text-xs text-blue-600 font-semibold">(나)</span>
-                                )}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                낸 {formatCurrency(participant.totalPaid)} / 부담 {formatCurrency(participant.totalOwed)}
-                              </p>
-                            </div>
-
-                            {/* 잔액 */}
-                            <div className={`font-bold flex-shrink-0 ${
-                              participant.balance > 0
-                                ? 'text-green-600'
-                                : participant.balance < 0
-                                ? 'text-red-600'
-                                : 'text-gray-600'
-                            }`}>
-                              {participant.balance > 0 ? '+' : ''}{formatCurrency(participant.balance)}
-                            </div>
                           </div>
                         );
                       })}
@@ -924,7 +1015,14 @@ const SettlementPage = () => {
             <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white shadow-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm opacity-90 mb-1">내 정산 결과</p>
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="text-sm opacity-90">내 정산 결과</p>
+                    {myBalance?.paymentConfirmed && myBalance?.balance < 0 && (
+                      <span className="text-xs bg-green-400 text-white px-2 py-0.5 rounded-full font-semibold">
+                        ✓ 입금확인
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2">
                     {myBalance?.balance > 0 ? (
                       <>
@@ -935,8 +1033,10 @@ const SettlementPage = () => {
                       </>
                     ) : myBalance?.balance < 0 ? (
                       <>
-                        <TrendingDown className="w-5 h-5 text-red-300" />
-                        <span className="text-2xl font-bold text-red-300">
+                        <TrendingDown className="w-5 h-5 text-orange-300" />
+                        <span className={`text-2xl font-bold ${
+                          myBalance?.paymentConfirmed ? 'text-gray-300 line-through' : 'text-orange-300'
+                        }`}>
                           {formatCurrency(myBalance.balance)}
                         </span>
                       </>

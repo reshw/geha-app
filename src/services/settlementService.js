@@ -885,10 +885,10 @@ const settlementService = {
   async getSpaceMembers(spaceId) {
     try {
       console.log('👥 멤버 목록 조회:', spaceId);
-      
+
       const membersRef = collection(db, 'spaces', spaceId, 'assignedUsers');
       const snapshot = await getDocs(membersRef);
-      
+
       const members = [];
       snapshot.forEach((doc) => {
         members.push({
@@ -896,11 +896,80 @@ const settlementService = {
           ...doc.data(),
         });
       });
-      
+
       console.log('✅ 멤버 목록 조회 완료:', members.length);
       return members;
     } catch (error) {
       console.error('❌ getSpaceMembers 실패:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 입금 확인 처리
+   * 부매니저 이상이 특정 참여자의 입금을 확인했음을 표시
+   */
+  async confirmPayment(spaceId, weekId, userId) {
+    try {
+      console.log('💰 입금 확인 처리:', { spaceId, weekId, userId });
+
+      const settlementRef = doc(db, 'spaces', spaceId, 'settlement', weekId);
+      const settlementSnap = await getDoc(settlementRef);
+
+      if (!settlementSnap.exists()) {
+        throw new Error('정산 정보를 찾을 수 없습니다.');
+      }
+
+      const settlementData = settlementSnap.data();
+
+      if (!settlementData.participants || !settlementData.participants[userId]) {
+        throw new Error('참여자를 찾을 수 없습니다.');
+      }
+
+      // 입금 확인 처리
+      await updateDoc(settlementRef, {
+        [`participants.${userId}.paymentConfirmed`]: true,
+        [`participants.${userId}.paymentConfirmedAt`]: Timestamp.now(),
+      });
+
+      console.log('✅ 입금 확인 완료');
+      return true;
+    } catch (error) {
+      console.error('❌ confirmPayment 실패:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 입금 확인 취소
+   */
+  async cancelPaymentConfirmation(spaceId, weekId, userId) {
+    try {
+      console.log('💰 입금 확인 취소:', { spaceId, weekId, userId });
+
+      const settlementRef = doc(db, 'spaces', spaceId, 'settlement', weekId);
+      const settlementSnap = await getDoc(settlementRef);
+
+      if (!settlementSnap.exists()) {
+        throw new Error('정산 정보를 찾을 수 없습니다.');
+      }
+
+      const settlementData = settlementSnap.data();
+
+      if (!settlementData.participants || !settlementData.participants[userId]) {
+        throw new Error('참여자를 찾을 수 없습니다.');
+      }
+
+      // 입금 확인 취소
+      await updateDoc(settlementRef, {
+        [`participants.${userId}.paymentConfirmed`]: false,
+        [`participants.${userId}.paymentConfirmedAt`]: null,
+      });
+
+      console.log('✅ 입금 확인 취소 완료');
+      return true;
+    } catch (error) {
+      console.error('❌ cancelPaymentConfirmation 실패:', error);
       throw error;
     }
   },
