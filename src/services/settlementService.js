@@ -671,22 +671,42 @@ const settlementService = {
       console.log('📋 영수증 목록 조회:', { spaceId, weekId });
 
       const receiptsRef = collection(db, 'spaces', spaceId, 'settlement', weekId, 'receipts');
-      const q = query(receiptsRef, orderBy('belongsToDate', 'desc'), orderBy('createdAt', 'desc'));
-      const snapshot = await getDocs(q);
+
+      // orderBy 제거하고 일단 모든 영수증 가져오기 (클라이언트에서 정렬)
+      const snapshot = await getDocs(receiptsRef);
 
       const receipts = [];
       snapshot.forEach((doc) => {
+        const data = doc.data();
         receipts.push({
           id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate(),
+          ...data,
+          createdAt: data.createdAt?.toDate(),
         });
       });
 
+      // 클라이언트에서 정렬 (귀속일 기준 내림차순, 그 다음 생성일 기준 내림차순)
+      receipts.sort((a, b) => {
+        const dateA = a.belongsToDate || a.createdAt?.toISOString() || '';
+        const dateB = b.belongsToDate || b.createdAt?.toISOString() || '';
+
+        if (dateA !== dateB) {
+          return dateB.localeCompare(dateA); // 귀속일 내림차순
+        }
+
+        const createdA = a.createdAt?.getTime() || 0;
+        const createdB = b.createdAt?.getTime() || 0;
+        return createdB - createdA; // 생성일 내림차순
+      });
+
       console.log('✅ 영수증 목록 조회 완료:', receipts.length);
+      if (receipts.length > 0) {
+        console.log('📄 첫 번째 영수증:', receipts[0]);
+      }
       return receipts;
     } catch (error) {
       console.error('❌ getWeekReceipts 실패:', error);
+      console.error('에러 상세:', error);
       throw error;
     }
   },
@@ -827,6 +847,14 @@ const settlementService = {
         // 알림 실패해도 정산 확정은 성공으로 처리
         console.error('⚠️ 정산 완료 알림 발송 실패 (정산은 완료됨):', notifyError);
         notificationResult = { success: false, error: notifyError.message };
+      }
+
+      // 6. 정산종결 상태 체크 (접수마감 직후)
+      console.log('🔄 접수마감 후 정산종결 상태 체크...');
+      try {
+        await this.updateAllSettledStatus(spaceId, weekId);
+      } catch (checkError) {
+        console.error('⚠️ 정산종결 상태 체크 실패 (접수마감은 완료됨):', checkError);
       }
 
       return {
@@ -1076,36 +1104,71 @@ const settlementService = {
       const settlementData = settlementSnap.data();
       const participants = settlementData.participants || {};
 
+      // 참여자가 없으면 종결 불가
+      if (Object.keys(participants).length === 0) {
+        console.log('⚠️ 참여자가 없음 - 종결 불가');
+        await updateDoc(settlementRef, {
+          allSettled: false,
+          allSettledAt: null,
+        });
+        return false;
+      }
+
       // 모든 참여자가 입금/송금 확인되었는지 체크
       let allConfirmed = true;
+      const checkResults = [];
+
       for (const [userId, participant] of Object.entries(participants)) {
         const balance = participant.balance || 0;
+        const participantName = participant.name || userId;
 
         // balance가 0이 아닌 경우만 확인 필요
         if (balance !== 0) {
           if (balance < 0) {
-            // 낼 돈이 있으면 입금확인 필요
-            if (!participant.paymentConfirmed) {
+            // 낮 돈이 있으면 입금확인 필요
+            const confirmed = participant.paymentConfirmed === true;
+            checkResults.push({
+              name: participantName,
+              balance,
+              type: '입금',
+              confirmed,
+            });
+            if (!confirmed) {
               allConfirmed = false;
-              break;
             }
           } else if (balance > 0) {
             // 받을 돈이 있으면 송금완료 필요
-            if (!participant.transferCompleted) {
+            const completed = participant.transferCompleted === true;
+            checkResults.push({
+              name: participantName,
+              balance,
+              type: '송금',
+              confirmed: completed,
+            });
+            if (!completed) {
               allConfirmed = false;
-              break;
             }
           }
+        } else {
+          checkResults.push({
+            name: participantName,
+            balance: 0,
+            type: '없음',
+            confirmed: true,
+          });
         }
       }
 
+      console.log('📊 정산 상태 체크 결과:', checkResults);
       console.log('✅ 정산종결 상태:', allConfirmed ? '모든 거래 완료' : '확인 대기중');
 
       // 정산종결 상태 업데이트
-      await updateDoc(settlementRef, {
+      const updateData = {
         allSettled: allConfirmed,
         allSettledAt: allConfirmed ? Timestamp.now() : null,
-      });
+      };
+
+      await updateDoc(settlementRef, updateData);
 
       return allConfirmed;
     } catch (error) {

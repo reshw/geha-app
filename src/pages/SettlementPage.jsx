@@ -985,14 +985,18 @@ const SettlementPage = () => {
                 <div className="text-center py-12">
                   <Receipt className="w-16 h-16 mx-auto mb-4 text-gray-300" />
                   <p className="text-gray-600 font-medium mb-2">아직 제출된 영수증이 없습니다</p>
-                  <p className="text-sm text-gray-500 mb-6">첫 영수증을 제출해보세요!</p>
-                  <button
-                    onClick={() => navigate('/settlement/submit')}
-                    className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-colors"
-                  >
-                    <Plus className="w-5 h-5" />
-                    영수증 제출하기
-                  </button>
+                  {settlement?.status !== 'settled' && (
+                    <>
+                      <p className="text-sm text-gray-500 mb-6">첫 영수증을 제출해보세요!</p>
+                      <button
+                        onClick={() => navigate('/settlement/submit')}
+                        className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-colors"
+                      >
+                        <Plus className="w-5 h-5" />
+                        영수증 제출하기
+                      </button>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-3">
