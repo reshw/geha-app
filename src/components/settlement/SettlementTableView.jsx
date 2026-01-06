@@ -384,35 +384,46 @@ const SettlementTableView = ({
             ))}
           </tr>
 
-          {/* 낼 돈 */}
-          <tr className="bg-orange-50 font-bold">
+          {/* 정산 결과 */}
+          <tr className="bg-blue-50 font-bold">
             <td colSpan="6" className="border border-gray-300 px-3 py-2 text-center">
-              입금할 금액
+              정산 결과
             </td>
             {participantList.map(participant => {
               const balance = participant.balance;
               const amount = Math.abs(balance);
               const isPaymentConfirmed = participant.paymentConfirmed === true;
+              const isTransferCompleted = participant.transferCompleted === true;
+              const needsPayment = balance < 0;
+              const needsReceive = balance > 0;
+
               return (
                 <td
                   key={participant.userId}
                   className={`border border-gray-300 px-3 py-2 text-right ${
-                    balance > 0 ? 'text-blue-600' : balance < 0 ? (isPaymentConfirmed ? 'text-gray-500' : 'text-orange-600') : ''
+                    needsReceive
+                      ? isTransferCompleted ? 'text-gray-500' : 'text-green-600'
+                      : needsPayment
+                      ? isPaymentConfirmed ? 'text-gray-500' : 'text-orange-600'
+                      : 'text-gray-600'
                   }`}
                 >
-                  {balance < 0 ? (
-                    <div className="flex flex-col items-end">
-                      <span className={isPaymentConfirmed ? 'line-through' : ''}>
-                        {formatCurrency(amount)}
+                  {balance !== 0 ? (
+                    <div className="flex flex-col items-end gap-0.5">
+                      <span className={(isPaymentConfirmed && needsPayment) || (isTransferCompleted && needsReceive) ? 'line-through' : ''}>
+                        {needsReceive ? '+' : ''}{formatCurrency(amount)}
                       </span>
-                      {isPaymentConfirmed && (
-                        <span className="text-xs text-green-600 font-semibold mt-0.5">
+                      {isPaymentConfirmed && needsPayment && (
+                        <span className="text-xs text-green-600 font-semibold">
                           ✓ 입금확인
                         </span>
                       )}
+                      {isTransferCompleted && needsReceive && (
+                        <span className="text-xs text-green-600 font-semibold">
+                          ✓ 송금완료
+                        </span>
+                      )}
                     </div>
-                  ) : balance > 0 ? (
-                    `(${formatCurrency(amount)})`
                   ) : (
                     '-'
                   )}

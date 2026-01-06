@@ -973,6 +973,75 @@ const settlementService = {
       throw error;
     }
   },
+
+  /**
+   * 송금 완료 처리
+   * 부매니저 이상이 특정 참여자에게 송금을 완료했음을 표시
+   */
+  async confirmTransfer(spaceId, weekId, userId) {
+    try {
+      console.log('💸 송금 완료 처리:', { spaceId, weekId, userId });
+
+      const settlementRef = doc(db, 'spaces', spaceId, 'settlement', weekId);
+      const settlementSnap = await getDoc(settlementRef);
+
+      if (!settlementSnap.exists()) {
+        throw new Error('정산 정보를 찾을 수 없습니다.');
+      }
+
+      const settlementData = settlementSnap.data();
+
+      if (!settlementData.participants || !settlementData.participants[userId]) {
+        throw new Error('참여자를 찾을 수 없습니다.');
+      }
+
+      // 송금 완료 처리
+      await updateDoc(settlementRef, {
+        [`participants.${userId}.transferCompleted`]: true,
+        [`participants.${userId}.transferCompletedAt`]: Timestamp.now(),
+      });
+
+      console.log('✅ 송금 완료');
+      return true;
+    } catch (error) {
+      console.error('❌ confirmTransfer 실패:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 송금 완료 취소
+   */
+  async cancelTransferConfirmation(spaceId, weekId, userId) {
+    try {
+      console.log('💸 송금 완료 취소:', { spaceId, weekId, userId });
+
+      const settlementRef = doc(db, 'spaces', spaceId, 'settlement', weekId);
+      const settlementSnap = await getDoc(settlementRef);
+
+      if (!settlementSnap.exists()) {
+        throw new Error('정산 정보를 찾을 수 없습니다.');
+      }
+
+      const settlementData = settlementSnap.data();
+
+      if (!settlementData.participants || !settlementData.participants[userId]) {
+        throw new Error('참여자를 찾을 수 없습니다.');
+      }
+
+      // 송금 완료 취소
+      await updateDoc(settlementRef, {
+        [`participants.${userId}.transferCompleted`]: false,
+        [`participants.${userId}.transferCompletedAt`]: null,
+      });
+
+      console.log('✅ 송금 완료 취소');
+      return true;
+    } catch (error) {
+      console.error('❌ cancelTransferConfirmation 실패:', error);
+      throw error;
+    }
+  },
 };
 
 // 유틸리티 함수 export

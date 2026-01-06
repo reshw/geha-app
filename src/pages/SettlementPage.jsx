@@ -357,6 +357,50 @@ const SettlementPage = () => {
     }
   };
 
+  // 송금 완료 핸들러
+  const handleConfirmTransfer = async (userId, participantName) => {
+    if (!settlement?.weekId) return;
+
+    const confirmed = window.confirm(
+      `${participantName}님에게 송금을 완료하셨습니까?`
+    );
+    if (!confirmed) return;
+
+    try {
+      setLoading(true);
+      await settlementService.confirmTransfer(selectedSpace.id, settlement.weekId, userId);
+      await loadSettlement();
+      alert(`${participantName}님에게 송금 완료 처리되었습니다.`);
+    } catch (error) {
+      console.error('송금 완료 처리 실패:', error);
+      alert('송금 완료 처리에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 송금 완료 취소 핸들러
+  const handleCancelTransferConfirmation = async (userId, participantName) => {
+    if (!settlement?.weekId) return;
+
+    const confirmed = window.confirm(
+      `${participantName}님의 송금 완료를 취소하시겠습니까?`
+    );
+    if (!confirmed) return;
+
+    try {
+      setLoading(true);
+      await settlementService.cancelTransferConfirmation(selectedSpace.id, settlement.weekId, userId);
+      await loadSettlement();
+      alert(`${participantName}님의 송금 완료가 취소되었습니다.`);
+    } catch (error) {
+      console.error('송금 완료 취소 실패:', error);
+      alert('송금 완료 취소에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 매니저 권한 체크
   const isManager = selectedSpace?.userType && canManageSpace(selectedSpace.userType);
 
@@ -567,6 +611,11 @@ const SettlementPage = () => {
                       ✓ 입금확인
                     </span>
                   )}
+                  {myBalance?.transferCompleted && myBalance?.balance > 0 && (
+                    <span className="text-xs bg-green-400 text-white px-2 py-0.5 rounded-full font-semibold">
+                      ✓ 송금완료
+                    </span>
+                  )}
                   {settlement?.status === 'active' && (
                     <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">진행중</span>
                   )}
@@ -581,7 +630,9 @@ const SettlementPage = () => {
                       <TrendingUp className="w-5 h-5 text-green-300" />
                       <div>
                         <p className="text-xs opacity-75">정산 결과</p>
-                        <span className="text-2xl font-bold text-green-300">
+                        <span className={`text-2xl font-bold ${
+                          myBalance?.transferCompleted ? 'text-gray-300 line-through' : 'text-green-300'
+                        }`}>
                           +{formatCurrency(myBalance.balance)}
                         </span>
                       </div>
@@ -790,88 +841,132 @@ const SettlementPage = () => {
                         const displayName = memberInfo.displayName;
                         const profileImage = memberInfo.profileImage;
                         const needsPayment = participant.balance < 0;
+                        const needsReceive = participant.balance > 0;
                         const isPaymentConfirmed = participant.paymentConfirmed === true;
+                        const isTransferCompleted = participant.transferCompleted === true;
+
+                        const handleAmountClick = (e) => {
+                          e.stopPropagation();
+                          if (!isManager) return;
+
+                          if (needsPayment) {
+                            // 입금 확인/취소
+                            if (isPaymentConfirmed) {
+                              handleCancelPaymentConfirmation(userId, displayName);
+                            } else {
+                              handleConfirmPayment(userId, displayName);
+                            }
+                          } else if (needsReceive) {
+                            // 송금 완료/취소
+                            if (isTransferCompleted) {
+                              handleCancelTransferConfirmation(userId, displayName);
+                            } else {
+                              handleConfirmTransfer(userId, displayName);
+                            }
+                          }
+                        };
 
                         return (
                           <div
                             key={userId}
-                            className={`rounded-lg border ${
-                              userId === user.id ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'
-                            } ${isPaymentConfirmed && needsPayment ? 'opacity-70' : ''}`}
+                            className={`rounded-lg border-2 ${
+                              userId === user.id ? 'bg-blue-50 border-blue-300' : 'bg-white border-gray-200'
+                            } hover:shadow-md transition-all`}
                           >
-                            <div
-                              onClick={() => handleParticipantClick(userId, participant)}
-                              className="flex items-center gap-3 p-3 cursor-pointer hover:shadow-md transition-shadow"
-                            >
+                            <div className="flex items-center gap-3 p-3">
                               {/* 프로필 이미지 */}
-                              {profileImage ? (
-                                <img
-                                  src={profileImage}
-                                  alt={displayName}
-                                  className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-                                />
-                              ) : (
-                                <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold flex-shrink-0">
-                                  {displayName[0]}
-                                </div>
-                              )}
+                              <div
+                                onClick={() => handleParticipantClick(userId, participant)}
+                                className="cursor-pointer"
+                              >
+                                {profileImage ? (
+                                  <img
+                                    src={profileImage}
+                                    alt={displayName}
+                                    className="w-12 h-12 rounded-full object-cover flex-shrink-0"
+                                  />
+                                ) : (
+                                  <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold flex-shrink-0">
+                                    {displayName[0]}
+                                  </div>
+                                )}
+                              </div>
 
                               {/* 이름 및 정보 */}
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-gray-900 flex items-center gap-2">
+                              <div
+                                onClick={() => handleParticipantClick(userId, participant)}
+                                className="flex-1 min-w-0 cursor-pointer"
+                              >
+                                <p className="font-semibold text-gray-900 flex items-center gap-2 mb-0.5">
                                   {displayName}
                                   {userId === user.id && (
                                     <span className="text-xs text-blue-600 font-semibold">(나)</span>
                                   )}
-                                  {isPaymentConfirmed && needsPayment && (
-                                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">
-                                      ✓ 입금확인
+                                </p>
+                                <div className="flex items-center gap-2 text-xs text-gray-500">
+                                  <span>낸 {formatCurrency(participant.totalPaid)}</span>
+                                  <span>·</span>
+                                  <span>부담 {formatCurrency(participant.totalOwed)}</span>
+                                </div>
+                              </div>
+
+                              {/* 금액 (클릭 가능) */}
+                              {participant.balance !== 0 && (
+                                <div
+                                  onClick={handleAmountClick}
+                                  className={`flex flex-col items-end gap-1 px-4 py-2 rounded-lg transition-all flex-shrink-0 ${
+                                    isManager ? 'cursor-pointer' : 'cursor-default'
+                                  } ${
+                                    needsPayment
+                                      ? isPaymentConfirmed
+                                        ? 'bg-gray-100'
+                                        : isManager
+                                        ? 'bg-orange-50 hover:bg-orange-100 active:scale-95'
+                                        : 'bg-orange-50'
+                                      : needsReceive
+                                      ? isTransferCompleted
+                                        ? 'bg-gray-100'
+                                        : isManager
+                                        ? 'bg-green-50 hover:bg-green-100 active:scale-95'
+                                        : 'bg-green-50'
+                                      : 'bg-gray-50'
+                                  }`}
+                                >
+                                  <div className={`font-bold text-lg ${
+                                    needsPayment
+                                      ? isPaymentConfirmed
+                                        ? 'text-gray-400 line-through'
+                                        : 'text-orange-600'
+                                      : needsReceive
+                                      ? isTransferCompleted
+                                        ? 'text-gray-400 line-through'
+                                        : 'text-green-600'
+                                      : 'text-gray-600'
+                                  }`}>
+                                    {participant.balance > 0 ? '+' : ''}{formatCurrency(participant.balance)}
+                                  </div>
+                                  {((isPaymentConfirmed && needsPayment) || (isTransferCompleted && needsReceive)) && (
+                                    <span className="text-xs font-semibold text-green-600 flex items-center gap-0.5">
+                                      <span>✓</span>
+                                      <span>{needsPayment ? '입금확인' : '송금완료'}</span>
                                     </span>
                                   )}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  낸 {formatCurrency(participant.totalPaid)} / 부담 {formatCurrency(participant.totalOwed)}
-                                </p>
-                              </div>
+                                  {isManager && !isPaymentConfirmed && !isTransferCompleted && (
+                                    <span className="text-xs text-gray-500">
+                                      {needsPayment ? '클릭하여 확인' : needsReceive ? '클릭하여 완료' : ''}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
 
-                              {/* 잔액 */}
-                              <div className={`font-bold flex-shrink-0 ${
-                                participant.balance > 0
-                                  ? 'text-green-600'
-                                  : participant.balance < 0
-                                  ? isPaymentConfirmed ? 'text-gray-500 line-through' : 'text-orange-600'
-                                  : 'text-gray-600'
-                              }`}>
-                                {participant.balance > 0 ? '+' : ''}{formatCurrency(participant.balance)}
-                              </div>
+                              {participant.balance === 0 && (
+                                <div className="px-4 py-2 rounded-lg bg-gray-50">
+                                  <div className="font-bold text-lg text-gray-600">
+                                    0원
+                                  </div>
+                                </div>
+                              )}
                             </div>
-
-                            {/* 입금 확인 버튼 (부매니저 이상, 낼 돈이 있는 경우만) */}
-                            {isManager && needsPayment && (
-                              <div className="px-3 pb-3 pt-0">
-                                {isPaymentConfirmed ? (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleCancelPaymentConfirmation(userId, displayName);
-                                    }}
-                                    className="w-full py-2 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors"
-                                  >
-                                    입금 확인 취소
-                                  </button>
-                                ) : (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleConfirmPayment(userId, displayName);
-                                    }}
-                                    className="w-full py-2 px-3 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm font-semibold transition-colors"
-                                  >
-                                    입금 확인 처리
-                                  </button>
-                                )}
-                              </div>
-                            )}
                           </div>
                         );
                       })}
@@ -1022,12 +1117,19 @@ const SettlementPage = () => {
                         ✓ 입금확인
                       </span>
                     )}
+                    {myBalance?.transferCompleted && myBalance?.balance > 0 && (
+                      <span className="text-xs bg-green-400 text-white px-2 py-0.5 rounded-full font-semibold">
+                        ✓ 송금완료
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     {myBalance?.balance > 0 ? (
                       <>
                         <TrendingUp className="w-5 h-5 text-green-300" />
-                        <span className="text-2xl font-bold text-green-300">
+                        <span className={`text-2xl font-bold ${
+                          myBalance?.transferCompleted ? 'text-gray-300 line-through' : 'text-green-300'
+                        }`}>
                           +{formatCurrency(myBalance.balance)}
                         </span>
                       </>
