@@ -263,18 +263,18 @@ const SettlementPage = () => {
     return selectedWeekStart.getTime() === weekStart.getTime();
   };
 
-  // 정산 완료 핸들러 (매니저만)
+  // 접수 마감 핸들러 (매니저만)
   const handleCompleteSettlement = async () => {
     if (!settlement?.weekId) return;
 
-    console.log('💰 정산 완료 버튼 클릭:', {
+    console.log('💰 접수 마감 버튼 클릭:', {
       spaceId: selectedSpace.id,
       weekId: settlement.weekId,
       participantCount: Object.keys(settlement.participants || {}).length
     });
 
     const confirmed = window.confirm(
-      '정산을 완료하시겠습니까?\n\n완료 시 모든 참여자에게 정산 결과 알림톡이 발송됩니다.'
+      '영수증 접수를 마감하시겠습니까?\n\n마감 시 모든 참여자에게 정산 결과 알림톡이 발송되며, 더 이상 영수증을 제출할 수 없습니다.'
     );
     if (!confirmed) return;
 
@@ -288,10 +288,10 @@ const SettlementPage = () => {
 
       // 알림 발송 결과에 따라 메시지 변경
       if (result.notificationResult?.skipped) {
-        alert('정산이 완료되었습니다.\n\n알림톡이 비활성화되어 있어 알림이 발송되지 않았습니다.');
+        alert('영수증 접수가 마감되었습니다.\n\n알림톡이 비활성화되어 있어 알림이 발송되지 않았습니다.');
       } else if (result.notificationSent) {
         const { sentCount, errorCount } = result.notificationResult || {};
-        let message = '정산이 완료되었습니다!';
+        let message = '영수증 접수가 마감되었습니다!';
         if (sentCount > 0) {
           message += `\n\n✅ ${sentCount}명에게 알림톡 발송 완료`;
         }
@@ -300,14 +300,14 @@ const SettlementPage = () => {
         }
         alert(message);
       } else {
-        alert('정산이 완료되었습니다.\n\n알림 발송 중 오류가 발생했습니다. (브라우저 콘솔 확인)');
+        alert('영수증 접수가 마감되었습니다.\n\n알림 발송 중 오류가 발생했습니다. (브라우저 콘솔 확인)');
       }
 
       await loadSettlement();
       await loadAllSettlements();
     } catch (error) {
-      console.error('❌ 정산 완료 실패:', error);
-      alert('정산 완료에 실패했습니다. 다시 시도해주세요.');
+      console.error('❌ 접수 마감 실패:', error);
+      alert('접수 마감에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setLoading(false);
     }
@@ -475,7 +475,7 @@ const SettlementPage = () => {
                                   {formatDate(s.weekStart)} ~ {formatDate(s.weekEnd)}
                                 </div>
                                 <div className="text-xs text-gray-500 mt-0.5">
-                                  {s.status === 'settled' ? '✓ 정산완료' : '진행중'}
+                                  {s.allSettled ? '✓ 정산종결' : s.status === 'settled' ? '접수마감' : '진행중'}
                                   {s.totalAmount > 0 && ` · ${formatCurrency(s.totalAmount)}`}
                                 </div>
                               </div>
@@ -521,7 +521,7 @@ const SettlementPage = () => {
                 </button>
               </div>
 
-              {/* 정산 완료 버튼 (매니저만, settled 아니면 표시) */}
+              {/* 접수 마감 버튼 (매니저만, settled 아니면 표시) */}
               {isManager && settlement && settlement.status !== 'settled' && (
                 <button
                   onClick={handleCompleteSettlement}
@@ -529,7 +529,7 @@ const SettlementPage = () => {
                   data-tour="settlement-complete-button"
                 >
                   <CheckCircle className="w-4 h-4" />
-                  <span className="text-sm sm:text-base">정산완료</span>
+                  <span className="text-sm sm:text-base">접수마감</span>
                 </button>
               )}
             </div>
@@ -557,9 +557,14 @@ const SettlementPage = () => {
                 )}
               </div>
               <div className="flex items-center justify-center gap-2 mt-1">
-                {settlement?.status === 'settled' && (
+                {settlement?.allSettled && (
+                  <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-semibold">
+                    ✓ 정산종결
+                  </span>
+                )}
+                {settlement?.status === 'settled' && !settlement?.allSettled && (
                   <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">
-                    ✓ 정산완료
+                    접수마감
                   </span>
                 )}
                 {!settlement && (

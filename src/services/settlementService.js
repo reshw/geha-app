@@ -933,6 +933,10 @@ const settlementService = {
       });
 
       console.log('✅ 입금 확인 완료');
+
+      // 정산종결 상태 업데이트
+      await this.updateAllSettledStatus(spaceId, weekId);
+
       return true;
     } catch (error) {
       console.error('❌ confirmPayment 실패:', error);
@@ -967,6 +971,10 @@ const settlementService = {
       });
 
       console.log('✅ 입금 확인 취소 완료');
+
+      // 정산종결 상태 업데이트
+      await this.updateAllSettledStatus(spaceId, weekId);
+
       return true;
     } catch (error) {
       console.error('❌ cancelPaymentConfirmation 실패:', error);
@@ -1002,6 +1010,10 @@ const settlementService = {
       });
 
       console.log('✅ 송금 완료');
+
+      // 정산종결 상태 업데이트
+      await this.updateAllSettledStatus(spaceId, weekId);
+
       return true;
     } catch (error) {
       console.error('❌ confirmTransfer 실패:', error);
@@ -1036,9 +1048,68 @@ const settlementService = {
       });
 
       console.log('✅ 송금 완료 취소');
+
+      // 정산종결 상태 업데이트
+      await this.updateAllSettledStatus(spaceId, weekId);
+
       return true;
     } catch (error) {
       console.error('❌ cancelTransferConfirmation 실패:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 모든 입금/송금 확인 여부 체크 및 정산종결 상태 업데이트
+   */
+  async updateAllSettledStatus(spaceId, weekId) {
+    try {
+      console.log('🔍 정산종결 상태 확인:', { spaceId, weekId });
+
+      const settlementRef = doc(db, 'spaces', spaceId, 'settlement', weekId);
+      const settlementSnap = await getDoc(settlementRef);
+
+      if (!settlementSnap.exists()) {
+        throw new Error('정산 정보를 찾을 수 없습니다.');
+      }
+
+      const settlementData = settlementSnap.data();
+      const participants = settlementData.participants || {};
+
+      // 모든 참여자가 입금/송금 확인되었는지 체크
+      let allConfirmed = true;
+      for (const [userId, participant] of Object.entries(participants)) {
+        const balance = participant.balance || 0;
+
+        // balance가 0이 아닌 경우만 확인 필요
+        if (balance !== 0) {
+          if (balance < 0) {
+            // 낼 돈이 있으면 입금확인 필요
+            if (!participant.paymentConfirmed) {
+              allConfirmed = false;
+              break;
+            }
+          } else if (balance > 0) {
+            // 받을 돈이 있으면 송금완료 필요
+            if (!participant.transferCompleted) {
+              allConfirmed = false;
+              break;
+            }
+          }
+        }
+      }
+
+      console.log('✅ 정산종결 상태:', allConfirmed ? '모든 거래 완료' : '확인 대기중');
+
+      // 정산종결 상태 업데이트
+      await updateDoc(settlementRef, {
+        allSettled: allConfirmed,
+        allSettledAt: allConfirmed ? Timestamp.now() : null,
+      });
+
+      return allConfirmed;
+    } catch (error) {
+      console.error('❌ updateAllSettledStatus 실패:', error);
       throw error;
     }
   },
