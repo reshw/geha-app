@@ -1171,6 +1171,7 @@ const SettlementPage = () => {
               formatCurrency={formatCurrency}
               formatDate={formatDate}
               weekId={settlement?.weekId}
+              settlement={settlement}
             />
           </div>
         )}

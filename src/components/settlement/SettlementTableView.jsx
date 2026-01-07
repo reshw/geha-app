@@ -9,7 +9,8 @@ const SettlementTableView = ({
   userProfiles,
   formatCurrency,
   formatDate,
-  weekId
+  weekId,
+  settlement
 }) => {
   const tableRef = useRef(null);
   const [isCapturing, setIsCapturing] = useState(false);
@@ -240,10 +241,27 @@ const SettlementTableView = ({
       {/* 테이블 */}
       <div ref={tableRef} className="overflow-x-auto bg-white p-4">
         {/* 테이블 제목 (이미지 캡처 시 포함) */}
-        <div className="mb-3 text-center">
-          <h2 className="text-lg font-bold text-gray-900">
+        <div className="mb-3 flex items-start justify-between">
+          <h2 className="text-lg font-bold text-gray-900 flex-1 text-center">
             {weekId ? `[${weekId}] 주차 정산` : '정산표'}
           </h2>
+          <div className="flex flex-col items-end gap-1">
+            {settlement?.allSettled && (
+              <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-semibold whitespace-nowrap">
+                ✓ 정산종결
+              </span>
+            )}
+            {settlement?.status === 'settled' && !settlement?.allSettled && (
+              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-semibold whitespace-nowrap">
+                접수마감
+              </span>
+            )}
+            {settlement?.status === 'active' && (
+              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-semibold whitespace-nowrap">
+                진행중
+              </span>
+            )}
+          </div>
         </div>
 
         <table className="w-full border-collapse text-sm">
