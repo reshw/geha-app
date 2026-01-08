@@ -15,7 +15,6 @@ import MigrationPage from './pages/MigrationPage';
 // 투어 관련
 import { TourProvider } from './contexts/TourContext';
 import TourOverlay from './components/tour/TourOverlay';
-import TourAutoLauncher from './components/tour/TourAutoLauncher';
 
 // 정산 페이지들
 import SettlementPage from './pages/SettlementPage';
@@ -50,7 +49,6 @@ function App() {
     <BrowserRouter>
       <TourProvider>
         <div className="min-h-screen bg-gray-50">
-          <TourAutoLauncher />
           <TourOverlay />
           <Routes>
           {/* 하단 네비게이션이 있는 메인 페이지들 */}
