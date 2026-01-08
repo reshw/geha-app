@@ -31,6 +31,8 @@ exports.handler = async (event) => {
       emailContent = generateExpenseEmail(data);
     } else if (type === 'bartender_order') {
       emailContent = generateBartenderOrderEmail(data);
+    } else if (type === 'space_creation_request') {
+      emailContent = generateSpaceCreationRequestEmail(data);
     } else {
       throw new Error(`Unknown email type: ${type}`);
     }
@@ -727,6 +729,92 @@ function generateBartenderOrderEmail(data) {
             </td>
           </tr>
 
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  return { subject, html };
+}
+
+/**
+ * 방 생성 신청 이메일 생성
+ */
+function generateSpaceCreationRequestEmail(data) {
+  const requestedAt = new Date(data.requestedAt);
+
+  const formatDateTime = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}년 ${month}월 ${day}일 ${hours}:${minutes}`;
+  };
+
+  const subject = `[관리자 알림] 방 생성 신청: ${data.spaceName} (${data.spaceCode})`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f5f5f5; padding: 20px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+          <tr>
+            <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px 40px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">🏠 방 생성 신청 알림</h1>
+              <p style="margin: 10px 0 0 0; color: #ffffff; font-size: 16px; opacity: 0.95;">새로운 방 생성 신청이 접수되었습니다</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 40px;">
+              <h2 style="margin: 0 0 20px 0; font-size: 20px; color: #333333; font-weight: 600; border-bottom: 2px solid #667eea; padding-bottom: 10px;">📋 신청 정보</h2>
+              <table width="100%" cellpadding="12" cellspacing="0" border="0" style="border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden;">
+                <tr style="background-color: #f9f9f9;">
+                  <td style="width: 35%; font-weight: 600; color: #555555; border-right: 1px solid #e0e0e0; border-bottom: 1px solid #e0e0e0;">방 이름</td>
+                  <td style="color: #333333; font-weight: 700; font-size: 18px; border-bottom: 1px solid #e0e0e0;">${data.spaceName}</td>
+                </tr>
+                <tr style="background-color: #e8f4fe;">
+                  <td style="font-weight: 600; color: #555555; border-right: 1px solid #e0e0e0; border-bottom: 1px solid #e0e0e0;">방 코드</td>
+                  <td style="color: #667eea; font-weight: 700; font-size: 18px; border-bottom: 1px solid #e0e0e0;">
+                    <code style="background-color: #f0f4ff; padding: 4px 12px; border-radius: 4px; font-family: 'Monaco', 'Courier New', monospace;">${data.spaceCode}</code>
+                  </td>
+                </tr>
+                <tr style="background-color: #ffffff;">
+                  <td style="font-weight: 600; color: #555555; border-right: 1px solid #e0e0e0; border-bottom: 1px solid #e0e0e0;">신청자</td>
+                  <td style="color: #333333; border-bottom: 1px solid #e0e0e0;">${data.requestedBy}</td>
+                </tr>
+                <tr style="background-color: #f9f9f9;">
+                  <td style="font-weight: 600; color: #555555; border-right: 1px solid #e0e0e0;">신청 시각</td>
+                  <td style="color: #333333;">${formatDateTime(requestedAt)}</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 40px 40px 40px;">
+              <div style="background-color: #fff9e6; padding: 20px; border-radius: 6px; border-left: 4px solid #ffc107;">
+                <h3 style="margin: 0 0 12px 0; color: #f57c00; font-size: 16px; font-weight: 600;">⚠️ 처리 안내</h3>
+                <ul style="margin: 0; padding-left: 20px; color: #555555; line-height: 1.8;">
+                  <li>슈퍼어드민 페이지에서 승인/거부 처리를 할 수 있습니다.</li>
+                  <li>승인 시 방이 즉시 생성되며, 신청자는 자동으로 매니저로 지정됩니다.</li>
+                </ul>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #f9f9f9; padding: 20px 40px; text-align: center; border-top: 1px solid #e0e0e0;">
+              <p style="margin: 0; color: #999999; font-size: 13px;">이 이메일은 자동으로 발송되었습니다.</p>
+            </td>
+          </tr>
         </table>
       </td>
     </tr>

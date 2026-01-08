@@ -15,6 +15,7 @@ import CancelReservationModal from './CancelReservationModal';
 import ReservationDetailModal from './ReservationDetailModal';
 import WeeklyCalendarView from './WeeklyCalendarView';
 import SpaceDropdown from '../space/SpaceDropdown';
+import CreateSpaceModal from '../space/CreateSpaceModal';
 import ReservationManageModal from './ReservationManageModal';
 import ReservationEditModal from './ReservationEditModal';
 import SimpleMealModal from './SimpleMealModal';
@@ -128,6 +129,8 @@ const WeeklyList = () => {
   const [mealsByDate, setMealsByDate] = useState({}); // 날짜별 식사 참여자 정보
   const [showMealModal, setShowMealModal] = useState(false);
   const [selectedDateForMeal, setSelectedDateForMeal] = useState(null);
+  const [showCreateSpaceModal, setShowCreateSpaceModal] = useState(false);
+  const [isCreatingSpace, setIsCreatingSpace] = useState(false);
 
   const { reservations: reservationsObj, loading: reservationsLoading, createReservation, cancelReservation, refresh } = useReservations(selectedSpace?.id, currentWeekStart);
   
@@ -339,13 +342,13 @@ const WeeklyList = () => {
     if (!window.confirm('정말로 이 스페이스를 나가시겠습니까?')) {
       return;
     }
-    
+
     try {
       await spaceService.leaveSpace(user.id, spaceId);
-      
+
       const updatedSpaces = userSpaces.filter(s => s.id !== spaceId);
       setUserSpaces(updatedSpaces);
-      
+
       if (selectedSpace?.id === spaceId) {
         if (updatedSpaces.length > 0) {
           setSelectedSpace(updatedSpaces[0]);
@@ -353,12 +356,40 @@ const WeeklyList = () => {
           setSelectedSpace(null);
         }
       }
-      
+
       setToast({ message: '스페이스에서 나갔습니다', type: 'success' });
       setShowSpaceDropdown(false);
     } catch (error) {
       console.error('❌ 스페이스 나가기 실패:', error);
       setToast({ message: '스페이스 나가기에 실패했습니다', type: 'error' });
+    }
+  };
+
+  // 방 생성 신청 핸들러
+  const handleCreateSpaceRequest = async (spaceName) => {
+    setIsCreatingSpace(true);
+    try {
+      const result = await spaceService.requestSpaceCreation(
+        user.id,
+        user.displayName,
+        spaceName
+      );
+
+      if (result.success) {
+        setToast({
+          message: `방 생성 신청이 완료되었습니다! (코드: ${result.spaceCode})`,
+          type: 'success'
+        });
+        setShowCreateSpaceModal(false);
+      }
+    } catch (error) {
+      console.error('❌ 방 생성 신청 실패:', error);
+      setToast({
+        message: error.message || '방 생성 신청에 실패했습니다',
+        type: 'error'
+      });
+    } finally {
+      setIsCreatingSpace(false);
     }
   };
 
@@ -430,104 +461,16 @@ const WeeklyList = () => {
           <div className="flex items-center justify-between p-4">
             {/* 좌측: 스페이스 선택 */}
             <div className="relative">
-              <button
-                onClick={() => userSpaces.length > 1 && setShowSpaceDropdown(!showSpaceDropdown)}
-                className={`flex items-center gap-2 ${userSpaces.length > 1 ? 'hover:bg-white/10' : ''} px-3 py-2 rounded-lg transition-colors`}
-                disabled={userSpaces.length <= 1}
-              >
-                <h1 className="text-xl font-bold">{selectedSpace?.spaceName || '스페이스'}</h1>
-                {userSpaces.length > 1 && <ChevronDown className="w-5 h-5" />}
-              </button>
-              
-              {/* 스페이스 드롭다운 with 드래그 */}
-              {showSpaceDropdown && userSpaces.length > 1 && (
-                <>
-                  <div 
-                    className="fixed inset-0 z-40" 
-                    onClick={() => setShowSpaceDropdown(false)}
-                  />
-                  <div className="absolute top-full left-0 mt-2 bg-white rounded-xl shadow-xl z-50 overflow-hidden min-w-[250px] max-h-[400px] overflow-y-auto">
-                    {userSpaces.map((space, index) => {
-                      const isDragging = draggedSpaceIndex === index;
-                      let translateY = 0;
-                      let scale = 1;
-                      let opacity = 1;
-                      
-                      if (isDragging && touchStartY && touchCurrentY) {
-                        translateY = touchCurrentY - touchStartY;
-                        scale = 1.05;
-                        opacity = 0.9;
-                      }
-                      
-                      return (
-                        <div
-                          key={space.id}
-                          draggable
-                          onDragStart={(e) => handleSpaceDragStart(e, index)}
-                          onDragOver={(e) => handleSpaceDragOver(e, index)}
-                          onDragEnd={handleSpaceDragEnd}
-                          onTouchStart={(e) => {
-                            if (e.target.closest('.drag-handle')) {
-                              handleSpaceTouchStart(e, index);
-                            }
-                          }}
-                          onTouchMove={handleSpaceTouchMove}
-                          onTouchEnd={handleSpaceTouchEnd}
-                          className={`flex items-center gap-3 px-4 py-3 ${
-                            selectedSpace?.id === space.id ? 'bg-blue-50' : isDragging ? 'bg-gray-100' : 'bg-white'
-                          } ${index < userSpaces.length - 1 ? 'border-b border-gray-100' : ''} hover:bg-gray-50 transition-colors`}
-                          style={{
-                            transform: `translateY(${translateY}px) scale(${scale})`,
-                            opacity: opacity,
-                            transition: isDragging ? 'none' : 'all 0.2s',
-                            cursor: isDragging ? 'grabbing' : 'pointer',
-                            userSelect: 'none',
-                            WebkitUserSelect: 'none',
-                            position: 'relative',
-                            zIndex: isDragging ? 100 : 1,
-                            boxShadow: isDragging ? '0 8px 16px rgba(0,0,0,0.15)' : 'none'
-                          }}
-                        >
-                          {/* 드래그 핸들 */}
-                          <div
-                            className="drag-handle"
-                            style={{
-                              cursor: isDragging ? 'grabbing' : 'grab',
-                              color: isDragging ? '#2563eb' : '#9ca3af',
-                              touchAction: 'none'
-                            }}
-                          >
-                            <GripVertical className="w-5 h-5" />
-                          </div>
-                          
-                          {/* 스페이스 정보 */}
-                          <div
-                            onClick={() => {
-                              if (!isDragging) {
-                                setSelectedSpace(space);
-                                setShowSpaceDropdown(false);
-                              }
-                            }}
-                            className="flex-1"
-                          >
-                            <div className={`font-semibold ${selectedSpace?.id === space.id ? 'text-blue-600' : 'text-gray-700'}`}>
-                              {space.spaceName}
-                            </div>
-                            <div className="text-xs text-gray-500 mt-0.5">
-                              {space.userType === 'guest' ? '게스트' : space.userType === 'shareholder' ? '주주' : space.userType === 'manager' ? '매니저' : '부매니저'}
-                            </div>
-                          </div>
-                          
-                          {/* 선택 표시 */}
-                          {selectedSpace?.id === space.id && (
-                            <div className="w-2 h-2 rounded-full bg-blue-600" />
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
+              <SpaceDropdown
+                spaces={userSpaces}
+                selectedSpace={selectedSpace}
+                onSelect={handleSpaceChange}
+                onReorder={async (updatedSpaces) => {
+                  setUserSpaces(updatedSpaces);
+                  await spaceService.updateSpaceOrder(user.id, updatedSpaces);
+                }}
+                onCreateSpace={() => setShowCreateSpaceModal(true)}
+              />
             </div>
 
             {/* 우측: 통계 + 뷰 모드 토글 + 프로필 */}
@@ -1319,6 +1262,14 @@ const WeeklyList = () => {
         spaceId={selectedSpace?.id}
         currentUser={user}
         profiles={profiles}
+      />
+
+      {/* 방 생성 신청 모달 */}
+      <CreateSpaceModal
+        isOpen={showCreateSpaceModal}
+        onClose={() => setShowCreateSpaceModal(false)}
+        onSubmit={handleCreateSpaceRequest}
+        isLoading={isCreatingSpace}
       />
     </div>
   );

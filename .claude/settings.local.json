@@ -22,7 +22,9 @@
       "Bash(netlify init:*)",
       "Bash(node test-week-calc.js:*)",
       "Bash(del test-week-calc.js)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(git log:*)",
+      "Bash(git add:*)"
     ]
   }
 }

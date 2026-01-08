@@ -1,8 +1,8 @@
 // src/components/space/SpaceDropdown.jsx
 import { useState, useRef, useEffect } from 'react';
-import { GripVertical, ChevronDown } from 'lucide-react';
+import { GripVertical, ChevronDown, Plus } from 'lucide-react';
 
-const SpaceDropdown = ({ spaces, selectedSpace, onSelect, onReorder }) => {
+const SpaceDropdown = ({ spaces, selectedSpace, onSelect, onReorder, onCreateSpace }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [orderedSpaces, setOrderedSpaces] = useState(spaces);
@@ -300,6 +300,41 @@ const SpaceDropdown = ({ spaces, selectedSpace, onSelect, onReorder }) => {
               </div>
             );
           })}
+
+          {/* 방 생성 신청 버튼 */}
+          {onCreateSpace && (
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                onCreateSpace();
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: '16px',
+                background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                color: '#fff',
+                border: 'none',
+                borderTop: '1px solid #e5e7eb',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                fontWeight: '600',
+                fontSize: '15px',
+                width: '100%'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)';
+              }}
+            >
+              <Plus className="w-5 h-5" />
+              <span>방 생성 신청</span>
+            </button>
+          )}
         </div>
       )}
     </div>
