@@ -6,6 +6,18 @@
 [build.environment]
   NODE_VERSION = "18"
 
+# Production 환경 (main 브랜치) - 콘솔 로그 제거
+[context.production.environment]
+  VITE_DISABLE_CONSOLE = "true"
+
+# Branch Deploy 환경 (staging 등) - 콘솔 로그 유지
+[context.branch-deploy.environment]
+  VITE_DISABLE_CONSOLE = "false"
+
+# Deploy Preview 환경 (PR) - 콘솔 로그 유지
+[context.deploy-preview.environment]
+  VITE_DISABLE_CONSOLE = "false"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

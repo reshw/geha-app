@@ -105,7 +105,10 @@ const SettlementTableView = ({
           ];
 
           participantList.forEach(p => {
-            const isSplitter = item.splitAmong.includes(p.userId);
+            // 타입 불일치 문제 해결: 둘 다 string으로 변환하여 비교
+            const participantId = String(p.userId);
+            const splitAmongStrings = item.splitAmong.map(id => String(id));
+            const isSplitter = splitAmongStrings.includes(participantId);
             row.push(isSplitter ? item.perPerson : 0);
           });
 
@@ -346,7 +349,11 @@ const SettlementTableView = ({
 
                     {/* 각 참여자별 분담금 */}
                     {participantList.map(participant => {
-                      const isSplitter = item.splitAmong.includes(participant.userId);
+                      // 타입 불일치 문제 해결: 둘 다 string으로 변환하여 비교
+                      const participantId = String(participant.userId);
+                      const splitAmongStrings = item.splitAmong.map(id => String(id));
+                      const isSplitter = splitAmongStrings.includes(participantId);
+
                       return (
                         <td
                           key={participant.userId}

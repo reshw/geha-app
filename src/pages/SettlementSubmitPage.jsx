@@ -89,7 +89,7 @@ const SettlementSubmitPage = () => {
 
   useEffect(() => {
     if (user && !isEditMode) {
-      setPaidBy(user.id);
+      setPaidBy(String(user.id)); // 타입 통일: string으로 변환
       setPaidByName(user.displayName);
 
       // 초기 항목에 본인을 분담자로 자동 추가
@@ -98,7 +98,7 @@ const SettlementSubmitPage = () => {
         if (prevItems.length === 1 && prevItems[0].splitAmong.length === 0) {
           return [{
             ...prevItems[0],
-            splitAmong: [user.id]
+            splitAmong: [String(user.id)] // 타입 통일: string으로 변환
           }];
         }
         return prevItems;
@@ -119,7 +119,7 @@ const SettlementSubmitPage = () => {
       const receipt = await settlementService.getReceipt(selectedSpace.id, weekId, receiptId);
 
       // 기존 데이터 설정
-      setPaidBy(receipt.paidBy);
+      setPaidBy(String(receipt.paidBy)); // 타입 통일: string으로 변환
       setPaidByName(receipt.paidByName);
       setMemo(receipt.memo || '');
       setExistingImageUrl(receipt.imageUrl);
@@ -130,7 +130,7 @@ const SettlementSubmitPage = () => {
         id: Date.now() + index,
         itemName: item.itemName,
         amount: item.amount.toString(),
-        splitAmong: item.splitAmong,
+        splitAmong: item.splitAmong.map(id => String(id)), // 타입 통일: string으로 변환
         searchQuery: '',
         showSearchDropdown: false,
         expanded: true,
@@ -229,7 +229,7 @@ const SettlementSubmitPage = () => {
         id: Date.now(),
         itemName: '',
         amount: '',
-        splitAmong: user?.id ? [user.id] : [], // 새 항목에도 본인 자동 추가
+        splitAmong: user?.id ? [String(user.id)] : [], // 타입 통일: string으로 변환
         searchQuery: '',
         showSearchDropdown: false,
         expanded: true,
@@ -275,8 +275,12 @@ const SettlementSubmitPage = () => {
   const addMemberToSplit = (itemId, member) => {
     const item = items.find(i => i.id === itemId);
 
+    // 타입 통일을 위해 string으로 변환하여 비교
+    const memberIdString = String(member.userId);
+    const splitAmongStrings = item.splitAmong.map(id => String(id));
+
     // 이미 선택된 멤버인지 확인
-    if (item.splitAmong.includes(member.userId)) {
+    if (splitAmongStrings.includes(memberIdString)) {
       return;
     }
 
@@ -284,7 +288,7 @@ const SettlementSubmitPage = () => {
       i.id === itemId
         ? {
             ...i,
-            splitAmong: [...i.splitAmong, member.userId],
+            splitAmong: [...i.splitAmong, memberIdString], // 타입 통일: string으로 변환
             searchQuery: '',
             showSearchDropdown: false,
           }
@@ -295,7 +299,9 @@ const SettlementSubmitPage = () => {
   // 분담자 제거
   const removeMemberFromSplit = (itemId, userId) => {
     const item = items.find(i => i.id === itemId);
-    updateItem(itemId, 'splitAmong', item.splitAmong.filter(id => id !== userId));
+    // 타입 통일을 위해 string으로 변환하여 비교
+    const userIdString = String(userId);
+    updateItem(itemId, 'splitAmong', item.splitAmong.filter(id => String(id) !== userIdString));
   };
 
   // 검색 입력 처리
@@ -323,7 +329,7 @@ const SettlementSubmitPage = () => {
 
   // 납부자 변경
   const changePaidBy = (userId, userName) => {
-    setPaidBy(userId);
+    setPaidBy(String(userId)); // 타입 통일: string으로 변환
     setPaidByName(userName);
     setPaidBySearchQuery('');
     setShowPaidByDropdown(false);
@@ -710,7 +716,9 @@ const SettlementSubmitPage = () => {
                     {item.splitAmong.length > 0 && (
                       <div className="flex flex-wrap gap-2 mb-2">
                         {item.splitAmong.map((userId) => {
-                          const member = members.find(m => m.userId === userId);
+                          // 타입 통일을 위해 string으로 변환하여 비교
+                          const userIdString = String(userId);
+                          const member = members.find(m => String(m.userId) === userIdString);
                           const userProfile = userProfiles[userId];
                           if (!member) return null;
 
@@ -765,7 +773,10 @@ const SettlementSubmitPage = () => {
                             const filteredMembers = getFilteredMembers(item.id);
                             return filteredMembers.length > 0 ? (
                               filteredMembers.map((member) => {
-                                const isAlreadySelected = item.splitAmong.includes(member.userId);
+                                // 타입 통일을 위해 string으로 변환하여 비교
+                                const memberIdString = String(member.userId);
+                                const splitAmongStrings = item.splitAmong.map(id => String(id));
+                                const isAlreadySelected = splitAmongStrings.includes(memberIdString);
                                 const userProfile = userProfiles[member.userId];
                                 const displayName = userProfile?.displayName || member.displayName;
                                 const profileImage = userProfile?.profileImage || '';

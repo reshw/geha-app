@@ -112,14 +112,19 @@ class AuthService {
 
   // ----- 3) Firestore: 사용자 존재 여부 -----
   async checkUserExists(userId) {
-    const snap = await getDoc(doc(db, 'users', userId));
+    // ✅ userId를 반드시 string으로 통일
+    const userIdString = String(userId);
+    const snap = await getDoc(doc(db, 'users', userIdString));
     return snap.exists();
   }
 
   // ----- 4) Firestore: 사용자 최초 등록 (확장된 필드 지원) -----
   async registerUser(userData) {
+    // ✅ userId를 반드시 string으로 통일
+    const userId = String(userData.id);
+
     const userDoc = {
-      id: userData.id,
+      id: userId,  // ✅ string으로 변환된 id 저장
       displayName: userData.displayName ?? '',  // 실명
       nickname: userData.nickname ?? '',         // ✅ 카카오 닉네임 추가
       email: userData.email ?? '',
@@ -137,13 +142,16 @@ class AuthService {
       userDoc.gender = userData.gender;
     }
 
-    await setDoc(doc(db, 'users', userData.id), userDoc, { merge: true });
+    await setDoc(doc(db, 'users', userId), userDoc, { merge: true });
   }
 
   // ----- 4-1) Firestore: 사용자 프로필 정보 업데이트 (재로그인 시) -----
   async updateUserProfile(userId, profileData) {
+    // ✅ userId를 반드시 string으로 통일
+    const userIdString = String(userId);
+
     const updates = {};
-    
+
     if (profileData.displayName !== undefined) {
       updates.displayName = profileData.displayName;  // 실명
     }
@@ -165,19 +173,22 @@ class AuthService {
     if (profileData.email !== undefined) {
       updates.email = profileData.email;
     }
-    
+
     if (Object.keys(updates).length > 0) {
-      await setDoc(doc(db, 'users', userId), updates, { merge: true });
+      await setDoc(doc(db, 'users', userIdString), updates, { merge: true });
     }
   }
 
   // ----- 5) Firestore: 사용자 + spaceAccess 묶음 조회 -----
   async getUserData(userId) {
-    const userRef = doc(db, 'users', userId);
+    // ✅ userId를 반드시 string으로 통일
+    const userIdString = String(userId);
+
+    const userRef = doc(db, 'users', userIdString);
     const userSnap = await getDoc(userRef);
     if (!userSnap.exists()) return null;
 
-    const accessRef = collection(db, `users/${userId}/spaceAccess`);
+    const accessRef = collection(db, `users/${userIdString}/spaceAccess`);
     const accessSnap = await getDocs(accessRef);
 
     const spaceAccess = [];
@@ -191,7 +202,7 @@ class AuthService {
     });
 
     return {
-      id: userId,
+      id: userIdString,  // ✅ string으로 변환된 id 반환
       ...userSnap.data(),
       spaceAccess
     };
