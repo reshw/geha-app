@@ -74,7 +74,7 @@ const sendPendingExpenseReminders = async () => {
       const emailSettingsRef = firestore.collection('spaces').doc(spaceId).collection('settings').doc('email');
       const emailSettingsDoc = await emailSettingsRef.get();
 
-      if (!emailSettingsDoc.exists()) {
+      if (!emailSettingsDoc.exists) {
         console.log(`  ℹ️ 이메일 설정 없음`);
         results.push({
           spaceId,
