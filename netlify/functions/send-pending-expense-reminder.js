@@ -29,8 +29,8 @@ const initializeFirebase = () => {
 
       adminApp = initializeApp({
         credential: cert(serviceAccount)
-      }, 'expense-reminder-app');
-      db = getFirestore();
+      });
+      db = getFirestore(adminApp);
       console.log('✅ Firebase Admin 초기화 성공');
     } catch (error) {
       console.error('❌ Firebase Admin 초기화 실패:', error);
