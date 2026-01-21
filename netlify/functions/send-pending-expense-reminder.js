@@ -7,18 +7,24 @@ const { getFirestore } = require('firebase-admin/firestore');
 
 // Firebase Admin 초기화 (환경변수로 credentials 전달)
 let adminApp;
-try {
-  if (!adminApp) {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-    adminApp = initializeApp({
-      credential: cert(serviceAccount)
-    }, 'expense-reminder-app');
-  }
-} catch (error) {
-  console.error('Firebase Admin 초기화 실패:', error);
-}
+let db;
 
-const db = getFirestore();
+const initializeFirebase = () => {
+  if (!adminApp) {
+    try {
+      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+      adminApp = initializeApp({
+        credential: cert(serviceAccount)
+      }, 'expense-reminder-app');
+      db = getFirestore();
+      console.log('✅ Firebase Admin 초기화 성공');
+    } catch (error) {
+      console.error('❌ Firebase Admin 초기화 실패:', error);
+      throw error;
+    }
+  }
+  return db;
+};
 
 /**
  * 한국시간(KST, UTC+9) 변환
@@ -36,8 +42,11 @@ const sendPendingExpenseReminders = async () => {
   const kstNow = getKoreanTime();
   console.log('📧 운영비 독려 메일 발송 체크 시작 (한국시간):', kstNow.toISOString());
 
+  // Firebase 초기화
+  const firestore = initializeFirebase();
+
   // 모든 스페이스 조회
-  const spacesSnapshot = await db.collection('spaces').get();
+  const spacesSnapshot = await firestore.collection('spaces').get();
   const results = [];
 
   for (const spaceDoc of spacesSnapshot.docs) {
@@ -48,7 +57,7 @@ const sendPendingExpenseReminders = async () => {
       console.log(`\n🏠 스페이스: ${spaceName} (${spaceId})`);
 
       // 이메일 알림 설정 확인
-      const emailSettingsRef = db.collection('spaces').doc(spaceId).collection('settings').doc('email');
+      const emailSettingsRef = firestore.collection('spaces').doc(spaceId).collection('settings').doc('email');
       const emailSettingsDoc = await emailSettingsRef.get();
 
       if (!emailSettingsDoc.exists()) {
@@ -77,7 +86,7 @@ const sendPendingExpenseReminders = async () => {
       }
 
       // pending 상태의 expense 건수 조회
-      const expenseSnapshot = await db.collection('spaces').doc(spaceId).collection('Expense')
+      const expenseSnapshot = await firestore.collection('spaces').doc(spaceId).collection('Expense')
         .where('status', '==', 'pending')
         .get();
 
