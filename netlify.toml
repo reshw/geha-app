@@ -29,3 +29,7 @@
 # 정산 자동 마감 - 매시간 실행
 [functions."settlement-auto-close"]
   schedule = "@hourly"
+
+# 운영비 승인 독려 메일 - 매일 한국시간 오전 10시 (UTC 01:00)
+[functions."send-pending-expense-reminder"]
+  schedule = "0 1 * * *"

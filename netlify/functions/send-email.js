@@ -29,6 +29,8 @@ exports.handler = async (event) => {
       emailContent = generateSettlementEmail(data);
     } else if (type === 'expense') {
       emailContent = generateExpenseEmail(data);
+    } else if (type === 'expense_reminder') {
+      emailContent = generateExpenseReminderEmail(data);
     } else if (type === 'bartender_order') {
       emailContent = generateBartenderOrderEmail(data);
     } else if (type === 'space_creation_request') {
@@ -815,6 +817,81 @@ function generateSpaceCreationRequestEmail(data) {
               <p style="margin: 0; color: #999999; font-size: 13px;">이 이메일은 자동으로 발송되었습니다.</p>
             </td>
           </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  return { subject, html };
+}
+
+/**
+ * 운영비 승인 독려 이메일 생성
+ */
+function generateExpenseReminderEmail(data) {
+  const spaceName = data.spaceName || '라운지';
+  const pendingCount = data.pendingCount || 0;
+
+  const subject = `[${spaceName}] 운영비 승인대기중인 건수가 ${pendingCount}건 있습니다`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f5f5f5; padding: 20px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+
+          <!-- 헤더 -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); padding: 30px 40px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">⏰ 운영비 승인 독려</h1>
+              <p style="margin: 10px 0 0 0; color: #ffffff; font-size: 16px; opacity: 0.95;">${spaceName}</p>
+            </td>
+          </tr>
+
+          <!-- 독려 메시지 -->
+          <tr>
+            <td style="padding: 40px;">
+              <div style="text-align: center; margin-bottom: 30px;">
+                <div style="display: inline-block; background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%); border-radius: 16px; padding: 24px 32px; border: 2px solid #ff6b6b;">
+                  <p style="margin: 0; font-size: 18px; color: #555555; font-weight: 600;">승인 대기중인 운영비 청구</p>
+                  <p style="margin: 12px 0 0 0; font-size: 48px; color: #ff6b6b; font-weight: 700; line-height: 1;">${pendingCount}건</p>
+                </div>
+              </div>
+
+              <div style="background-color: #fff9e6; border-left: 4px solid #ffc107; padding: 20px; border-radius: 6px; margin-bottom: 30px;">
+                <p style="margin: 0; color: #555555; line-height: 1.8;">
+                  <strong>💡 안내</strong><br>
+                  승인 대기중인 운영비 청구가 ${pendingCount}건 있습니다.<br>
+                  관리자 페이지에서 확인하시고 승인 또는 거부 처리를 부탁드립니다.
+                </p>
+              </div>
+
+              <div style="text-align: center;">
+                <p style="margin: 0; color: #999999; font-size: 14px; line-height: 1.8;">
+                  운영비 페이지에서 청구 내역을 확인하고<br>
+                  승인 또는 거부 처리를 진행해주세요.
+                </p>
+              </div>
+            </td>
+          </tr>
+
+          <!-- 푸터 -->
+          <tr>
+            <td style="background-color: #f9f9f9; padding: 20px 40px; text-align: center; border-top: 1px solid #e0e0e0;">
+              <p style="margin: 0; color: #999999; font-size: 13px;">이 이메일은 매일 오전 10시에 자동으로 발송됩니다.</p>
+              <p style="margin: 8px 0 0 0; color: #999999; font-size: 13px;">승인 대기중인 건이 없으면 발송되지 않습니다.</p>
+            </td>
+          </tr>
+
         </table>
       </td>
     </tr>

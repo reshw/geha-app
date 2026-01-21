@@ -22,6 +22,16 @@ try {
 const db = getFirestore();
 
 /**
+ * 한국시간(KST, UTC+9) 변환
+ */
+const getKoreanTime = (date = new Date()) => {
+  // UTC 시간에 9시간 추가하여 한국시간으로 변환
+  const utcTime = date.getTime();
+  const kstOffset = 9 * 60 * 60 * 1000; // 9시간을 밀리초로
+  return new Date(utcTime + kstOffset);
+};
+
+/**
  * 주차 ID 생성 (ISO Week)
  */
 const getWeekId = (date = new Date()) => {
@@ -52,13 +62,15 @@ const getWeekRange = (date = new Date()) => {
 
 /**
  * 스페이스의 정산 스케줄 설정이 현재 시간과 일치하는지 확인
+ * 한국시간(KST) 기준으로 비교
  */
 const shouldSettleNow = (scheduleSettings) => {
   if (!scheduleSettings || !scheduleSettings.enabled) {
     return false;
   }
 
-  const now = new Date();
+  // 한국시간으로 변환
+  const now = getKoreanTime();
   const [targetHour, targetMinute] = scheduleSettings.time.split(':').map(Number);
 
   // 시간 체크 (±5분 허용)
@@ -88,7 +100,8 @@ const shouldSettleNow = (scheduleSettings) => {
  * 각 스페이스의 설정을 참조하여 마감 시간이 되면 실행
  */
 const autoCloseSettlements = async () => {
-  console.log('🤖 정산 자동 마감 체크 시작:', new Date().toISOString());
+  const kstNow = getKoreanTime();
+  console.log('🤖 정산 자동 마감 체크 시작 (한국시간):', kstNow.toISOString());
 
   // 모든 스페이스 조회
   const spacesSnapshot = await db.collection('spaces').get();
@@ -234,7 +247,8 @@ const autoCloseSettlements = async () => {
  */
 exports.handler = async (event) => {
   // Scheduled function은 event.body가 없으므로 따로 체크하지 않음
-  console.log('🤖 Netlify Scheduled Function 실행:', new Date().toISOString());
+  const kstNow = getKoreanTime();
+  console.log('🤖 Netlify Scheduled Function 실행 (한국시간):', kstNow.toISOString());
 
   try {
     const results = await autoCloseSettlements();
