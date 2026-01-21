@@ -29,7 +29,54 @@
 # 정산 자동 마감 - 매시간 실행
 [functions."settlement-auto-close"]
   schedule = "@hourly"
+  [functions."settlement-auto-close".environment]
+    FIREBASE_PROJECT_ID = "$FIREBASE_PROJECT_ID"
+    FIREBASE_PRIVATE_KEY_ID = "$FIREBASE_PRIVATE_KEY_ID"
+    FIREBASE_PRIVATE_KEY = "$FIREBASE_PRIVATE_KEY"
+    FIREBASE_CLIENT_EMAIL = "$FIREBASE_CLIENT_EMAIL"
+    FIREBASE_CLIENT_ID = "$FIREBASE_CLIENT_ID"
 
 # 운영비 승인 독려 메일 - 매일 한국시간 오전 10시 (UTC 01:00)
 [functions."send-pending-expense-reminder"]
   schedule = "0 1 * * *"
+  [functions."send-pending-expense-reminder".environment]
+    FIREBASE_PROJECT_ID = "$FIREBASE_PROJECT_ID"
+    FIREBASE_PRIVATE_KEY_ID = "$FIREBASE_PRIVATE_KEY_ID"
+    FIREBASE_PRIVATE_KEY = "$FIREBASE_PRIVATE_KEY"
+    FIREBASE_CLIENT_EMAIL = "$FIREBASE_CLIENT_EMAIL"
+    FIREBASE_CLIENT_ID = "$FIREBASE_CLIENT_ID"
+
+# 이메일 발송
+[functions."send-email"]
+  [functions."send-email".environment]
+    RESEND_API_KEY = "$RESEND_API_KEY"
+
+# 알림톡
+[functions."send-alimtalk"]
+  [functions."send-alimtalk".environment]
+    NHN_API_URL = "$NHN_API_URL"
+    NHN_APPKEY = "$NHN_APPKEY"
+    NHN_SECRET_KEY = "$NHN_SECRET_KEY"
+    NHN_SENDER_KEY = "$NHN_SENDER_KEY"
+    NHN_PLUS_FRIEND_ID = "$NHN_PLUS_FRIEND_ID"
+    NHN_TEMPLATE_GUEST_CONFIRM = "$NHN_TEMPLATE_GUEST_CONFIRM"
+
+[functions."send-alimtalk-proxy"]
+  [functions."send-alimtalk-proxy".environment]
+    NHN_API_URL = "$NHN_API_URL"
+    NHN_APPKEY = "$NHN_APPKEY"
+    NHN_SECRET_KEY = "$NHN_SECRET_KEY"
+    NHN_SENDER_KEY = "$NHN_SENDER_KEY"
+
+# 칭찬 처리
+[functions."process-praise"]
+  [functions."process-praise".environment]
+    OPENAI_API_KEY = "$OPENAI_API_KEY"
+
+[functions."send-praise-notification"]
+  [functions."send-praise-notification".environment]
+    RESEND_API_KEY = "$RESEND_API_KEY"
+
+[functions."send-notification"]
+  [functions."send-notification".environment]
+    RESEND_API_KEY = "$RESEND_API_KEY"

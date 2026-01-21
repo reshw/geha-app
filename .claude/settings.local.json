@@ -24,7 +24,18 @@
       "Bash(del test-week-calc.js)",
       "Bash(grep:*)",
       "Bash(git log:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\n한국시간 기준 자동화 및 운영비 독려 메일 추가\n\n- 자동정산 시스템을 한국시간\\(KST\\) 기준으로 수정\n- 매일 오전 10시 운영비 승인 독려 메일 발송 기능 추가\n- send-pending-expense-reminder.js 신규 생성\n- send-email.js에 expense_reminder 타입 추가\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "Bash(git checkout:*)",
+      "Bash(git merge:*)",
+      "Bash(netlify status:*)",
+      "Bash(netlify deploy:*)",
+      "Bash(curl:*)",
+      "Bash(netlify functions:list:*)",
+      "Bash(netlify functions:invoke:*)",
+      "Bash(git commit:*)",
+      "Bash(netlify env:list:*)"
     ]
   }
 }
