@@ -35,7 +35,9 @@
       "Bash(netlify functions:list:*)",
       "Bash(netlify functions:invoke:*)",
       "Bash(git commit:*)",
-      "Bash(netlify env:list:*)"
+      "Bash(netlify env:list:*)",
+      "Bash(npm audit:*)",
+      "Bash(netlify:*)"
     ]
   }
 }
