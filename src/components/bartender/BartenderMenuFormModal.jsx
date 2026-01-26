@@ -80,7 +80,7 @@ export default function BartenderMenuFormModal({ mode, menu, onClose, onSave, cu
         uploadFormData.append('folder', 'bartender-menu');
 
         const uploadResponse = await fetch(
-          `https://api.cloudinary.com/v1_1/dhnyr34t1/image/upload`,
+          `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
           {
             method: 'POST',
             body: uploadFormData
