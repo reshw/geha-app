@@ -60,7 +60,7 @@ export default function PraiseModal({ onClose, onSuccess }) {
         uploadFormData.append('folder', `spaces/${selectedSpace.id}/praises`);
 
         const uploadResponse = await fetch(
-          `https://api.cloudinary.com/v1_1/dhnyr34t1/image/upload`,
+          `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
           {
             method: 'POST',
             body: uploadFormData
