@@ -1,0 +1,135 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===== Helper Functions =====
+
+    // 사용자 인증 확인
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // 사용자 ID 확인
+    function isUser(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // 스페이스 관리자/부매니저 권한 확인
+    function hasSpacePermission(spaceId, requiredRole) {
+      let spaceAccess = get(/databases/$(database)/documents/users/$(request.auth.uid)/spaceAccess/$(spaceId)).data;
+      return isAuthenticated() &&
+             spaceAccess != null &&
+             (spaceAccess.userType == requiredRole ||
+              spaceAccess.userType == 'manager');
+    }
+
+    // 예약 취소 가능 여부 확인
+    function canCancelReservation(reserveData) {
+      // 1. 체크인 날짜가 현재 시간보다 미래여야 함
+      let checkInDate = reserveData.checkIn;
+      let isFutureReservation = checkInDate > request.time;
+
+      // 2. 체크인 완료 상태가 아니어야 함
+      let isNotCheckedIn = !('status' in reserveData) || reserveData.status != 'checked-in';
+
+      return isFutureReservation && isNotCheckedIn;
+    }
+
+    // 예약 수정 시 시작일 변경 불가 검증
+    function canUpdateCheckIn(oldData, newData) {
+      let oldCheckIn = oldData.checkIn;
+      let newCheckIn = newData.checkIn;
+
+      // 원본 예약이 이미 시작된 경우 (과거)
+      let isStarted = oldCheckIn < request.time;
+
+      // 시작일 변경 여부 확인 (1초 이상 차이)
+      let checkInChanged = (newCheckIn.toMillis() - oldCheckIn.toMillis()).abs() > 1000;
+
+      // 이미 시작된 예약의 시작일을 변경하려고 하면 false
+      return !(isStarted && checkInChanged);
+    }
+
+    // ===== Users Collection =====
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isUser(userId);
+
+      match /spaceAccess/{spaceId} {
+        allow read: if isUser(userId);
+        allow write: if isUser(userId);
+      }
+    }
+
+    // ===== Spaces Collection =====
+    match /spaces/{spaceId} {
+      allow read: if isAuthenticated();
+      allow write: if hasSpacePermission(spaceId, 'manager');
+
+      // 스페이스 멤버
+      match /assignedUsers/{userId} {
+        allow read: if isAuthenticated();
+        allow write: if hasSpacePermission(spaceId, 'manager');
+      }
+
+      // 예약 (reserves)
+      match /reserves/{reserveId} {
+        // 읽기: 인증된 사용자
+        allow read: if isAuthenticated();
+
+        // 생성: 관리자/부매니저만
+        allow create: if hasSpacePermission(spaceId, 'vice-manager');
+
+        // 🔒 수정: 관리자/부매니저만
+        // 취소는 update로 처리 (status를 'canceled'로 변경)
+        // 이미 시작된 예약의 시작일은 변경 불가
+        allow update: if hasSpacePermission(spaceId, 'vice-manager')
+                      && canUpdateCheckIn(resource.data, request.resource.data)
+                      && (
+                        // 일반 수정
+                        request.resource.data.status != 'canceled' ||
+                        // 취소 처리 (검증 통과 시에만)
+                        (request.resource.data.status == 'canceled' && canCancelReservation(resource.data))
+                      );
+
+        // 🚫 삭제 금지: Soft Delete만 허용 (실제 삭제 불가)
+        allow delete: if false;
+
+        // 📜 예약 변경 이력 (서브컬렉션)
+        match /history/{historyId} {
+          // 읽기: 인증된 사용자
+          allow read: if isAuthenticated();
+
+          // 생성: 관리자/부매니저만 (자동 생성)
+          allow create: if hasSpacePermission(spaceId, 'vice-manager');
+
+          // 수정/삭제 금지: 이력은 불변
+          allow update, delete: if false;
+        }
+      }
+
+      // 정산 (settlement)
+      match /settlement/{weekId} {
+        allow read: if isAuthenticated();
+        allow write: if hasSpacePermission(spaceId, 'vice-manager');
+
+        match /receipts/{receiptId} {
+          allow read: if isAuthenticated();
+          allow write: if isAuthenticated();
+        }
+      }
+
+      // 설정 (settings)
+      match /settings/{settingId} {
+        allow read: if isAuthenticated();
+        allow write: if hasSpacePermission(spaceId, 'manager');
+      }
+
+      // 게스트 정책 (guestPolicies)
+      match /guestPolicies/{policyId} {
+        allow read: if isAuthenticated();
+        allow write: if hasSpacePermission(spaceId, 'manager');
+      }
+    }
+  }
+}

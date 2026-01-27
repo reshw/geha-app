@@ -35,6 +35,12 @@ const ReservationManageModal = ({
   const isCheckOut = checkOutDate.toDateString() === displayDate.toDateString();
   const isDayTrip = reservation.isDayTrip || reservation.nights === 0;
 
+  // 🔒 취소 가능 여부 검증
+  const now = new Date();
+  const isPastReservation = checkInDate < now; // 예약 날짜가 이미 지남
+  const isCheckedIn = reservation.status === 'checked-in'; // 체크인 완료됨
+  const canCancel = !isPastReservation && !isCheckedIn;
+
   return (
     <>
       {/* 배경 오버레이 */}
@@ -113,7 +119,13 @@ const ReservationManageModal = ({
           </button>
           <button
             onClick={handleCancel}
-            className="flex items-center justify-center gap-2 px-4 py-3 bg-red-50 text-red-700 rounded-xl font-semibold hover:bg-red-100 transition-colors border-2 border-red-200"
+            disabled={!canCancel}
+            className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold transition-colors border-2 ${
+              canCancel
+                ? 'bg-red-50 text-red-700 hover:bg-red-100 border-red-200 cursor-pointer'
+                : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+            }`}
+            title={!canCancel ? (isPastReservation ? '이미 지난 예약은 취소할 수 없습니다' : '체크인 완료된 예약은 취소할 수 없습니다') : ''}
           >
             <Trash2 className="w-5 h-5" />
             예약 취소

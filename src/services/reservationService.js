@@ -42,18 +42,23 @@ class ReservationService {
       
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
-        
+
+        // 🔒 취소된 예약은 제외 (Soft Delete 필터링)
+        if (data.status === 'canceled') {
+          return;
+        }
+
         // checkIn, checkOut이 존재하고 Timestamp인지 확인
         if (!data.checkIn || !data.checkOut) {
           console.warn('⚠️ checkIn/checkOut 없음:', docSnap.id);
           return;
         }
-        
+
         if (typeof data.checkIn.toDate !== 'function' || typeof data.checkOut.toDate !== 'function') {
           console.warn('⚠️ Timestamp 아님:', docSnap.id);
           return;
         }
-        
+
         userIds.add(data.userId);
 
         const checkIn = data.checkIn.toDate();
@@ -150,7 +155,28 @@ class ReservationService {
       await setDoc(doc(reservesRef, docId), dataToSave);
       
       console.log('✅ Firebase 저장 완료!');
-      
+
+      // 📝 이력 저장 (생성 이벤트)
+      try {
+        const historyRef = collection(db, 'spaces', spaceId, 'reserves', docId, 'history');
+        await addDoc(historyRef, {
+          timestamp: Timestamp.now(),
+          changedBy: String(reservationData.userId),
+          action: 'created',
+          snapshot: {
+            checkIn: dataToSave.checkIn,
+            checkOut: dataToSave.checkOut,
+            nights: dataToSave.nights,
+            isDayTrip: dataToSave.isDayTrip,
+            name: dataToSave.name,
+            type: dataToSave.type
+          }
+        });
+        console.log('✅ 생성 이력 저장 완료');
+      } catch (historyError) {
+        console.error('⚠️ 이력 저장 실패 (예약은 완료됨):', historyError);
+      }
+
       // 🔥 알림 발송 추가 (이메일 + 알림톡)
       try {
         console.log('📧 알림 발송 시작...');
@@ -248,13 +274,91 @@ class ReservationService {
     }
   }
   
-  async cancelReservation(spaceId, reservationId) {
-  if (!spaceId || !reservationId) {
-    throw new Error('spaceId 또는 reservationId가 없습니다.');
-  }
+  async cancelReservation(spaceId, reservationId, userId, cancelReason = '') {
+    if (!spaceId || !reservationId) {
+      throw new Error('spaceId 또는 reservationId가 없습니다.');
+    }
 
-  const reserveRef = doc(db, 'spaces', spaceId, 'reserves', reservationId);
-  await deleteDoc(reserveRef);
+    if (!userId) {
+      throw new Error('취소 처리를 위해 사용자 정보가 필요합니다.');
+    }
+
+    const reserveRef = doc(db, 'spaces', spaceId, 'reserves', reservationId);
+
+    try {
+      // 🔒 취소 가능 여부 검증 (백엔드 레벨)
+      const reserveDoc = await getDoc(reserveRef);
+
+      if (!reserveDoc.exists()) {
+        throw new Error('예약을 찾을 수 없습니다.');
+      }
+
+      const reserveData = reserveDoc.data();
+      const now = new Date();
+
+      // 이미 취소된 예약인지 확인
+      if (reserveData.status === 'canceled') {
+        throw new Error('이미 취소된 예약입니다.');
+      }
+
+      // 체크인 날짜 가져오기
+      const checkInDate = reserveData.checkIn?.toDate();
+      if (!checkInDate) {
+        throw new Error('예약 날짜 정보가 올바르지 않습니다.');
+      }
+
+      // 1. 예약 날짜가 현재 시간보다 이전인지 확인
+      if (checkInDate < now) {
+        throw new Error('이미 지난 예약은 취소할 수 없습니다.');
+      }
+
+      // 2. 체크인 완료된 예약인지 확인
+      if (reserveData.status === 'checked-in') {
+        throw new Error('이미 체크인이 완료된 예약은 취소할 수 없습니다.');
+      }
+
+      // 📝 이력 저장 (취소 전 상태 스냅샷)
+      try {
+        const historyRef = collection(db, 'spaces', spaceId, 'reserves', reservationId, 'history');
+        await addDoc(historyRef, {
+          timestamp: Timestamp.now(),
+          changedBy: String(userId),
+          action: 'canceled',
+          snapshot: {
+            checkIn: reserveData.checkIn,
+            checkOut: reserveData.checkOut,
+            nights: reserveData.nights,
+            isDayTrip: reserveData.isDayTrip,
+            status: reserveData.status || 'active',
+            name: reserveData.name,
+            type: reserveData.type
+          },
+          cancelReason: cancelReason || ''
+        });
+        console.log('✅ 취소 이력 저장 완료');
+      } catch (historyError) {
+        console.error('⚠️ 이력 저장 실패 (취소는 진행됨):', historyError);
+      }
+
+      // ✅ 검증 통과 - Soft Delete (status만 변경, 데이터는 보존)
+      await setDoc(reserveRef, {
+        status: 'canceled',
+        canceledAt: Timestamp.now(),
+        canceledBy: String(userId),
+        cancelReason: cancelReason || '',
+        updatedAt: Timestamp.now()
+      }, { merge: true });
+
+      console.log('✅ 예약 취소 완료 (Soft Delete):', reservationId, {
+        canceledBy: userId,
+        canceledAt: new Date().toISOString()
+      });
+
+      return { success: true };
+    } catch (error) {
+      console.error('❌ 예약 취소 실패:', error);
+      throw error;
+    }
   }
 
   /**
@@ -275,6 +379,60 @@ class ReservationService {
       }
 
       const existingData = reserveDoc.data();
+      const now = new Date();
+
+      // 원본 체크인 날짜 확인
+      const originalCheckIn = existingData.checkIn?.toDate();
+      if (!originalCheckIn) {
+        throw new Error('예약 날짜 정보가 올바르지 않습니다.');
+      }
+
+      // 🔒 보안 검증: 원본 예약이 이미 시작된 경우 시작일 변경 불가
+      if (originalCheckIn < now) {
+        const newCheckIn = updateData.checkIn;
+        const newCheckInTime = newCheckIn.getTime();
+        const originalCheckInTime = originalCheckIn.getTime();
+
+        // 시작일을 변경하려고 시도하면 차단
+        if (Math.abs(newCheckInTime - originalCheckInTime) > 1000) { // 1초 이상 차이나면
+          throw new Error('이미 시작된 예약의 시작일은 변경할 수 없습니다.');
+        }
+      }
+
+      // 📝 이력 저장 (수정 전 상태 스냅샷)
+      try {
+        const historyRef = collection(db, 'spaces', spaceId, 'reserves', reservationId, 'history');
+        await addDoc(historyRef, {
+          timestamp: Timestamp.now(),
+          changedBy: String(updateData.userId || 'unknown'),
+          action: 'updated',
+          snapshot: {
+            checkIn: existingData.checkIn,
+            checkOut: existingData.checkOut,
+            nights: existingData.nights,
+            isDayTrip: existingData.isDayTrip,
+            name: existingData.name,
+            type: existingData.type
+          },
+          changes: {
+            checkIn: {
+              before: existingData.checkIn.toDate().toISOString(),
+              after: updateData.checkIn.toISOString()
+            },
+            checkOut: {
+              before: existingData.checkOut.toDate().toISOString(),
+              after: updateData.checkOut.toISOString()
+            },
+            nights: {
+              before: existingData.nights,
+              after: updateData.nights ?? 0
+            }
+          }
+        });
+        console.log('✅ 수정 이력 저장 완료');
+      } catch (historyError) {
+        console.error('⚠️ 이력 저장 실패 (수정은 진행됨):', historyError);
+      }
 
       // 업데이트할 데이터 준비
       const dataToUpdate = {
@@ -282,7 +440,8 @@ class ReservationService {
         checkOut: Timestamp.fromDate(updateData.checkOut),
         nights: updateData.nights ?? 0,
         isDayTrip: updateData.isDayTrip ?? false,
-        updatedAt: Timestamp.now()
+        updatedAt: Timestamp.now(),
+        updatedBy: String(updateData.userId || 'unknown')
       };
 
       // 예약 문서 업데이트
@@ -330,6 +489,11 @@ class ReservationService {
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
 
+        // 🔒 취소된 예약은 제외 (Soft Delete 필터링)
+        if (data.status === 'canceled') {
+          return;
+        }
+
         if (!data.checkIn || !data.checkOut) {
           return;
         }
@@ -345,6 +509,94 @@ class ReservationService {
       return reservations;
     } catch (error) {
       console.error('❌ getAllReservations 에러:', error);
+      return [];
+    }
+  }
+
+  // 🆕 취소된 예약 조회 (관리자용 - 취소 이력 확인)
+  async getCanceledReservations(spaceId, startDate = null, endDate = null) {
+    try {
+      console.log('📊 취소 예약 조회 시작, spaceId:', spaceId);
+
+      const reservesRef = collection(db, `spaces/${spaceId}/reserves`);
+
+      let q;
+
+      if (startDate && endDate) {
+        // 기간 필터링
+        const start = Timestamp.fromDate(startDate);
+        const end = Timestamp.fromDate(endDate);
+
+        q = query(
+          reservesRef,
+          where('status', '==', 'canceled'),
+          where('canceledAt', '>=', start),
+          where('canceledAt', '<=', end),
+          orderBy('canceledAt', 'desc')
+        );
+      } else {
+        // 전체 조회
+        q = query(
+          reservesRef,
+          where('status', '==', 'canceled'),
+          orderBy('canceledAt', 'desc')
+        );
+      }
+
+      const snapshot = await getDocs(q);
+
+      console.log('📋 취소된 예약 수:', snapshot.size);
+
+      const canceledReservations = [];
+
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+
+        if (!data.checkIn || !data.checkOut) {
+          return;
+        }
+
+        canceledReservations.push({
+          id: docSnap.id,
+          ...data,
+          checkIn: data.checkIn.toDate(),
+          checkOut: data.checkOut.toDate(),
+          canceledAt: data.canceledAt?.toDate() || null
+        });
+      });
+
+      return canceledReservations;
+    } catch (error) {
+      console.error('❌ getCanceledReservations 에러:', error);
+      return [];
+    }
+  }
+
+  // 📜 특정 예약의 변경 이력 조회
+  async getReservationHistory(spaceId, reservationId) {
+    try {
+      console.log('📜 예약 이력 조회:', reservationId);
+
+      const historyRef = collection(db, 'spaces', spaceId, 'reserves', reservationId, 'history');
+      const q = query(historyRef, orderBy('timestamp', 'desc'));
+      const snapshot = await getDocs(q);
+
+      console.log('📋 이력 수:', snapshot.size);
+
+      const history = [];
+
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        history.push({
+          id: docSnap.id,
+          ...data,
+          timestamp: data.timestamp?.toDate() || null
+        });
+      });
+
+      return history;
+    } catch (error) {
+      console.error('❌ getReservationHistory 에러:', error);
       return [];
     }
   }
