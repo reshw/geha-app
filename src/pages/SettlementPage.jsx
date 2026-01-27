@@ -90,56 +90,66 @@ const SettlementPage = () => {
         finalSettlement = await settlementService.getCurrentWeekSettlement(selectedSpace.id);
       }
 
-      // 영수증 목록 가져오기
+      // 영수증 목록 가져오기 (실패해도 계속 진행)
       let weekReceipts = [];
       if (finalSettlement?.weekId) {
-        weekReceipts = await settlementService.getWeekReceipts(selectedSpace.id, finalSettlement.weekId);
+        try {
+          weekReceipts = await settlementService.getWeekReceipts(selectedSpace.id, finalSettlement.weekId);
 
-        // 🔄 데이터 불일치가 있을 때만 재계산 (성능 최적화)
-        if (weekReceipts.length > 0) {
-          const actualTotalAmount = weekReceipts.reduce((sum, receipt) => sum + (receipt.totalAmount || 0), 0);
-          const storedTotalAmount = finalSettlement.totalAmount || 0;
-          const participantCount = Object.keys(finalSettlement.participants || {}).length;
+          // 🔄 데이터 불일치가 있을 때만 재계산 (성능 최적화)
+          if (weekReceipts.length > 0) {
+            const actualTotalAmount = weekReceipts.reduce((sum, receipt) => sum + (receipt.totalAmount || 0), 0);
+            const storedTotalAmount = finalSettlement.totalAmount || 0;
+            const participantCount = Object.keys(finalSettlement.participants || {}).length;
 
-          // 영수증 총액이 다르거나, 참여자가 없거나, updatedAt이 없으면 재계산 필요
-          const hasUpdatedAt = finalSettlement.updatedAt != null;
-          const needsRecalculation =
-            Math.abs(actualTotalAmount - storedTotalAmount) > 0.01 ||
-            participantCount === 0 ||
-            !hasUpdatedAt;
+            // 영수증 총액이 다르거나 참여자가 없으면 재계산 필요
+            const needsRecalculation =
+              Math.abs(actualTotalAmount - storedTotalAmount) > 0.01 ||
+              participantCount === 0;
 
-          if (needsRecalculation) {
-            console.log('🔄 데이터 불일치 감지 → 재계산:', {
-              영수증수: weekReceipts.length,
-              실제총액: actualTotalAmount,
-              저장된총액: storedTotalAmount,
-              참여자수: participantCount
-            });
+            if (needsRecalculation) {
+              console.log('🔄 데이터 불일치 감지 → 재계산:', {
+                영수증수: weekReceipts.length,
+                실제총액: actualTotalAmount,
+                저장된총액: storedTotalAmount,
+                참여자수: participantCount
+              });
 
-            try {
-              await settlementService.updateSettlementCalculation(selectedSpace.id, finalSettlement.weekId);
+              try {
+                await settlementService.updateSettlementCalculation(selectedSpace.id, finalSettlement.weekId);
 
-              // 재계산 후 최신 데이터 다시 가져오기
-              const freshSettlement = await settlementService.getSettlementByDate(selectedSpace.id, selectedWeekStart);
-              if (freshSettlement) {
-                finalSettlement = freshSettlement;
-                console.log('✅ 재계산 후 최신 데이터 로드 완료');
+                // 재계산 후 최신 데이터 다시 가져오기
+                const freshSettlement = await settlementService.getSettlementByDate(selectedSpace.id, selectedWeekStart);
+                if (freshSettlement) {
+                  finalSettlement = freshSettlement;
+                  console.log('✅ 재계산 후 최신 데이터 로드 완료');
+                }
+              } catch (recalcError) {
+                console.error('❌ 정산 재계산 실패:', recalcError);
+                alert('정산 데이터를 업데이트하지 못했습니다. 잠시 후 다시 시도해주세요.');
+                // 재계산 실패해도 기존 데이터는 유지
               }
-            } catch (recalcError) {
-              console.error('❌ 정산 재계산 실패:', recalcError);
-              // 재계산 실패해도 기존 데이터는 유지
+            } else {
+              console.log('✅ 정산 데이터 일치 → 재계산 스킵');
             }
-          } else {
-            console.log('✅ 정산 데이터 일치 → 재계산 스킵');
           }
+        } catch (receiptsError) {
+          console.error('❌ 영수증 조회 실패:', receiptsError);
+          weekReceipts = []; // 빈 배열로 설정하고 계속 진행
         }
       }
 
-      // 🚀 병렬 조회 2단계: 프로필 정보 가져오기
-      const participantIds = Object.keys(finalSettlement?.participants || {});
-      const profiles = participantIds.length > 0
-        ? await authService.getUserProfiles(participantIds)
-        : {};
+      // 🚀 프로필 정보 가져오기 (실패해도 계속 진행)
+      let profiles = {};
+      try {
+        const participantIds = Object.keys(finalSettlement?.participants || {});
+        profiles = participantIds.length > 0
+          ? await authService.getUserProfiles(participantIds)
+          : {};
+      } catch (profileError) {
+        console.error('❌ 프로필 조회 실패:', profileError);
+        profiles = {}; // 빈 객체로 대체 (userId가 표시됨)
+      }
 
       // 모든 데이터 준비 완료 후 한 번에 업데이트 (깜빡임 방지)
       setUserProfiles(profiles);
@@ -151,11 +161,10 @@ const SettlementPage = () => {
       setMyBalance(myInfo || { name: user.displayName, totalPaid: 0, totalOwed: 0, balance: 0 });
 
     } catch (error) {
-      console.error('정산 정보 로드 실패:', error);
-      // 에러가 발생해도 기본값 설정
-      setSettlement(null);
-      setReceipts([]);
+      console.error('치명적 에러 발생:', error);
+      // 치명적 에러 발생 시에도 최소한의 기본값 설정
       setMyBalance({ name: user.displayName, totalPaid: 0, totalOwed: 0, balance: 0 });
+      alert(`정산 정보를 불러오는 중 오류가 발생했습니다.\n${error.message || '알 수 없는 오류'}`);
     } finally {
       setLoading(false);
     }
