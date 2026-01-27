@@ -564,12 +564,19 @@ const settlementService = {
     try {
       console.log('🔄 정산 계산 업데이트:', { spaceId, weekId });
 
-      // 🚀 멤버 정보와 영수증을 병렬로 조회
+      // 🚀 멤버 정보와 영수증을 병렬로 조회 (부분 실패 허용)
       const receiptsRef = collection(db, 'spaces', spaceId, 'settlement', weekId, 'receipts');
-      const [members, receiptsSnap] = await Promise.all([
+      const [membersResult, receiptsResult] = await Promise.allSettled([
         this.getSpaceMembers(spaceId),
         getDocs(receiptsRef)
       ]);
+
+      const members = membersResult.status === 'fulfilled' ? membersResult.value : [];
+      if (receiptsResult.status === 'rejected') {
+        console.error('❌ 영수증 조회 실패:', receiptsResult.reason);
+        throw new Error('영수증 조회 실패');
+      }
+      const receiptsSnap = receiptsResult.value;
 
       // 멤버 맵 생성
       const memberMap = {};
@@ -625,8 +632,8 @@ const settlementService = {
 
       // 각 참여자의 전화번호 조회 및 정규화 (users 컬렉션에서) - 병렬 처리
       console.log('📞 참여자 전화번호 조회 시작 (병렬)');
-      const phonePromises = Object.keys(participants).map(async (userId) => {
-        try {
+      const phoneResults = await Promise.allSettled(
+        Object.keys(participants).map(async (userId) => {
           const userDocRef = doc(db, 'users', userId);
           const userDoc = await getDoc(userDocRef);
 
@@ -635,22 +642,28 @@ const settlementService = {
             const rawPhone = userData.phoneNumber;
             const normalizedPhone = normalizePhoneNumber(rawPhone);
 
-            participants[userId].phone = normalizedPhone;
-
             console.log(`📱 [${participants[userId].name}] 전화번호:`, {
               원본: rawPhone || '없음',
               정규화: normalizedPhone || '없음'
             });
+
+            return { userId, phone: normalizedPhone };
           } else {
             console.warn(`⚠️ [${participants[userId].name}] users 문서 없음:`, userId);
+            return { userId, phone: null };
           }
-        } catch (error) {
-          console.error(`❌ [${participants[userId].name}] 전화번호 조회 실패:`, error);
+        })
+      );
+
+      // 조회 결과를 participants에 반영
+      phoneResults.forEach((result, index) => {
+        if (result.status === 'fulfilled' && result.value) {
+          participants[result.value.userId].phone = result.value.phone;
+        } else if (result.status === 'rejected') {
+          const userId = Object.keys(participants)[index];
+          console.error(`❌ [${participants[userId]?.name}] 전화번호 조회 실패:`, result.reason);
         }
       });
-
-      // 모든 전화번호 조회 완료 대기
-      await Promise.all(phonePromises);
 
       // Settlement 문서 업데이트 (없으면 생성, 있으면 병합)
       const settlementRef = doc(db, 'spaces', spaceId, 'settlement', weekId);

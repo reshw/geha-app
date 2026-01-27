@@ -65,11 +65,21 @@ const SettlementPage = () => {
       const { weekStart: currentWeekStart } = getWeekRange(today);
       const isCurrentWeek = selectedWeekStart.getTime() === currentWeekStart.getTime();
 
-      // 🚀 병렬 조회 1단계: 멤버, Settlement 동시 조회
-      const [spaceMembers, weekSettlement] = await Promise.all([
+      // 🚀 병렬 조회 1단계: 멤버, Settlement 동시 조회 (부분 실패 허용)
+      const [membersResult, settlementResult] = await Promise.allSettled([
         settlementService.getSpaceMembers(selectedSpace.id),
         settlementService.getSettlementByDate(selectedSpace.id, selectedWeekStart)
       ]);
+
+      const spaceMembers = membersResult.status === 'fulfilled' ? membersResult.value : [];
+      const weekSettlement = settlementResult.status === 'fulfilled' ? settlementResult.value : null;
+
+      if (membersResult.status === 'rejected') {
+        console.warn('⚠️ 멤버 조회 실패:', membersResult.reason);
+      }
+      if (settlementResult.status === 'rejected') {
+        console.warn('⚠️ Settlement 조회 실패:', settlementResult.reason);
+      }
 
       setMembers(spaceMembers);
 
@@ -91,8 +101,12 @@ const SettlementPage = () => {
           const storedTotalAmount = finalSettlement.totalAmount || 0;
           const participantCount = Object.keys(finalSettlement.participants || {}).length;
 
-          // 영수증 총액이 다르거나 참여자가 없으면 재계산 필요
-          const needsRecalculation = Math.abs(actualTotalAmount - storedTotalAmount) > 0.01 || participantCount === 0;
+          // 영수증 총액이 다르거나, 참여자가 없거나, updatedAt이 없으면 재계산 필요
+          const hasUpdatedAt = finalSettlement.updatedAt != null;
+          const needsRecalculation =
+            Math.abs(actualTotalAmount - storedTotalAmount) > 0.01 ||
+            participantCount === 0 ||
+            !hasUpdatedAt;
 
           if (needsRecalculation) {
             console.log('🔄 데이터 불일치 감지 → 재계산:', {
@@ -121,18 +135,16 @@ const SettlementPage = () => {
         }
       }
 
-      // 🚀 병렬 조회 2단계: 프로필 정보를 나머지 작업과 병렬로 처리
+      // 🚀 병렬 조회 2단계: 프로필 정보 가져오기
       const participantIds = Object.keys(finalSettlement?.participants || {});
-      const profilesPromise = participantIds.length > 0
-        ? authService.getUserProfiles(participantIds)
-        : Promise.resolve({});
+      const profiles = participantIds.length > 0
+        ? await authService.getUserProfiles(participantIds)
+        : {};
 
-      // State 업데이트와 프로필 조회를 병렬로
+      // 모든 데이터 준비 완료 후 한 번에 업데이트 (깜빡임 방지)
+      setUserProfiles(profiles);
       setSettlement(finalSettlement);
       setReceipts(weekReceipts);
-
-      const profiles = await profilesPromise;
-      setUserProfiles(profiles);
 
       // 내 잔액 계산
       const myInfo = finalSettlement?.participants?.[user.id];
