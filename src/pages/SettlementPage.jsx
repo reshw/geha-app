@@ -56,77 +56,86 @@ const SettlementPage = () => {
     try {
       setLoading(true);
 
-      // 멤버 정보 가져오기
-      const spaceMembers = await settlementService.getSpaceMembers(selectedSpace.id);
-      setMembers(spaceMembers);
-
       // 선택된 주차의 weekId 계산
       const weekId = getWeekId(selectedWeekStart);
       console.log('📅 선택된 주차:', weekId, selectedWeekStart);
 
-      // 선택된 주차의 Settlement 가져오기
-      let weekSettlement = await settlementService.getSettlementByDate(selectedSpace.id, selectedWeekStart);
-
-      // 현재 주차를 보고 있고 settlement이 없으면 자동 생성
+      // 현재 주차 여부 확인
       const today = new Date();
       const { weekStart: currentWeekStart } = getWeekRange(today);
       const isCurrentWeek = selectedWeekStart.getTime() === currentWeekStart.getTime();
 
-      if (!weekSettlement && isCurrentWeek) {
+      // 🚀 병렬 조회 1단계: 멤버, Settlement 동시 조회
+      const [spaceMembers, weekSettlement] = await Promise.all([
+        settlementService.getSpaceMembers(selectedSpace.id),
+        settlementService.getSettlementByDate(selectedSpace.id, selectedWeekStart)
+      ]);
+
+      setMembers(spaceMembers);
+
+      // Settlement이 없고 현재 주차면 자동 생성
+      let finalSettlement = weekSettlement;
+      if (!finalSettlement && isCurrentWeek) {
         console.log('🆕 현재 주차의 settlement이 없음 → 자동 생성');
-        weekSettlement = await settlementService.getCurrentWeekSettlement(selectedSpace.id);
+        finalSettlement = await settlementService.getCurrentWeekSettlement(selectedSpace.id);
       }
 
       // 영수증 목록 가져오기
       let weekReceipts = [];
-      if (weekSettlement?.weekId) {
-        weekReceipts = await settlementService.getWeekReceipts(selectedSpace.id, weekSettlement.weekId);
+      if (finalSettlement?.weekId) {
+        weekReceipts = await settlementService.getWeekReceipts(selectedSpace.id, finalSettlement.weekId);
 
-        // 🔄 영수증이 있으면 무조건 재계산하여 항상 최신 상태 유지
+        // 🔄 데이터 불일치가 있을 때만 재계산 (성능 최적화)
         if (weekReceipts.length > 0) {
           const actualTotalAmount = weekReceipts.reduce((sum, receipt) => sum + (receipt.totalAmount || 0), 0);
-          const storedTotalAmount = weekSettlement.totalAmount || 0;
+          const storedTotalAmount = finalSettlement.totalAmount || 0;
+          const participantCount = Object.keys(finalSettlement.participants || {}).length;
 
-          console.log('🔄 영수증 기반 정산 상태 확인:', {
-            영수증수: weekReceipts.length,
-            실제총액: actualTotalAmount,
-            저장된총액: storedTotalAmount,
-            참여자수: Object.keys(weekSettlement.participants || {}).length
-          });
+          // 영수증 총액이 다르거나 참여자가 없으면 재계산 필요
+          const needsRecalculation = Math.abs(actualTotalAmount - storedTotalAmount) > 0.01 || participantCount === 0;
 
-          try {
-            console.log('🔄 정산 재계산 시작...');
-            const updatedParticipants = await settlementService.updateSettlementCalculation(selectedSpace.id, weekSettlement.weekId);
-            console.log('✅ 정산 재계산 완료:', updatedParticipants);
+          if (needsRecalculation) {
+            console.log('🔄 데이터 불일치 감지 → 재계산:', {
+              영수증수: weekReceipts.length,
+              실제총액: actualTotalAmount,
+              저장된총액: storedTotalAmount,
+              참여자수: participantCount
+            });
 
-            // 재계산 후 최신 데이터 다시 가져오기
-            const freshSettlement = await settlementService.getSettlementByDate(selectedSpace.id, selectedWeekStart);
-            if (freshSettlement) {
-              weekSettlement = freshSettlement;
-              console.log('✅ 최신 정산 데이터 로드 완료');
-            } else {
-              console.warn('⚠️ 재계산 후 데이터 조회 실패 - 기존 데이터 유지');
+            try {
+              await settlementService.updateSettlementCalculation(selectedSpace.id, finalSettlement.weekId);
+
+              // 재계산 후 최신 데이터 다시 가져오기
+              const freshSettlement = await settlementService.getSettlementByDate(selectedSpace.id, selectedWeekStart);
+              if (freshSettlement) {
+                finalSettlement = freshSettlement;
+                console.log('✅ 재계산 후 최신 데이터 로드 완료');
+              }
+            } catch (recalcError) {
+              console.error('❌ 정산 재계산 실패:', recalcError);
+              // 재계산 실패해도 기존 데이터는 유지
             }
-          } catch (recalcError) {
-            console.error('❌ 정산 재계산 실패:', recalcError);
-            console.error('상세 에러:', recalcError.message, recalcError.stack);
-            // 재계산 실패해도 기존 데이터는 유지
+          } else {
+            console.log('✅ 정산 데이터 일치 → 재계산 스킵');
           }
         }
       }
 
-      setSettlement(weekSettlement);
+      // 🚀 병렬 조회 2단계: 프로필 정보를 나머지 작업과 병렬로 처리
+      const participantIds = Object.keys(finalSettlement?.participants || {});
+      const profilesPromise = participantIds.length > 0
+        ? authService.getUserProfiles(participantIds)
+        : Promise.resolve({});
+
+      // State 업데이트와 프로필 조회를 병렬로
+      setSettlement(finalSettlement);
       setReceipts(weekReceipts);
 
-      // 참여자들의 프로필 정보 가져오기 (users 컬렉션에서)
-      const participantIds = Object.keys(weekSettlement?.participants || {});
-      if (participantIds.length > 0) {
-        const profiles = await authService.getUserProfiles(participantIds);
-        setUserProfiles(profiles);
-      }
+      const profiles = await profilesPromise;
+      setUserProfiles(profiles);
 
       // 내 잔액 계산
-      const myInfo = weekSettlement?.participants?.[user.id];
+      const myInfo = finalSettlement?.participants?.[user.id];
       setMyBalance(myInfo || { name: user.displayName, totalPaid: 0, totalOwed: 0, balance: 0 });
 
     } catch (error) {

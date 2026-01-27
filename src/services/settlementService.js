@@ -564,18 +564,20 @@ const settlementService = {
     try {
       console.log('🔄 정산 계산 업데이트:', { spaceId, weekId });
 
-      // 멤버 정보 먼저 가져오기 (displayName만)
-      const members = await this.getSpaceMembers(spaceId);
+      // 🚀 멤버 정보와 영수증을 병렬로 조회
+      const receiptsRef = collection(db, 'spaces', spaceId, 'settlement', weekId, 'receipts');
+      const [members, receiptsSnap] = await Promise.all([
+        this.getSpaceMembers(spaceId),
+        getDocs(receiptsRef)
+      ]);
+
+      // 멤버 맵 생성
       const memberMap = {};
       members.forEach(m => {
         memberMap[m.userId] = {
           displayName: m.displayName,
         };
       });
-
-      // 모든 영수증 가져오기
-      const receiptsRef = collection(db, 'spaces', spaceId, 'settlement', weekId, 'receipts');
-      const receiptsSnap = await getDocs(receiptsRef);
 
       const participants = {};
       let totalAmount = 0;
@@ -621,9 +623,9 @@ const settlementService = {
         p.balance = p.totalPaid - p.totalOwed;
       });
 
-      // 각 참여자의 전화번호 조회 및 정규화 (users 컬렉션에서)
-      console.log('📞 참여자 전화번호 조회 시작');
-      for (const userId of Object.keys(participants)) {
+      // 각 참여자의 전화번호 조회 및 정규화 (users 컬렉션에서) - 병렬 처리
+      console.log('📞 참여자 전화번호 조회 시작 (병렬)');
+      const phonePromises = Object.keys(participants).map(async (userId) => {
         try {
           const userDocRef = doc(db, 'users', userId);
           const userDoc = await getDoc(userDocRef);
@@ -645,7 +647,10 @@ const settlementService = {
         } catch (error) {
           console.error(`❌ [${participants[userId].name}] 전화번호 조회 실패:`, error);
         }
-      }
+      });
+
+      // 모든 전화번호 조회 완료 대기
+      await Promise.all(phonePromises);
 
       // Settlement 문서 업데이트 (없으면 생성, 있으면 병합)
       const settlementRef = doc(db, 'spaces', spaceId, 'settlement', weekId);
