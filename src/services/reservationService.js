@@ -249,12 +249,48 @@ class ReservationService {
   }
   
   async cancelReservation(spaceId, reservationId) {
-  if (!spaceId || !reservationId) {
-    throw new Error('spaceId 또는 reservationId가 없습니다.');
-  }
+    if (!spaceId || !reservationId) {
+      throw new Error('spaceId 또는 reservationId가 없습니다.');
+    }
 
-  const reserveRef = doc(db, 'spaces', spaceId, 'reserves', reservationId);
-  await deleteDoc(reserveRef);
+    const reserveRef = doc(db, 'spaces', spaceId, 'reserves', reservationId);
+
+    try {
+      // 🔒 취소 가능 여부 검증 (백엔드 레벨)
+      const reserveDoc = await getDoc(reserveRef);
+
+      if (!reserveDoc.exists()) {
+        throw new Error('예약을 찾을 수 없습니다.');
+      }
+
+      const reserveData = reserveDoc.data();
+      const now = new Date();
+
+      // 체크인 날짜 가져오기
+      const checkInDate = reserveData.checkIn?.toDate();
+      if (!checkInDate) {
+        throw new Error('예약 날짜 정보가 올바르지 않습니다.');
+      }
+
+      // 1. 예약 날짜가 현재 시간보다 이전인지 확인
+      if (checkInDate < now) {
+        throw new Error('이미 지난 예약은 취소할 수 없습니다.');
+      }
+
+      // 2. 체크인 완료된 예약인지 확인 (status === 'checked-in' 또는 기타 체크인 상태)
+      if (reserveData.status === 'checked-in') {
+        throw new Error('이미 체크인이 완료된 예약은 취소할 수 없습니다.');
+      }
+
+      // ✅ 검증 통과 - 예약 삭제
+      await deleteDoc(reserveRef);
+      console.log('✅ 예약 취소 완료:', reservationId);
+
+      return { success: true };
+    } catch (error) {
+      console.error('❌ 예약 취소 실패:', error);
+      throw error;
+    }
   }
 
   /**
