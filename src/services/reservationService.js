@@ -155,7 +155,28 @@ class ReservationService {
       await setDoc(doc(reservesRef, docId), dataToSave);
       
       console.log('✅ Firebase 저장 완료!');
-      
+
+      // 📝 이력 저장 (생성 이벤트)
+      try {
+        const historyRef = collection(db, 'spaces', spaceId, 'reserves', docId, 'history');
+        await addDoc(historyRef, {
+          timestamp: Timestamp.now(),
+          changedBy: String(reservationData.userId),
+          action: 'created',
+          snapshot: {
+            checkIn: dataToSave.checkIn,
+            checkOut: dataToSave.checkOut,
+            nights: dataToSave.nights,
+            isDayTrip: dataToSave.isDayTrip,
+            name: dataToSave.name,
+            type: dataToSave.type
+          }
+        });
+        console.log('✅ 생성 이력 저장 완료');
+      } catch (historyError) {
+        console.error('⚠️ 이력 저장 실패 (예약은 완료됨):', historyError);
+      }
+
       // 🔥 알림 발송 추가 (이메일 + 알림톡)
       try {
         console.log('📧 알림 발송 시작...');
@@ -296,6 +317,29 @@ class ReservationService {
         throw new Error('이미 체크인이 완료된 예약은 취소할 수 없습니다.');
       }
 
+      // 📝 이력 저장 (취소 전 상태 스냅샷)
+      try {
+        const historyRef = collection(db, 'spaces', spaceId, 'reserves', reservationId, 'history');
+        await addDoc(historyRef, {
+          timestamp: Timestamp.now(),
+          changedBy: String(userId),
+          action: 'canceled',
+          snapshot: {
+            checkIn: reserveData.checkIn,
+            checkOut: reserveData.checkOut,
+            nights: reserveData.nights,
+            isDayTrip: reserveData.isDayTrip,
+            status: reserveData.status || 'active',
+            name: reserveData.name,
+            type: reserveData.type
+          },
+          cancelReason: cancelReason || ''
+        });
+        console.log('✅ 취소 이력 저장 완료');
+      } catch (historyError) {
+        console.error('⚠️ 이력 저장 실패 (취소는 진행됨):', historyError);
+      }
+
       // ✅ 검증 통과 - Soft Delete (status만 변경, 데이터는 보존)
       await setDoc(reserveRef, {
         status: 'canceled',
@@ -355,13 +399,49 @@ class ReservationService {
         }
       }
 
+      // 📝 이력 저장 (수정 전 상태 스냅샷)
+      try {
+        const historyRef = collection(db, 'spaces', spaceId, 'reserves', reservationId, 'history');
+        await addDoc(historyRef, {
+          timestamp: Timestamp.now(),
+          changedBy: String(updateData.userId || 'unknown'),
+          action: 'updated',
+          snapshot: {
+            checkIn: existingData.checkIn,
+            checkOut: existingData.checkOut,
+            nights: existingData.nights,
+            isDayTrip: existingData.isDayTrip,
+            name: existingData.name,
+            type: existingData.type
+          },
+          changes: {
+            checkIn: {
+              before: existingData.checkIn.toDate().toISOString(),
+              after: updateData.checkIn.toISOString()
+            },
+            checkOut: {
+              before: existingData.checkOut.toDate().toISOString(),
+              after: updateData.checkOut.toISOString()
+            },
+            nights: {
+              before: existingData.nights,
+              after: updateData.nights ?? 0
+            }
+          }
+        });
+        console.log('✅ 수정 이력 저장 완료');
+      } catch (historyError) {
+        console.error('⚠️ 이력 저장 실패 (수정은 진행됨):', historyError);
+      }
+
       // 업데이트할 데이터 준비
       const dataToUpdate = {
         checkIn: Timestamp.fromDate(updateData.checkIn),
         checkOut: Timestamp.fromDate(updateData.checkOut),
         nights: updateData.nights ?? 0,
         isDayTrip: updateData.isDayTrip ?? false,
-        updatedAt: Timestamp.now()
+        updatedAt: Timestamp.now(),
+        updatedBy: String(updateData.userId || 'unknown')
       };
 
       // 예약 문서 업데이트
@@ -488,6 +568,35 @@ class ReservationService {
       return canceledReservations;
     } catch (error) {
       console.error('❌ getCanceledReservations 에러:', error);
+      return [];
+    }
+  }
+
+  // 📜 특정 예약의 변경 이력 조회
+  async getReservationHistory(spaceId, reservationId) {
+    try {
+      console.log('📜 예약 이력 조회:', reservationId);
+
+      const historyRef = collection(db, 'spaces', spaceId, 'reserves', reservationId, 'history');
+      const q = query(historyRef, orderBy('timestamp', 'desc'));
+      const snapshot = await getDocs(q);
+
+      console.log('📋 이력 수:', snapshot.size);
+
+      const history = [];
+
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        history.push({
+          id: docSnap.id,
+          ...data,
+          timestamp: data.timestamp?.toDate() || null
+        });
+      });
+
+      return history;
+    } catch (error) {
+      console.error('❌ getReservationHistory 에러:', error);
       return [];
     }
   }

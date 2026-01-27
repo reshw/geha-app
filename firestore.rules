@@ -94,6 +94,18 @@ service cloud.firestore {
 
         // 🚫 삭제 금지: Soft Delete만 허용 (실제 삭제 불가)
         allow delete: if false;
+
+        // 📜 예약 변경 이력 (서브컬렉션)
+        match /history/{historyId} {
+          // 읽기: 인증된 사용자
+          allow read: if isAuthenticated();
+
+          // 생성: 관리자/부매니저만 (자동 생성)
+          allow create: if hasSpacePermission(spaceId, 'vice-manager');
+
+          // 수정/삭제 금지: 이력은 불변
+          allow update, delete: if false;
+        }
       }
 
       // 정산 (settlement)

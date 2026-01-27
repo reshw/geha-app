@@ -1189,7 +1189,7 @@ const WeeklyList = () => {
             await reservationService.updateReservation(
               selectedSpace.id,
               selectedReservationForManage.id,
-              updateData
+              { ...updateData, userId: user.id }  // userId 전달
             );
 
             await refresh();
