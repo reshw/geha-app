@@ -43,11 +43,9 @@ class AuthService {
       'VITE_KAKAO_REST_API_KEY',
       '환경변수 VITE_KAKAO_REST_API_KEY 가 필요합니다.'
     );
-    
+
     const currentOrigin = window.location.origin;
     const REDIRECT_URI = `${currentOrigin}/auth/kakao/callback`;
-    
-    const CLIENT_SECRET = import.meta.env.VITE_KAKAO_CLIENT_SECRET;
 
     console.log('🔑 토큰 교환용 리다이렉트 URI:', REDIRECT_URI);
 
@@ -57,7 +55,6 @@ class AuthService {
       redirect_uri: REDIRECT_URI,
       code
     });
-    if (CLIENT_SECRET) tokenParams.append('client_secret', CLIENT_SECRET);
 
     const tokenRes = await this._postForm(`${this.KAUTH_BASE}/oauth/token`, tokenParams);
     await this._assertOk(tokenRes, '토큰 교환');
