@@ -320,19 +320,26 @@ class ReservationService {
       // 📝 이력 저장 (취소 전 상태 스냅샷)
       try {
         const historyRef = collection(db, 'spaces', spaceId, 'reserves', reservationId, 'history');
+
+        // 방어적 코딩: 존재하는 필드만 저장
+        const snapshot = {
+          checkIn: reserveData.checkIn,
+          checkOut: reserveData.checkOut,
+          status: reserveData.status || 'active',
+          name: reserveData.name
+        };
+
+        // 선택적 필드 추가
+        if ('nights' in reserveData) snapshot.nights = reserveData.nights;
+        if ('isDayTrip' in reserveData) snapshot.isDayTrip = reserveData.isDayTrip;
+        if ('type' in reserveData) snapshot.type = reserveData.type;
+        if ('userId' in reserveData) snapshot.userId = reserveData.userId;
+
         await addDoc(historyRef, {
           timestamp: Timestamp.now(),
           changedBy: String(userId),
           action: 'canceled',
-          snapshot: {
-            checkIn: reserveData.checkIn,
-            checkOut: reserveData.checkOut,
-            nights: reserveData.nights,
-            isDayTrip: reserveData.isDayTrip,
-            status: reserveData.status || 'active',
-            name: reserveData.name,
-            type: reserveData.type
-          },
+          snapshot,
           cancelReason: cancelReason || ''
         });
         console.log('✅ 취소 이력 저장 완료');
@@ -402,32 +409,46 @@ class ReservationService {
       // 📝 이력 저장 (수정 전 상태 스냅샷)
       try {
         const historyRef = collection(db, 'spaces', spaceId, 'reserves', reservationId, 'history');
+        
+        // 방어적 코딩: 존재하는 필드만 저장
+        const snapshot = {
+          checkIn: existingData.checkIn,
+          checkOut: existingData.checkOut,
+          name: existingData.name
+        };
+        
+        // 선택적 필드 추가
+        if ('nights' in existingData) snapshot.nights = existingData.nights;
+        if ('isDayTrip' in existingData) snapshot.isDayTrip = existingData.isDayTrip;
+        if ('type' in existingData) snapshot.type = existingData.type;
+        if ('status' in existingData) snapshot.status = existingData.status;
+        
+        // changes 객체 안전하게 구성
+        const changes = {
+          checkIn: {
+            before: existingData.checkIn?.toDate?.() ? existingData.checkIn.toDate().toISOString() : String(existingData.checkIn),
+            after: updateData.checkIn.toISOString()
+          },
+          checkOut: {
+            before: existingData.checkOut?.toDate?.() ? existingData.checkOut.toDate().toISOString() : String(existingData.checkOut),
+            after: updateData.checkOut.toISOString()
+          }
+        };
+        
+        // nights 변경 사항이 있으면 추가
+        if ('nights' in existingData || 'nights' in updateData) {
+          changes.nights = {
+            before: existingData.nights ?? 0,
+            after: updateData.nights ?? 0
+          };
+        }
+        
         await addDoc(historyRef, {
           timestamp: Timestamp.now(),
           changedBy: String(updateData.userId || 'unknown'),
           action: 'updated',
-          snapshot: {
-            checkIn: existingData.checkIn,
-            checkOut: existingData.checkOut,
-            nights: existingData.nights,
-            isDayTrip: existingData.isDayTrip,
-            name: existingData.name,
-            type: existingData.type
-          },
-          changes: {
-            checkIn: {
-              before: existingData.checkIn.toDate().toISOString(),
-              after: updateData.checkIn.toISOString()
-            },
-            checkOut: {
-              before: existingData.checkOut.toDate().toISOString(),
-              after: updateData.checkOut.toISOString()
-            },
-            nights: {
-              before: existingData.nights,
-              after: updateData.nights ?? 0
-            }
-          }
+          snapshot,
+          changes
         });
         console.log('✅ 수정 이력 저장 완료');
       } catch (historyError) {
