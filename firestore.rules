@@ -65,12 +65,18 @@ service cloud.firestore {
         // 생성: 관리자/부매니저만
         allow create: if hasSpacePermission(spaceId, 'vice-manager');
 
-        // 수정: 관리자/부매니저만
-        allow update: if hasSpacePermission(spaceId, 'vice-manager');
+        // 🔒 수정: 관리자/부매니저만
+        // 취소는 update로 처리 (status를 'canceled'로 변경)
+        allow update: if hasSpacePermission(spaceId, 'vice-manager')
+                      && (
+                        // 일반 수정
+                        request.resource.data.status != 'canceled' ||
+                        // 취소 처리 (검증 통과 시에만)
+                        (request.resource.data.status == 'canceled' && canCancelReservation(resource.data))
+                      );
 
-        // 🔒 삭제(취소): 관리자/부매니저 + 검증 로직
-        allow delete: if hasSpacePermission(spaceId, 'vice-manager')
-                      && canCancelReservation(resource.data);
+        // 🚫 삭제 금지: Soft Delete만 허용 (실제 삭제 불가)
+        allow delete: if false;
       }
 
       // 정산 (settlement)

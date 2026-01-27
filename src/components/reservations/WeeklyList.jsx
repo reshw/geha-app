@@ -401,7 +401,7 @@ const WeeklyList = () => {
    }
    setIsSubmitting(true);
    try {
-     await cancelReservation(reservation.id);
+     await cancelReservation(reservation.id, user.id, ''); // userId 전달
      setShowCancelModal(false);
      setSelectedReservationForCancel(null);
      setToast({ message: '예약이 취소되었습니다', type: 'success' });

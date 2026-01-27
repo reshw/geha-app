@@ -69,8 +69,8 @@ export const useReservations = (spaceId, currentWeekStart) => {
     await fetchReservations();
   };
   
-  const cancelReservation = async (reservationId) => {
-    await reservationService.cancelReservation(spaceId, reservationId);
+  const cancelReservation = async (reservationId, userId, cancelReason = '') => {
+    await reservationService.cancelReservation(spaceId, reservationId, userId, cancelReason);
     await fetchReservations();
   };
   
