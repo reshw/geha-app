@@ -35,6 +35,21 @@ service cloud.firestore {
       return isFutureReservation && isNotCheckedIn;
     }
 
+    // 예약 수정 시 시작일 변경 불가 검증
+    function canUpdateCheckIn(oldData, newData) {
+      let oldCheckIn = oldData.checkIn;
+      let newCheckIn = newData.checkIn;
+
+      // 원본 예약이 이미 시작된 경우 (과거)
+      let isStarted = oldCheckIn < request.time;
+
+      // 시작일 변경 여부 확인 (1초 이상 차이)
+      let checkInChanged = (newCheckIn.toMillis() - oldCheckIn.toMillis()).abs() > 1000;
+
+      // 이미 시작된 예약의 시작일을 변경하려고 하면 false
+      return !(isStarted && checkInChanged);
+    }
+
     // ===== Users Collection =====
     match /users/{userId} {
       allow read: if isAuthenticated();
@@ -67,7 +82,9 @@ service cloud.firestore {
 
         // 🔒 수정: 관리자/부매니저만
         // 취소는 update로 처리 (status를 'canceled'로 변경)
+        // 이미 시작된 예약의 시작일은 변경 불가
         allow update: if hasSpacePermission(spaceId, 'vice-manager')
+                      && canUpdateCheckIn(resource.data, request.resource.data)
                       && (
                         // 일반 수정
                         request.resource.data.status != 'canceled' ||

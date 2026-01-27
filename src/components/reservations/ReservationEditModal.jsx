@@ -143,6 +143,13 @@ const ReservationEditModal = ({
   const currentCheckIn = reservation.checkIn?.toDate?.() || reservation.checkIn;
   const currentCheckOut = reservation.checkOut?.toDate?.() || reservation.checkOut;
 
+  // 🔒 원본 예약이 이미 시작되었는지 확인
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const originalCheckInDate = new Date(currentCheckIn);
+  originalCheckInDate.setHours(0, 0, 0, 0);
+  const isStarted = originalCheckInDate < now;
+
   return (
     <>
       <Modal isOpen={isOpen} onClose={onClose} title="예약 수정">
@@ -170,14 +177,25 @@ const ReservationEditModal = ({
             <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
               <Calendar className="w-4 h-4" />
               입실일
+              {isStarted && (
+                <span className="text-xs text-gray-500 font-normal">(수정 불가)</span>
+              )}
             </label>
             <input
               type="date"
               value={checkInDate}
               onChange={handleCheckInChange}
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none text-base"
+              disabled={isStarted}
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none text-base disabled:bg-gray-100 disabled:cursor-not-allowed"
+              title={isStarted ? '이미 시작된 예약의 시작일은 변경할 수 없습니다' : ''}
             />
-            {checkInDate && isPastDate(checkInDate) && (
+            {isStarted && (
+              <div className="mt-2 text-xs text-red-600 flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" />
+                이미 시작된 예약의 시작일은 변경할 수 없습니다
+              </div>
+            )}
+            {!isStarted && checkInDate && isPastDate(checkInDate) && (
               <div className="mt-2 text-xs text-orange-600 flex items-center gap-1">
                 <AlertTriangle className="w-3 h-3" />
                 과거 날짜입니다

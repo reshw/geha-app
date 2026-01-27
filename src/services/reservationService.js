@@ -335,6 +335,25 @@ class ReservationService {
       }
 
       const existingData = reserveDoc.data();
+      const now = new Date();
+
+      // 원본 체크인 날짜 확인
+      const originalCheckIn = existingData.checkIn?.toDate();
+      if (!originalCheckIn) {
+        throw new Error('예약 날짜 정보가 올바르지 않습니다.');
+      }
+
+      // 🔒 보안 검증: 원본 예약이 이미 시작된 경우 시작일 변경 불가
+      if (originalCheckIn < now) {
+        const newCheckIn = updateData.checkIn;
+        const newCheckInTime = newCheckIn.getTime();
+        const originalCheckInTime = originalCheckIn.getTime();
+
+        // 시작일을 변경하려고 시도하면 차단
+        if (Math.abs(newCheckInTime - originalCheckInTime) > 1000) { // 1초 이상 차이나면
+          throw new Error('이미 시작된 예약의 시작일은 변경할 수 없습니다.');
+        }
+      }
 
       // 업데이트할 데이터 준비
       const dataToUpdate = {
