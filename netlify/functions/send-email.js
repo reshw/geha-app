@@ -94,19 +94,27 @@ function generateGuestReservationEmail(data) {
   const days = nights + 1;
   const cost = nights * (data.pricePerNight || 30000);
 
+  // 한국 시간대(UTC+9)로 포맷팅하는 헬퍼 함수
+  const toSeoulDate = (date) => {
+    const seoulTime = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
+    return seoulTime;
+  };
+
   // 날짜 포맷팅 (YYMMDD)
   const formatDateShort = (date) => {
-    const year = String(date.getFullYear()).slice(2);
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    const seoulDate = toSeoulDate(date);
+    const year = String(seoulDate.getFullYear()).slice(2);
+    const month = String(seoulDate.getMonth() + 1).padStart(2, '0');
+    const day = String(seoulDate.getDate()).padStart(2, '0');
     return `${year}${month}${day}`;
   };
 
   // 날짜 포맷팅 (전체)
   const formatDate = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    const seoulDate = toSeoulDate(date);
+    const year = seoulDate.getFullYear();
+    const month = String(seoulDate.getMonth() + 1).padStart(2, '0');
+    const day = String(seoulDate.getDate()).padStart(2, '0');
     return `${year}년 ${month}월 ${day}일`;
   };
 
@@ -256,11 +264,18 @@ function generatePraiseEmail(data) {
   const spaceName = data.spaceName || '라운지';
   const eventDate = new Date(data.eventDate);
 
+  // 한국 시간대(UTC+9)로 포맷팅하는 헬퍼 함수
+  const toSeoulDate = (date) => {
+    const seoulTime = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
+    return seoulTime;
+  };
+
   // 날짜 포맷팅
   const formatDate = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    const seoulDate = toSeoulDate(date);
+    const year = seoulDate.getFullYear();
+    const month = String(seoulDate.getMonth() + 1).padStart(2, '0');
+    const day = String(seoulDate.getDate()).padStart(2, '0');
     return `${year}년 ${month}월 ${day}일`;
   };
 
@@ -373,13 +388,20 @@ function generateSettlementEmail(data) {
   const spaceName = data.spaceName || '라운지';
   const submittedAt = new Date(data.submittedAt);
 
+  // 한국 시간대(UTC+9)로 포맷팅하는 헬퍼 함수
+  const toSeoulDate = (date) => {
+    const seoulTime = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
+    return seoulTime;
+  };
+
   // 날짜 포맷팅
   const formatDateTime = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seoulDate = toSeoulDate(date);
+    const year = seoulDate.getFullYear();
+    const month = String(seoulDate.getMonth() + 1).padStart(2, '0');
+    const day = String(seoulDate.getDate()).padStart(2, '0');
+    const hours = String(seoulDate.getHours()).padStart(2, '0');
+    const minutes = String(seoulDate.getMinutes()).padStart(2, '0');
     return `${year}년 ${month}월 ${day}일 ${hours}:${minutes}`;
   };
 
@@ -497,20 +519,28 @@ function generateExpenseEmail(data) {
   const spaceName = data.spaceName || '라운지';
   const createdAt = new Date(data.createdAt);
 
+  // 한국 시간대(UTC+9)로 포맷팅하는 헬퍼 함수
+  const toSeoulDate = (date) => {
+    const seoulTime = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
+    return seoulTime;
+  };
+
   // 날짜 포맷팅
   const formatDateTime = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seoulDate = toSeoulDate(date);
+    const year = seoulDate.getFullYear();
+    const month = String(seoulDate.getMonth() + 1).padStart(2, '0');
+    const day = String(seoulDate.getDate()).padStart(2, '0');
+    const hours = String(seoulDate.getHours()).padStart(2, '0');
+    const minutes = String(seoulDate.getMinutes()).padStart(2, '0');
     return `${year}년 ${month}월 ${day}일 ${hours}:${minutes}`;
   };
 
   const formatDate = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    const seoulDate = toSeoulDate(date);
+    const year = seoulDate.getFullYear();
+    const month = String(seoulDate.getMonth() + 1).padStart(2, '0');
+    const day = String(seoulDate.getDate()).padStart(2, '0');
     return `${year}년 ${month}월 ${day}일`;
   };
 
@@ -747,12 +777,19 @@ function generateBartenderOrderEmail(data) {
 function generateSpaceCreationRequestEmail(data) {
   const requestedAt = new Date(data.requestedAt);
 
+  // 한국 시간대(UTC+9)로 포맷팅하는 헬퍼 함수
+  const toSeoulDate = (date) => {
+    const seoulTime = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
+    return seoulTime;
+  };
+
   const formatDateTime = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seoulDate = toSeoulDate(date);
+    const year = seoulDate.getFullYear();
+    const month = String(seoulDate.getMonth() + 1).padStart(2, '0');
+    const day = String(seoulDate.getDate()).padStart(2, '0');
+    const hours = String(seoulDate.getHours()).padStart(2, '0');
+    const minutes = String(seoulDate.getMinutes()).padStart(2, '0');
     return `${year}년 ${month}월 ${day}일 ${hours}:${minutes}`;
   };
 
