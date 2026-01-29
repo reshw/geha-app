@@ -167,6 +167,22 @@ exports.handler = async (event) => {
 };
 
 /**
+ * 한국 시간대(UTC+9)로 날짜 포맷팅하는 헬퍼 함수
+ */
+function formatDateKorea(dateInput) {
+  if (!dateInput) return '';
+  
+  const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
+  const seoulTime = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
+  
+  const year = seoulTime.getFullYear();
+  const month = String(seoulTime.getMonth() + 1).padStart(2, '0');
+  const day = String(seoulTime.getDate()).padStart(2, '0');
+  
+  return `${year}-${month}-${day}`;
+}
+
+/**
  * 게스트 예약 확인 템플릿 파라미터 생성
  */
 function createGuestConfirmationParams(data) {
@@ -189,8 +205,8 @@ function createGuestConfirmationParams(data) {
   const params = {
     '성명': name,
     '라운지명': loungeName,
-    '입실일': checkIn,
-    '퇴실일': checkOut,
+    '입실일': formatDateKorea(checkIn),  // UTC+9 적용
+    '퇴실일': formatDateKorea(checkOut),  // UTC+9 적용
     '박수': String(nights),
     '단가': pricePerNightper10000, // 1박 요금 (만원 단위)
     '일수': String(days),
