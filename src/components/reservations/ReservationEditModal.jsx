@@ -107,6 +107,12 @@ const ReservationEditModal = ({
 
   // 저장 핸들러
   const handleSave = () => {
+    // 종료된 예약은 저장 불가
+    if (isEnded) {
+      alert('이미 종료된 예약은 수정할 수 없습니다.');
+      return;
+    }
+
     if (!checkInDate || !checkOutDate) {
       alert('입실일과 아웃일을 모두 선택해주세요.');
       return;
@@ -143,17 +149,36 @@ const ReservationEditModal = ({
   const currentCheckIn = reservation.checkIn?.toDate?.() || reservation.checkIn;
   const currentCheckOut = reservation.checkOut?.toDate?.() || reservation.checkOut;
 
-  // 🔒 원본 예약이 이미 시작되었는지 확인
+  // 🔒 예약 상태 확인
   const now = new Date();
   now.setHours(0, 0, 0, 0);
+
   const originalCheckInDate = new Date(currentCheckIn);
   originalCheckInDate.setHours(0, 0, 0, 0);
-  const isStarted = originalCheckInDate < now;
+
+  const originalCheckOutDate = new Date(currentCheckOut);
+  originalCheckOutDate.setHours(0, 0, 0, 0);
+
+  const isStarted = originalCheckInDate < now; // 이미 시작됨
+  const isEnded = originalCheckOutDate < now;  // 완전히 종료됨
 
   return (
     <>
       <Modal isOpen={isOpen} onClose={onClose} title="예약 수정">
         <div className="space-y-6">
+          {/* 완전히 종료된 예약 경고 */}
+          {isEnded && (
+            <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <div className="text-sm font-semibold text-red-900 mb-1">수정 불가</div>
+                <div className="text-xs text-red-700">
+                  이미 종료된 예약은 수정할 수 없습니다.
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* 현재 예약 정보 */}
           <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
             <div className="text-sm font-semibold text-blue-900 mb-2">현재 예약</div>
@@ -185,7 +210,7 @@ const ReservationEditModal = ({
               type="date"
               value={checkInDate}
               onChange={handleCheckInChange}
-              disabled={isStarted}
+              disabled={isStarted || isEnded}
               className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none text-base disabled:bg-gray-100 disabled:cursor-not-allowed"
               title={isStarted ? '이미 시작된 예약의 시작일은 변경할 수 없습니다' : ''}
             />
@@ -213,7 +238,7 @@ const ReservationEditModal = ({
               type="date"
               value={checkOutDate}
               onChange={handleCheckOutChange}
-              disabled={isDayTrip}
+              disabled={isDayTrip || isEnded}
               className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none text-base disabled:bg-gray-100 disabled:cursor-not-allowed"
             />
             {isDayTrip && (
@@ -225,12 +250,13 @@ const ReservationEditModal = ({
 
           {/* 당일치기 옵션 */}
           <div>
-            <label className="flex items-center gap-3 p-4 bg-orange-50 rounded-xl cursor-pointer hover:bg-orange-100 transition-colors border-2 border-orange-200">
+            <label className={`flex items-center gap-3 p-4 bg-orange-50 rounded-xl border-2 border-orange-200 ${!isEnded ? 'cursor-pointer hover:bg-orange-100 transition-colors' : 'opacity-50 cursor-not-allowed'}`}>
               <input
                 type="checkbox"
                 checked={isDayTrip}
                 onChange={handleDayTripToggle}
-                className="w-5 h-5 text-orange-600 rounded focus:ring-orange-500"
+                disabled={isEnded}
+                className="w-5 h-5 text-orange-600 rounded focus:ring-orange-500 disabled:cursor-not-allowed"
               />
               <div className="flex-1">
                 <span className="font-semibold text-gray-900">당일치기 예약</span>
@@ -251,7 +277,8 @@ const ReservationEditModal = ({
             </button>
             <button
               onClick={handleSave}
-              className="px-4 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors"
+              disabled={isEnded}
+              className="px-4 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
               저장
             </button>
