@@ -387,21 +387,36 @@ class ReservationService {
 
       const existingData = reserveDoc.data();
       const now = new Date();
+      now.setHours(0, 0, 0, 0);
 
-      // 원본 체크인 날짜 확인
+      // 원본 체크인/체크아웃 날짜 확인
       const originalCheckIn = existingData.checkIn?.toDate();
-      if (!originalCheckIn) {
+      const originalCheckOut = existingData.checkOut?.toDate();
+
+      if (!originalCheckIn || !originalCheckOut) {
         throw new Error('예약 날짜 정보가 올바르지 않습니다.');
       }
 
-      // 🔒 보안 검증: 원본 예약이 이미 시작된 경우 시작일 변경 불가
-      if (originalCheckIn < now) {
-        const newCheckIn = updateData.checkIn;
-        const newCheckInTime = newCheckIn.getTime();
-        const originalCheckInTime = originalCheckIn.getTime();
+      // 날짜만 비교 (시간 부분 무시)
+      const originalCheckInDate = new Date(originalCheckIn);
+      originalCheckInDate.setHours(0, 0, 0, 0);
 
-        // 시작일을 변경하려고 시도하면 차단
-        if (Math.abs(newCheckInTime - originalCheckInTime) > 1000) { // 1초 이상 차이나면
+      const originalCheckOutDate = new Date(originalCheckOut);
+      originalCheckOutDate.setHours(0, 0, 0, 0);
+
+      // 🔒 보안 검증 1: 완전히 끝난 예약은 수정 불가
+      if (originalCheckOutDate < now) {
+        throw new Error('이미 종료된 예약은 수정할 수 없습니다.');
+      }
+
+      // 🔒 보안 검증 2: 진행 중인 예약은 시작일 변경 불가 (퇴실일은 자유롭게 변경 가능)
+      if (originalCheckInDate < now) {
+        const newCheckIn = updateData.checkIn;
+        const newCheckInDate = new Date(newCheckIn);
+        newCheckInDate.setHours(0, 0, 0, 0);
+
+        // 시작일이 다르면 차단
+        if (originalCheckInDate.getTime() !== newCheckInDate.getTime()) {
           throw new Error('이미 시작된 예약의 시작일은 변경할 수 없습니다.');
         }
       }
