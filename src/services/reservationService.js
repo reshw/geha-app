@@ -120,14 +120,16 @@ class ReservationService {
   /**
    * 중복 예약 체크 (Firebase 직접 조회)
    * @param {string} spaceId - 공간 ID
+   * @param {string} userId - 사용자 ID
    * @param {Date} checkIn - 체크인 날짜
    * @param {Date} checkOut - 체크아웃 날짜
    * @param {string} excludeReservationId - 제외할 예약 ID (수정 시 자기 자신 제외)
    * @returns {Promise<boolean>} - 중복 여부 (true: 중복 있음, false: 중복 없음)
    */
-  async checkDuplicateReservation(spaceId, checkIn, checkOut, excludeReservationId = null) {
+  async checkDuplicateReservation(spaceId, userId, checkIn, checkOut, excludeReservationId = null) {
     try {
-      console.log('🔍 중복 예약 체크 시작');
+      console.log('🔍 중복 예약 체크 시작 (같은 사용자만)');
+      console.log('userId:', userId);
       console.log('날짜 범위:', checkIn, '~', checkOut);
 
       const reservesRef = collection(db, `spaces/${spaceId}/reserves`);
@@ -143,7 +145,7 @@ class ReservationService {
 
       console.log('📋 조회된 예약 수:', snapshot.size);
 
-      // 취소되지 않은 예약 중 겹치는 것이 있는지 확인
+      // 같은 userId이면서 취소되지 않은 예약 중 겹치는 것이 있는지 확인
       let hasDuplicate = false;
       let duplicateInfo = null;
 
@@ -160,7 +162,12 @@ class ReservationService {
           return;
         }
 
-        // 중복 발견
+        // 🔑 같은 userId인지 확인 (다른 사람은 OK)
+        if (String(data.userId) !== String(userId)) {
+          return;
+        }
+
+        // 중복 발견 (같은 사람이 날짜 겹침)
         hasDuplicate = true;
         duplicateInfo = {
           id: docSnap.id,
@@ -171,7 +178,7 @@ class ReservationService {
       });
 
       if (hasDuplicate) {
-        console.log('⚠️ 중복 예약 발견:', duplicateInfo);
+        console.log('⚠️ 중복 예약 발견 (같은 사용자):', duplicateInfo);
       } else {
         console.log('✅ 중복 예약 없음');
       }
@@ -189,9 +196,10 @@ class ReservationService {
       console.log('spaceId:', spaceId);
       console.log('reservationData:', reservationData);
 
-      // 🔒 중복 예약 체크 (Firebase 직접 조회)
+      // 🔒 중복 예약 체크 (Firebase 직접 조회, 같은 사용자만)
       const { hasDuplicate, duplicateInfo } = await this.checkDuplicateReservation(
         spaceId,
+        reservationData.userId,
         reservationData.checkIn,
         reservationData.checkOut
       );
@@ -200,7 +208,7 @@ class ReservationService {
         const duplicateCheckIn = duplicateInfo.checkIn;
         const duplicateCheckOut = duplicateInfo.checkOut;
         throw new Error(
-          `해당 기간에 이미 예약이 있습니다.\n` +
+          `이미 예약이 있습니다.\n` +
           `기존 예약: ${duplicateInfo.name} (${duplicateCheckIn.getMonth() + 1}/${duplicateCheckIn.getDate()} ~ ${duplicateCheckOut.getMonth() + 1}/${duplicateCheckOut.getDate()})`
         );
       }
@@ -503,9 +511,10 @@ class ReservationService {
         }
       }
 
-      // 🔒 중복 예약 체크 (Firebase 직접 조회, 자기 자신 제외)
+      // 🔒 중복 예약 체크 (Firebase 직접 조회, 같은 사용자만, 자기 자신 제외)
       const { hasDuplicate, duplicateInfo } = await this.checkDuplicateReservation(
         spaceId,
+        existingData.userId,
         updateData.checkIn,
         updateData.checkOut,
         reservationId  // 자기 자신은 제외
@@ -515,7 +524,7 @@ class ReservationService {
         const duplicateCheckIn = duplicateInfo.checkIn;
         const duplicateCheckOut = duplicateInfo.checkOut;
         throw new Error(
-          `해당 기간에 이미 예약이 있습니다.\n` +
+          `이미 예약이 있습니다.\n` +
           `기존 예약: ${duplicateInfo.name} (${duplicateCheckIn.getMonth() + 1}/${duplicateCheckIn.getDate()} ~ ${duplicateCheckOut.getMonth() + 1}/${duplicateCheckOut.getDate()})`
         );
       }
