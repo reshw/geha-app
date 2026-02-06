@@ -3,6 +3,7 @@
   publish = "dist"
   functions = "netlify/functions"
 
+# Build only needs Node version
 [build.environment]
   NODE_VERSION = "18"
 

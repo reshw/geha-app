@@ -2,32 +2,17 @@
 // 운영비 승인 독려 메일 발송
 // 매일 한국시간 오전 10시에 실행되어야 함 (netlify.toml 설정: UTC 01:00 = KST 10:00)
 
-const { initializeApp, cert } = require('firebase-admin/app');
+const { getFirebaseApp } = require('./firebase-loader');
 const { getFirestore } = require('firebase-admin/firestore');
 
-// Firebase Admin 초기화 (전역 환경변수 사용)
-let adminApp;
 let db;
 
 const initializeFirebase = () => {
-  if (!adminApp) {
+  if (!db) {
     try {
-      // Netlify 전역 환경변수에서 Service Account JSON 읽기
-      const serviceAccountB64 = process.env.FIREBASE_SERVICE_ACCOUNT_JSON_B64;
-
-      if (serviceAccountB64) {
-        const serviceAccount = JSON.parse(
-          Buffer.from(serviceAccountB64, 'base64').toString('utf-8')
-        );
-
-        adminApp = initializeApp({
-          credential: cert(serviceAccount)
-        });
-        db = getFirestore(adminApp);
-        console.log('✅ Firebase Admin 초기화 성공');
-      } else {
-        throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON_B64 환경변수가 없습니다.');
-      }
+      const { adminApp } = getFirebaseApp();
+      db = getFirestore(adminApp);
+      console.log('✅ Firebase Admin 초기화 성공');
     } catch (error) {
       console.error('❌ Firebase Admin 초기화 실패:', error);
       throw error;

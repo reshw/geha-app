@@ -1,13 +1,11 @@
 /**
  * Firebase Cloud Messaging 푸시 알림 발송 Netlify Function
  *
- * 환경변수 필요:
- * - FIREBASE_PROJECT_ID
- * - FIREBASE_PRIVATE_KEY
- * - FIREBASE_CLIENT_EMAIL
+ * 환경변수: 필요 없음 (Firebase 자격증명은 파일에서 읽음)
  */
 
 const admin = require('firebase-admin');
+const { getFirebaseApp } = require('./firebase-loader');
 
 // Firebase Admin 초기화 함수
 function initializeFirebase() {
@@ -16,23 +14,9 @@ function initializeFirebase() {
   }
 
   try {
-    // Netlify 전역 환경변수에서 Service Account JSON 읽기
-    const serviceAccountB64 = process.env.FIREBASE_SERVICE_ACCOUNT_JSON_B64;
-
-    if (serviceAccountB64) {
-      const serviceAccount = JSON.parse(
-        Buffer.from(serviceAccountB64, 'base64').toString('utf-8')
-      );
-
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-      });
-
-      console.log('✅ Firebase Admin 초기화 완료');
-      return admin.app();
-    }
-
-    throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON_B64 환경변수가 없습니다.');
+    const { adminApp } = getFirebaseApp();
+    console.log('✅ Firebase Admin 초기화 완료');
+    return adminApp;
   } catch (error) {
     console.error('❌ Firebase Admin 초기화 실패:', error);
     throw new Error(`Firebase 초기화 실패: ${error.message}`);
