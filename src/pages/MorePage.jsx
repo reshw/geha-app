@@ -16,7 +16,8 @@ import {
   BookOpen,
   Users,
   Play,
-  Coffee
+  Coffee,
+  Bell
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import useStore from '../store/useStore';
@@ -202,6 +203,12 @@ const MorePage = () => {
           <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider px-3 mb-4">
             개인 설정
           </h3>
+
+          <MenuItem
+            icon={Bell}
+            label="푸시 알림 설정"
+            onClick={() => navigate('/push-settings')}
+          />
 
           <MenuItem
             icon={UserCog}

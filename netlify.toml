@@ -80,3 +80,11 @@
 [functions."send-notification"]
   [functions."send-notification".environment]
     RESEND_API_KEY = "$RESEND_API_KEY"
+
+# 푸시 알림 발송
+[functions."send-push-notification"]
+  [functions."send-push-notification".environment]
+    FIREBASE_SERVICE_ACCOUNT_JSON_B64 = "$FIREBASE_SERVICE_ACCOUNT_JSON_B64"
+    FIREBASE_PROJECT_ID = "$FIREBASE_PROJECT_ID"
+    FIREBASE_PRIVATE_KEY = "$FIREBASE_PRIVATE_KEY"
+    FIREBASE_CLIENT_EMAIL = "$FIREBASE_CLIENT_EMAIL"

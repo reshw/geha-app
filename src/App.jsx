@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { useEffect } from 'react';
 import MainLayout from './components/common/MainLayout';
 import WeeklyList from './components/reservations/WeeklyList';
 import PraisePage from './pages/PraisePage';
@@ -11,6 +12,9 @@ import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import ExpenseListPage from './pages/ExpenseListPage';
 import ExpenseRequestPage from './pages/ExpenseRequestPage';
 import MigrationPage from './pages/MigrationPage';
+import PushNotificationSettings from './components/settings/PushNotificationSettings';
+import { onForegroundMessage } from './config/firebaseMessaging';
+import { sendTestNotification } from './utils/pushUtils';
 
 // 투어 관련
 import { TourProvider } from './contexts/TourContext';
@@ -45,6 +49,27 @@ import BartenderOrderListPage from './pages/BartenderOrderListPage';
 
 
 function App() {
+  // 포그라운드 푸시 알림 수신
+  useEffect(() => {
+    const unsubscribe = onForegroundMessage((payload) => {
+      console.log('📬 앱 실행 중 푸시 수신:', payload);
+
+      const title = payload.notification?.title || '게하 앱';
+      const body = payload.notification?.body || '';
+
+      // 브라우저 알림 표시
+      if (Notification.permission === 'granted') {
+        sendTestNotification(title, body);
+      }
+    });
+
+    return () => {
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+    };
+  }, []);
+
   return (
     <BrowserRouter>
       <TourProvider>
@@ -77,6 +102,16 @@ function App() {
           <Route path="/user-guide" element={<UserGuidePage />} />
           <Route path="/reservation-stats" element={<ReservationStatsPage />} />
           <Route path="/migration" element={<MigrationPage />} />
+
+          {/* 푸시 알림 설정 */}
+          <Route path="/push-settings" element={
+            <div className="min-h-screen bg-gray-50 p-4">
+              <div className="max-w-2xl mx-auto">
+                <h1 className="text-2xl font-bold text-gray-900 mb-6">푸시 알림 설정</h1>
+                <PushNotificationSettings />
+              </div>
+            </div>
+          } />
           
           {/* 스페이스 관리 */}
           <Route path="/space/manage" element={<SpaceManagePage />} />
