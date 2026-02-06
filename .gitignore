@@ -10,3 +10,4 @@ dist/
 "loungeap.zip" 
 .env.local
 .env.*.local
+netlify/functions/firebase-service-account.json

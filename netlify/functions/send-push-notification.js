@@ -15,56 +15,28 @@ function initializeFirebase() {
     return admin.app();
   }
 
-  // 방법 1: FIREBASE_SERVICE_ACCOUNT_JSON_B64 사용 (권장)
-  const serviceAccountB64 = process.env.FIREBASE_SERVICE_ACCOUNT_JSON_B64;
+  try {
+    // 빌드 시 생성된 Service Account 파일 읽기
+    const fs = require('fs');
+    const path = require('path');
+    const serviceAccountPath = path.join(__dirname, 'firebase-service-account.json');
 
-  if (serviceAccountB64) {
-    try {
-      const serviceAccount = JSON.parse(
-        Buffer.from(serviceAccountB64, 'base64').toString('utf-8')
-      );
+    if (fs.existsSync(serviceAccountPath)) {
+      const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf-8'));
 
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
       });
 
-      console.log('✅ Firebase Admin 초기화 완료 (JSON)');
+      console.log('✅ Firebase Admin 초기화 완료 (파일)');
       return admin.app();
-    } catch (error) {
-      console.error('❌ Service Account JSON 파싱 실패:', error);
-      throw new Error(`Service Account JSON 파싱 실패: ${error.message}`);
     }
+
+    throw new Error('firebase-service-account.json 파일을 찾을 수 없습니다.');
+  } catch (error) {
+    console.error('❌ Firebase Admin 초기화 실패:', error);
+    throw new Error(`Firebase 초기화 실패: ${error.message}`);
   }
-
-  // 방법 2: 개별 환경변수 사용 (폴백)
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-
-  console.log('🔍 환경변수 확인:', {
-    projectId: projectId ? '✅' : '❌',
-    privateKey: privateKey ? `✅ (${privateKey.substring(0, 30)}...)` : '❌',
-    clientEmail: clientEmail ? '✅' : '❌',
-  });
-
-  if (!projectId || !privateKey || !clientEmail) {
-    const missing = [];
-    if (!projectId) missing.push('FIREBASE_PROJECT_ID');
-    if (!privateKey) missing.push('FIREBASE_PRIVATE_KEY');
-    if (!clientEmail) missing.push('FIREBASE_CLIENT_EMAIL');
-    throw new Error(`환경변수 누락: ${missing.join(', ')}`);
-  }
-
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId,
-      privateKey: privateKey.replace(/\\n/g, '\n'),
-      clientEmail,
-    }),
-  });
-
-  console.log('✅ Firebase Admin 초기화 완료');
-  return admin.app();
 }
 
 exports.handler = async (event) => {

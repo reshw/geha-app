@@ -5,23 +5,23 @@
 const { initializeApp, cert } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 
-// Firebase Admin 초기화 (Base64 Service Account 사용)
+// Firebase Admin 초기화 (파일에서 읽기)
 let adminApp;
 let db;
 
 const initializeFirebase = () => {
   if (!adminApp) {
     try {
-      // Base64로 인코딩된 Service Account JSON 디코드
-      const serviceAccountB64 = process.env.FIREBASE_SERVICE_ACCOUNT_JSON_B64;
+      // 빌드 시 생성된 Service Account 파일 읽기
+      const fs = require('fs');
+      const path = require('path');
+      const serviceAccountPath = path.join(__dirname, 'firebase-service-account.json');
 
-      if (!serviceAccountB64) {
-        throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON_B64 환경변수가 없습니다.');
+      if (!fs.existsSync(serviceAccountPath)) {
+        throw new Error('firebase-service-account.json 파일을 찾을 수 없습니다.');
       }
 
-      const serviceAccount = JSON.parse(
-        Buffer.from(serviceAccountB64, 'base64').toString('utf-8')
-      );
+      const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf-8'));
 
       adminApp = initializeApp({
         credential: cert(serviceAccount)
