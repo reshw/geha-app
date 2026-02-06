@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'Pretendard', -apple-system, sans-serif;
+            padding: 20px;
+        }
+        .notice-card {
+            background: white;
+            width: 480px;
+            border-radius: 28px;
+            overflow: hidden;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.08);
+            border: 1px solid #eee;
+        }
+        .top-banner {
+            background: linear-gradient(135deg, #748ffc, #5c7cfa);
+            padding: 45px 30px;
+            text-align: center;
+            color: white;
+        }
+        .top-banner h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        .top-banner p {
+            margin: 12px 0 0;
+            opacity: 0.9;
+            font-size: 15px;
+            line-height: 1.6;
+            font-weight: 300;
+        }
+        .body-content {
+            padding: 35px 30px;
+            color: #444;
+        }
+        .intro-text {
+            font-size: 14.5px;
+            line-height: 1.8;
+            margin-bottom: 25px;
+            color: #555;
+            text-align: center;
+            word-break: keep-all;
+        }
+        .schedule-box {
+            background: #f1f3f5;
+            border-radius: 16px;
+            padding: 22px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .date-label {
+            display: block;
+            color: #4c6ef5;
+            font-weight: 700;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+        .date-value {
+            font-size: 22px;
+            font-weight: 800;
+            color: #212529;
+        }
+        .info-note {
+            font-size: 13px;
+            color: #868e96;
+            margin-top: 10px;
+            line-height: 1.5;
+        }
+        .strict-section {
+            border-top: 2px solid #f1f3f5;
+            padding-top: 25px;
+        }
+        .strict-title {
+            display: flex;
+            align-items: center;
+            font-weight: 800;
+            font-size: 16px;
+            color: #e03131;
+            margin-bottom: 18px;
+        }
+        .strict-title::before {
+            content: "⚠️";
+            margin-right: 8px;
+        }
+        .rule-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .rule-list li {
+            position: relative;
+            padding-left: 20px;
+            font-size: 14px;
+            line-height: 1.8;
+            margin-bottom: 12px;
+            color: #343a40;
+        }
+        .rule-list li::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #fa5252;
+            font-weight: bold;
+        }
+        .rule-list b {
+            color: #000;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            font-size: 13px;
+            color: #adb5bd;
+            border-top: 1px solid #f1f3f5;
+        }
+        .highlight-red {
+            color: #e03131;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="notice-card">
+    <div class="top-banner">
+        <h1>Season Off & Check-out</h1>
+        <p>더 쾌적한 내년 시즌 준비를 위해<br>시즌방 조기 정비를 시작합니다.</p>
+    </div>
+
+    <div class="body-content">
+        <p class="intro-text" style="text-align: left; word-break: keep-all;">
+        이번 시즌도 함께해주셔서 감사합니다. 다들 즐겁게 보내셨나요? <br><br>
+        마지막까지 꽉 채우고 싶지만, 폐장 직전엔 슬로프 축소와 설질 도 예전같이 않아 정상적인 이용이 어려운 게 사실입니다. 그래서 아쉽지만 1주일 정도 일찍 마침표를 찍고, <strong>내년엔 여러분이 훨씬 더 편하게 지내실 수 있게 방 구조부터 운영 방식까지 싹 뜯어고쳐 보려 합니다.</strong><br><br>
+        작년처럼 정리가 안 되면 준비에 차질이 커서 이번엔 좀 확실히 비우려 하니 적극적인 협조 부탁드립니다.
+        <br>
+            (작년기준 폐장일 몽블랑, 펭귄 미운영 / 호크, 스패로우, 도도만 운영)<br>
+    </p>
+
+        <div class="schedule-box">
+            <span class="date-label">전체 퇴거 및 개인 짐 반출 기한</span>
+            <span class="date-value">~ 3월 2일(월) 주간까지</span>
+            <p class="info-note">* 이후 이용 희망자는 별도 문의 바랍니다.</p>
+        </div>
+       
+
+
+        <div class="strict-section">
+            <div class="strict-title">미반출 물품 관련 조치 사항 (엄수)</div>
+            <ul class="rule-list">
+                <li><b>강제 이동:</b> 미반출 짐은 외부 유료 보관소로 즉시 이동 처리됩니다.</li>
+                <li><b>이동비 부과:</b> 미반출 짐 정리 및 이동에 따라 대상자 별 <span class="highlight-red">비용 100,000원</span>이 청구됩니다.</li>
+                <li><b>외부 보관료:</b> 사설 보관소 요율에 따라 본인이 직접 지불해야 합니다.</li>
+                <li><b>면책 조항:</b> 강제 이동 및 보관 중 발생하는 <span class="highlight-red">파손/분실은 일체 책임지지 않습니다.</span></li>
+                <li><b>폐기 안내:</b> 연락 두절 혹은 3개월 내 (26.05월 말 까지) 미인수 시 즉시 폐기됩니다.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="footer">
+        성공적인 시즌 마무리를 위해 적극적인 협조 부탁드립니다.
+    </div>
+</div>
+
+</body>
+</html>

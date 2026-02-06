@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'Pretendard', sans-serif;
+            padding: 20px;
+        }
+        .notice-card {
+            background: white;
+            width: 480px;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        .top-banner {
+            background: linear-gradient(135deg, #6e8efb, #a7a1ff);
+            padding: 40px 30px;
+            text-align: center;
+            color: white;
+        }
+        .top-banner h1 {
+            margin: 0;
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: -1px;
+        }
+        .top-banner p {
+            margin: 10px 0 0;
+            opacity: 0.9;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+        .body-content {
+            padding: 35px;
+            color: #444;
+        }
+        .intro-text {
+            font-size: 15px;
+            line-height: 1.7;
+            margin-bottom: 25px;
+            color: #555;
+            text-align: center;
+        }
+        .main-schedule {
+            background: #f8f9ff;
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid #e0e6ff;
+            margin-bottom: 30px;
+        }
+        .date-label {
+            display: block;
+            color: #5c7cfa;
+            font-weight: 700;
+            font-size: 13px;
+            margin-bottom: 5px;
+        }
+        .date-value {
+            font-size: 20px;
+            font-weight: 800;
+            color: #222;
+        }
+        .strict-section {
+            border-top: 1px solid #eee;
+            padding-top: 25px;
+        }
+        .strict-title {
+            display: flex;
+            align-items: center;
+            font-weight: 700;
+            font-size: 15px;
+            color: #d32f2f;
+            margin-bottom: 15px;
+        }
+        .strict-title::before {
+            content: "⚠️";
+            margin-right: 8px;
+        }
+        .rule-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .rule-list li {
+            position: relative;
+            padding-left: 18px;
+            font-size: 14px;
+            line-height: 1.8;
+            margin-bottom: 10px;
+            color: #666;
+        }
+        .rule-list li::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #ccc;
+        }
+        .rule-list b {
+            color: #333;
+        }
+        .footer {
+            background: #fafafa;
+            padding: 20px;
+            text-align: center;
+            font-size: 13px;
+            color: #999;
+            border-top: 1px solid #f0f0f0;
+        }
+        .point-color {
+            color: #d32f2f;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="notice-card">
+    <div class="top-banner">
+        <h1>Season Off Notice</h1>
+        <p>함께해서 행복했던 이번 시즌,<br>감사의 인사를 전합니다.</p>
+    </div>
+
+    <div class="body-content">
+        <p class="intro-text">
+            즐거웠던 겨울이 어느덧 막바지에 이르렀습니다.<br>
+            저희 운영진은 벌써 <strong>다음 시즌의 더 쾌적하고<br>멋진 시즌방 생활</strong>을 위해 대대적인 정비와<br>새로운 운영 계획을 준비하고 있습니다. 
+        </p>
+
+        <div class="main-schedule">
+            <span class="date-label">전체 퇴거 및 개인 짐 반출 기간</span>
+            <span class="date-value">~ 3월 2일(월) 주간까지</span>
+        </div>
+
+        <div class="strict-section">
+            <div class="strict-title">정비 기간 내 미반출 물품 조치 안내</div>
+            <ul class="rule-list">
+                <li>차기 시즌 준비를 위해 <b>모든 짐은 100% 반출</b>이 원칙입니다.</li>
+                <li>잔류 물품은 <b>외부 유료 보관소로 강제 이동</b> 처리됩니다.</li>
+                <li>이 과정에서 <b>노무비 10만원</b> 및 외부 보관 비용이 발생합니다.</li>
+                <li>이동 및 보관 중 발생하는 <b>분실/파손은 책임지지 않습니다.</b></li>
+                <li>장기 미인수 시 부득이하게 <span class="point-color">폐기 처리</span>될 수 있습니다.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="footer">
+        더 나은 모습으로 다시 만나기를 기대하겠습니다.<br>협조해 주셔서 감사합니다!
+    </div>
+</div>
+
+</body>
+</html>
