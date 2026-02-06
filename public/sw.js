@@ -13,12 +13,12 @@ importScripts(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-m
 
 // Firebase 설정
 firebase.initializeApp({
-  apiKey: "AIzaSyDiNa-PCK2rHOsxARJFHu8Wh_1r7du4MRk",
-  authDomain: "jh308-60114.firebaseapp.com",
-  projectId: "jh308-60114",
-  storageBucket: "jh308-60114.appspot.com",
-  messagingSenderId: "472770206906",
-  appId: "1:472770206906:web:5cb98378e24027ef93f683"
+  apiKey: "PLACEHOLDER_KEY", 
+  authDomain: "PLACEHOLDER_DOMAIN",
+  projectId: "PLACEHOLDER_PROJECT_ID",
+  storageBucket: "PLACEHOLDER_BUCKET",
+  messagingSenderId: "PLACEHOLDER_SENDER_ID",
+  appId: "PLACEHOLDER_APP_ID"
 });
 
 const messaging = firebase.messaging();

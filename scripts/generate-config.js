@@ -1,11 +1,12 @@
 #!/usr/bin/env node
-// scripts/generate-config.js
-// 빌드 타임에 환경 변수에서 config.json 생성
-// config.json은 .gitignore에 있어서 커밋 안 됨
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-const fs = require('fs');
-const path = require('path');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
+// 1. 환경 변수에서 설정값 읽기 (AWS 4KB 제한 대비)
 const config = {
   resend: {
     apiKey: process.env.RESEND_API_KEY || ''
@@ -23,6 +24,28 @@ const config = {
   }
 };
 
-const configPath = path.join(__dirname, '..', 'netlify', 'functions', 'config.json');
+// 2. config.json 생성 (Netlify Functions용)
+const targetDir = path.join(__dirname, '..', 'netlify', 'functions');
+if (!fs.existsSync(targetDir)) {
+  fs.mkdirSync(targetDir, { recursive: true });
+}
+
+const configPath = path.join(targetDir, 'config.json');
 fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-console.log('✅ config.json generated from environment variables');
+console.log('✅ config.json 생성 완료');
+
+// 3. sw.js 보안 경고 해결 (파일 내 실제 키를 환경 변수로 치환)
+const swPath = path.join(__dirname, '..', 'public', 'sw.js');
+if (fs.existsSync(swPath)) {
+  let swContent = fs.readFileSync(swPath, 'utf8');
+
+  // Firebase 키들을 환경변수로 치환 (GitHub에는 실제 키가 없어야 함)
+  swContent = swContent.replace(/apiKey:\s*".*"/, `apiKey: "${process.env.FIREBASE_API_KEY || ''}"`);
+  swContent = swContent.replace(/authDomain:\s*".*"/, `authDomain: "${process.env.FIREBASE_AUTH_DOMAIN || ''}"`);
+  swContent = swContent.replace(/projectId:\s*".*"/, `projectId: "${process.env.FIREBASE_PROJECT_ID || ''}"`);
+  swContent = swContent.replace(/messagingSenderId:\s*".*"/, `messagingSenderId: "${process.env.FIREBASE_MESSAGING_SENDER_ID || ''}"`);
+  swContent = swContent.replace(/appId:\s*".*"/, `appId: "${process.env.FIREBASE_APP_ID || ''}"`);
+
+  fs.writeFileSync(swPath, swContent);
+  console.log('✅ sw.js 보안 키 치환 완료');
+}
