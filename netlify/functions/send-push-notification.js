@@ -16,23 +16,23 @@ function initializeFirebase() {
   }
 
   try {
-    // 빌드 시 생성된 Service Account 파일 읽기
-    const fs = require('fs');
-    const path = require('path');
-    const serviceAccountPath = path.join(__dirname, 'firebase-service-account.json');
+    // Netlify 전역 환경변수에서 Service Account JSON 읽기
+    const serviceAccountB64 = process.env.FIREBASE_SERVICE_ACCOUNT_JSON_B64;
 
-    if (fs.existsSync(serviceAccountPath)) {
-      const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf-8'));
+    if (serviceAccountB64) {
+      const serviceAccount = JSON.parse(
+        Buffer.from(serviceAccountB64, 'base64').toString('utf-8')
+      );
 
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
       });
 
-      console.log('✅ Firebase Admin 초기화 완료 (파일)');
+      console.log('✅ Firebase Admin 초기화 완료');
       return admin.app();
     }
 
-    throw new Error('firebase-service-account.json 파일을 찾을 수 없습니다.');
+    throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON_B64 환경변수가 없습니다.');
   } catch (error) {
     console.error('❌ Firebase Admin 초기화 실패:', error);
     throw new Error(`Firebase 초기화 실패: ${error.message}`);
