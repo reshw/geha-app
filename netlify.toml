@@ -30,21 +30,13 @@
 [functions."settlement-auto-close"]
   schedule = "@hourly"
   [functions."settlement-auto-close".environment]
-    FIREBASE_PROJECT_ID = "$FIREBASE_PROJECT_ID"
-    FIREBASE_PRIVATE_KEY_ID = "$FIREBASE_PRIVATE_KEY_ID"
-    FIREBASE_PRIVATE_KEY = "$FIREBASE_PRIVATE_KEY"
-    FIREBASE_CLIENT_EMAIL = "$FIREBASE_CLIENT_EMAIL"
-    FIREBASE_CLIENT_ID = "$FIREBASE_CLIENT_ID"
+    FIREBASE_SERVICE_ACCOUNT_JSON_B64 = "$FIREBASE_SERVICE_ACCOUNT_JSON_B64"
 
 # 운영비 승인 독려 메일 - 매일 한국시간 오전 10시 (UTC 01:00)
 [functions."send-pending-expense-reminder"]
   schedule = "0 1 * * *"
   [functions."send-pending-expense-reminder".environment]
-    FIREBASE_PROJECT_ID = "$FIREBASE_PROJECT_ID"
-    FIREBASE_PRIVATE_KEY_ID = "$FIREBASE_PRIVATE_KEY_ID"
-    FIREBASE_PRIVATE_KEY = "$FIREBASE_PRIVATE_KEY"
-    FIREBASE_CLIENT_EMAIL = "$FIREBASE_CLIENT_EMAIL"
-    FIREBASE_CLIENT_ID = "$FIREBASE_CLIENT_ID"
+    FIREBASE_SERVICE_ACCOUNT_JSON_B64 = "$FIREBASE_SERVICE_ACCOUNT_JSON_B64"
 
 # 이메일 발송
 [functions."send-email"]
@@ -85,6 +77,3 @@
 [functions."send-push-notification"]
   [functions."send-push-notification".environment]
     FIREBASE_SERVICE_ACCOUNT_JSON_B64 = "$FIREBASE_SERVICE_ACCOUNT_JSON_B64"
-    FIREBASE_PROJECT_ID = "$FIREBASE_PROJECT_ID"
-    FIREBASE_PRIVATE_KEY = "$FIREBASE_PRIVATE_KEY"
-    FIREBASE_CLIENT_EMAIL = "$FIREBASE_CLIENT_EMAIL"
