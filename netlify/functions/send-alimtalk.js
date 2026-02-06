@@ -1,4 +1,28 @@
 const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
+
+function getConfig() {
+  try {
+    const configPath = path.join(__dirname, 'config.json');
+    const configData = fs.readFileSync(configPath, 'utf-8');
+    return JSON.parse(configData);
+  } catch (error) {
+    console.error('❌ config.json 읽기 실패:', error.message);
+    return {
+      nhn: {
+        apiUrl: process.env.NHN_API_URL,
+        appkey: process.env.NHN_APPKEY,
+        secretKey: process.env.NHN_SECRET_KEY,
+        senderKey: process.env.NHN_SENDER_KEY,
+        plusFriendId: process.env.NHN_PLUS_FRIEND_ID,
+        templateGuestConfirm: process.env.NHN_TEMPLATE_GUEST_CONFIRM
+      }
+    };
+  }
+}
+
+const config = getConfig();
 
 exports.handler = async (event) => {
   // CORS 헤더
@@ -40,8 +64,8 @@ exports.handler = async (event) => {
     // 현관 비밀번호 (전화번호 뒤 4자리)
     const password = phone.slice(-4);
 
-    // 계좌 정보
-    const accountInfo = process.env.ALIGO_ACCOUNT || '카카오뱅크 7979-38-83356 양석환';
+    // 계좌 정보 (하드코딩된 기본값 사용)
+    const accountInfo = '카카오뱅크 7979-38-83356 양석환';
 
     // 알림톡 메시지 생성 (PHP 템플릿과 동일)
     let message = `${data.name}님(꺄아)\n`;
@@ -60,30 +84,33 @@ exports.handler = async (event) => {
       message += `\n\n[메모]\n${data.memo}`;
     }
 
-    // 알림톡 발송 (alimtalkEnabled가 true일 때만)
+    // 알림톡 발송 (alimtalkEnabled가 true일 때만) - NHN Cloud 사용
     let alimtalkResult = null;
     if (data.alimtalkEnabled === true) {
+      const { nhn } = config;
       const response = await axios.post(
-        'https://kakaoapi.aligo.in/akv10/alimtalk/send/',
-        new URLSearchParams({
-          apikey: process.env.ALIGO_API_KEY,
-          userid: process.env.ALIGO_USER_ID,
-          senderkey: process.env.ALIGO_SENDER_KEY,
-          tpl_code: 'TW_5514', // PHP에서 사용하던 템플릿 코드
-          sender: process.env.ALIGO_SENDER,
-          receiver_1: phone,
-          subject_1: 'JH308',
-          message_1: message,
-          emtitle_1: '게스트 예약안내',
-          button_1: JSON.stringify({
-            button: [{
-              name: '게스트 현황 보기',
-              linkType: 'WL',
-              linkM: 'https://www.lunagarden.co.kr/guest'
-            }]
-          })
-        }).toString(),
+        nhn.apiUrl + '/alimtalk/v2.3/plus-friends/' + encodeURIComponent(nhn.plusFriendId) + '/messages',
         {
+          plusFriendId: nhn.plusFriendId,
+          templateCode: nhn.templateGuestConfirm,
+          recipientList: [{
+            recipientNo: phone,
+            content: message
+          }]
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Secret-Key': nhn.secretKey
+          },
+          auth: {
+            username: nhn.appkey,
+            password: nhn.secretKey
+          }
+        }
+      );
+      
+      alimtalkResult = response.data;
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded'
           }

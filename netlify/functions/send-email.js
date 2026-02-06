@@ -1,4 +1,21 @@
 const { Resend } = require('resend');
+const fs = require('fs');
+const path = require('path');
+
+// config.json에서 설정 읽기
+function getConfig() {
+  try {
+    const configPath = path.join(__dirname, 'config.json');
+    const configData = fs.readFileSync(configPath, 'utf-8');
+    return JSON.parse(configData);
+  } catch (error) {
+    console.error('❌ config.json 읽기 실패:', error.message);
+    // 환경 변수로 폴백 (로컬 개발용)
+    return {
+      resend: { apiKey: process.env.RESEND_API_KEY }
+    };
+  }
+}
 
 exports.handler = async (event) => {
   // CORS 헤더
@@ -14,7 +31,8 @@ exports.handler = async (event) => {
   }
 
   try {
-    const resend = new Resend(process.env.RESEND_API_KEY);
+    const config = getConfig();
+    const resend = new Resend(config.resend.apiKey);
     const data = JSON.parse(event.body);
 
     // type에 따라 다른 이메일 생성

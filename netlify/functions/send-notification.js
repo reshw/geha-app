@@ -1,17 +1,34 @@
 /**
  * NHN Cloud 카카오 알림톡 발송 Netlify Function
  *
- * 환경변수 필요:
- * - NHN_APPKEY
- * - NHN_SECRET_KEY
- * - NHN_API_URL
- * - NHN_PLUS_FRIEND_ID
- * - NHN_SENDER_KEY
- * - NHN_TEMPLATE_GUEST_CONFIRM
- * - NHN_TEMPLATE_SETTLEMENT_COMPLETE
+ * 설정: config.json에서 읽음
  */
 
 const fetch = require('node-fetch');
+const fs = require('fs');
+const path = require('path');
+
+function getConfig() {
+  try {
+    const configPath = path.join(__dirname, 'config.json');
+    const configData = fs.readFileSync(configPath, 'utf-8');
+    return JSON.parse(configData);
+  } catch (error) {
+    console.error('❌ config.json 읽기 실패:', error.message);
+    return {
+      nhn: {
+        apiUrl: process.env.NHN_API_URL,
+        appkey: process.env.NHN_APPKEY,
+        secretKey: process.env.NHN_SECRET_KEY,
+        senderKey: process.env.NHN_SENDER_KEY,
+        plusFriendId: process.env.NHN_PLUS_FRIEND_ID,
+        templateGuestConfirm: process.env.NHN_TEMPLATE_GUEST_CONFIRM
+      }
+    };
+  }
+}
+
+const config = getConfig();
 
 exports.handler = async (event) => {
   // CORS 헤더
@@ -30,7 +47,6 @@ exports.handler = async (event) => {
       body: '',
     };
   }
-
   // POST 요청만 허용
   if (event.httpMethod !== 'POST') {
     return {
@@ -44,17 +60,19 @@ exports.handler = async (event) => {
     const data = JSON.parse(event.body);
     console.log('📨 알림톡 발송 요청:', JSON.stringify(data, null, 2));
 
-    // 필수 환경변수 확인
+    // config에서 필드 가져오기
     const {
-      NHN_APPKEY,
-      NHN_SECRET_KEY,
-      NHN_API_URL,
-      NHN_SENDER_KEY,
-      NHN_TEMPLATE_GUEST_CONFIRM,
-    } = process.env;
+      nhn: {
+        apiUrl: NHN_API_URL,
+        appkey: NHN_APPKEY,
+        secretKey: NHN_SECRET_KEY,
+        senderKey: NHN_SENDER_KEY,
+        templateGuestConfirm: NHN_TEMPLATE_GUEST_CONFIRM,
+      }
+    } = config;
 
     // 환경변수 체크
-    console.log('🔍 환경변수 확인:', {
+    console.log('🔍 설정 확인:', {
       NHN_APPKEY: NHN_APPKEY ? '✅ 설정됨' : '❌ 없음',
       NHN_SECRET_KEY: NHN_SECRET_KEY ? '✅ 설정됨' : '❌ 없음',
       NHN_API_URL: NHN_API_URL || '❌ 없음',

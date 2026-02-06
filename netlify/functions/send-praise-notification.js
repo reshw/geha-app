@@ -1,7 +1,24 @@
 // netlify/functions/send-praise-notification.js
 import { Resend } from 'resend';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+function getConfig() {
+  try {
+    const configPath = path.join(__dirname, 'config.json');
+    const configData = fs.readFileSync(configPath, 'utf-8');
+    return JSON.parse(configData);
+  } catch (error) {
+    console.error('❌ config.json 읽기 실패:', error.message);
+    return { resend: { apiKey: process.env.RESEND_API_KEY } };
+  }
+}
+
+const config = getConfig();
+const resend = new Resend(config.resend.apiKey);
 
 export async function handler(event) {
   const headers = {

@@ -13,3 +13,4 @@ dist/
 .env.*.local
 netlify/functions/firebase-service-account.json
 netlify/functions/firebase-credentials.json
+netlify/functions/config.json

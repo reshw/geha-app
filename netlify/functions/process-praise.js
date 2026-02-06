@@ -1,8 +1,27 @@
 // netlify/functions/process-praise.js
 import OpenAI from 'openai';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+function getConfig() {
+  try {
+    const configPath = path.join(__dirname, 'config.json');
+    const configData = fs.readFileSync(configPath, 'utf-8');
+    return JSON.parse(configData);
+  } catch (error) {
+    console.warn('⚠️ config.json을 읽을 수 없습니다. process.env 사용:', error.message);
+    return {
+      openai: { apiKey: process.env.OPENAI_API_KEY }
+    };
+  }
+}
+
+const config = getConfig();
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+  apiKey: config.openai.apiKey
 });
 
 export async function handler(event) {
