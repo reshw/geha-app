@@ -25,7 +25,7 @@ const ReservationStatsPage = () => {
   const [loading, setLoading] = useState(true);
   const [reservations, setReservations] = useState([]);
   const [profiles, setProfiles] = useState({});
-  const [period, setPeriod] = useState('thisMonth'); // thisMonth, lastMonth, all
+  const [period, setPeriod] = useState('thisMonth'); // thisMonth, lastMonth, thisSeason, lastSeason, all
   const [members, setMembers] = useState([]);
 
   useEffect(() => {
@@ -52,6 +52,18 @@ const ReservationStatsPage = () => {
         startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
         startDate.setHours(0, 0, 0, 0);
         endDate = new Date(today.getFullYear(), today.getMonth(), 0);
+        endDate.setHours(23, 59, 59, 999);
+      } else if (period === 'thisSeason') {
+        // 2025.11 ~ 2026.03 (이번 시즌)
+        startDate = new Date(2025, 10, 1);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(2026, 3, 0);
+        endDate.setHours(23, 59, 59, 999);
+      } else if (period === 'lastSeason') {
+        // 2024.11 ~ 2025.03 (지난 시즌)
+        startDate = new Date(2024, 10, 1);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(2025, 3, 0);
         endDate.setHours(23, 59, 59, 999);
       }
       // period === 'all'이면 startDate = null, endDate = today
@@ -182,6 +194,8 @@ const ReservationStatsPage = () => {
   const getPeriodLabel = () => {
     if (period === 'thisMonth') return '이번 달';
     if (period === 'lastMonth') return '지난 달';
+    if (period === 'thisSeason') return '이번 시즌 (25.11~26.03)';
+    if (period === 'lastSeason') return '지난 시즌 (24.11~25.03)';
     return '전체 기간';
   };
 
@@ -229,37 +243,61 @@ const ReservationStatsPage = () => {
           </div>
 
           {/* 기간 선택 */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => setPeriod('thisMonth')}
-              className={`flex-1 py-2 rounded-lg font-medium transition-colors ${
-                period === 'thisMonth'
-                  ? 'bg-white text-purple-600'
-                  : 'bg-white/20 hover:bg-white/30'
-              }`}
-            >
-              이번 달
-            </button>
-            <button
-              onClick={() => setPeriod('lastMonth')}
-              className={`flex-1 py-2 rounded-lg font-medium transition-colors ${
-                period === 'lastMonth'
-                  ? 'bg-white text-purple-600'
-                  : 'bg-white/20 hover:bg-white/30'
-              }`}
-            >
-              지난 달
-            </button>
-            <button
-              onClick={() => setPeriod('all')}
-              className={`flex-1 py-2 rounded-lg font-medium transition-colors ${
-                period === 'all'
-                  ? 'bg-white text-purple-600'
-                  : 'bg-white/20 hover:bg-white/30'
-              }`}
-            >
-              전체
-            </button>
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPeriod('thisMonth')}
+                className={`flex-1 py-2 rounded-lg font-medium transition-colors ${
+                  period === 'thisMonth'
+                    ? 'bg-white text-purple-600'
+                    : 'bg-white/20 hover:bg-white/30'
+                }`}
+              >
+                이번 달
+              </button>
+              <button
+                onClick={() => setPeriod('lastMonth')}
+                className={`flex-1 py-2 rounded-lg font-medium transition-colors ${
+                  period === 'lastMonth'
+                    ? 'bg-white text-purple-600'
+                    : 'bg-white/20 hover:bg-white/30'
+                }`}
+              >
+                지난 달
+              </button>
+              <button
+                onClick={() => setPeriod('all')}
+                className={`flex-1 py-2 rounded-lg font-medium transition-colors ${
+                  period === 'all'
+                    ? 'bg-white text-purple-600'
+                    : 'bg-white/20 hover:bg-white/30'
+                }`}
+              >
+                전체
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPeriod('thisSeason')}
+                className={`flex-1 py-2 rounded-lg font-medium transition-colors text-sm ${
+                  period === 'thisSeason'
+                    ? 'bg-white text-purple-600'
+                    : 'bg-white/20 hover:bg-white/30'
+                }`}
+              >
+                이번 시즌<br/>(25.11~26.03)
+              </button>
+              <button
+                onClick={() => setPeriod('lastSeason')}
+                className={`flex-1 py-2 rounded-lg font-medium transition-colors text-sm ${
+                  period === 'lastSeason'
+                    ? 'bg-white text-purple-600'
+                    : 'bg-white/20 hover:bg-white/30'
+                }`}
+              >
+                지난 시즌<br/>(24.11~25.03)
+              </button>
+            </div>
           </div>
         </div>
       </div>
