@@ -80,8 +80,9 @@ const ReservationStatsPage = () => {
 
       console.log('📋 로드된 예약 수:', allReservations.length);
 
-      // 멤버 목록 조회
-      const membersList = selectedSpace?.members || [];
+      // 멤버 목록 조회 (spaces/{spaceId}/assignedUsers에서 직접 조회)
+      const membersList = await authService.getSpaceMembers(spaceId);
+      console.log('👥 로드된 멤버 수:', membersList.length);
       setMembers(membersList);
 
       // 프로필 조회

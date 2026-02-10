@@ -1,11 +1,12 @@
 // pages/PraisePage.jsx
 import { useState, useEffect } from 'react';
-import { Plus, CheckCircle, Clock, Filter } from 'lucide-react';
+import { Plus, CheckCircle, Clock, BarChart3 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import useStore from '../store/useStore';
 import praiseService from '../services/praiseService';
 import PraiseModal from '../components/praise/PraiseModal';
 import PraiseCard from '../components/praise/PraiseCard';
+import PraiseStatsView from '../components/praise/PraiseStatsView';
 import LoginOverlay from '../components/auth/LoginOverlay';
 
 export default function PraisePage() {
@@ -14,30 +15,35 @@ export default function PraisePage() {
   const [praises, setPraises] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [statusFilter, setStatusFilter] = useState('approved');
+  const [mainTab, setMainTab] = useState('board'); // 'board' | 'pending' | 'stats'
   const [categoryFilter, setCategoryFilter] = useState('all');
 
   const isManager = selectedSpace?.userType === 'manager' || selectedSpace?.userType === 'vice-manager';
 
+  // mainTab이 변경될 때만 칭찬 목록 로드 (stats 탭에서는 불필요)
   useEffect(() => {
-    loadPraises();
-  }, [selectedSpace, statusFilter, categoryFilter]);
+    if (mainTab !== 'stats') {
+      loadPraises();
+    }
+  }, [selectedSpace, mainTab, categoryFilter]);
 
   const loadPraises = async () => {
     if (!selectedSpace) {
       setLoading(false);
       return;
     }
-    
+
     setLoading(true);
     try {
+      // mainTab에 따라 statusFilter 결정
+      const statusFilter = mainTab === 'pending' ? 'pending' : 'approved';
       const data = await praiseService.list(selectedSpace.id, statusFilter);
-      
+
       // 카테고리 필터 적용
-      const filtered = categoryFilter === 'all' 
-        ? data 
+      const filtered = categoryFilter === 'all'
+        ? data
         : data.filter(p => p.category === categoryFilter);
-      
+
       setPraises(filtered);
     } catch (error) {
       console.error('칭찬 목록 로드 실패:', error);
@@ -113,104 +119,128 @@ export default function PraisePage() {
         </div>
       </header>
 
-      {/* 상태 필터 탭 (관리자만) */}
-      {isManager && (
-        <div className="max-w-[600px] mx-auto px-4 py-3">
-          <div className="flex gap-2 bg-white p-1 rounded-lg border border-gray-200">
-            <button
-              onClick={() => setStatusFilter('approved')}
-              className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
-                statusFilter === 'approved'
-                  ? 'bg-blue-500 text-white shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              <CheckCircle size={16} className="inline mr-1" />
-              승인됨
-            </button>
-            <button
-              onClick={() => setStatusFilter('pending')}
-              className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
-                statusFilter === 'pending'
-                  ? 'bg-amber-500 text-white shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              <Clock size={16} className="inline mr-1" />
-              대기중
-            </button>
-          </div>
+      {/* 메인 탭 */}
+      <div className="max-w-[600px] mx-auto px-4 py-3">
+        <div className="flex gap-2 bg-white p-1 rounded-lg border border-gray-200">
+          <button
+            onClick={() => setMainTab('board')}
+            className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
+              mainTab === 'board'
+                ? 'bg-blue-500 text-white shadow-sm'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+            }`}
+          >
+            <CheckCircle size={16} className="inline mr-1" />
+            게시판
+          </button>
+
+          {isManager && (
+            <>
+              <button
+                onClick={() => setMainTab('pending')}
+                className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
+                  mainTab === 'pending'
+                    ? 'bg-amber-500 text-white shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                <Clock size={16} className="inline mr-1" />
+                승인대기중
+              </button>
+
+              <button
+                onClick={() => setMainTab('stats')}
+                className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
+                  mainTab === 'stats'
+                    ? 'bg-purple-500 text-white shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                <BarChart3 size={16} className="inline mr-1" />
+                통계
+              </button>
+            </>
+          )}
         </div>
+      </div>
+
+      {/* 탭별 컨텐츠 */}
+      {mainTab === 'stats' ? (
+        // 통계 탭 (관리자만)
+        <PraiseStatsView spaceId={selectedSpace.id} />
+      ) : (
+        // 게시판 & 승인대기중 탭
+        <>
+          {/* 카테고리 필터 */}
+          <div className="max-w-[600px] mx-auto px-4 py-2">
+            <div className="flex gap-2 overflow-x-auto">
+              <button
+                onClick={() => setCategoryFilter('all')}
+                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                  categoryFilter === 'all'
+                    ? 'bg-gray-900 text-white'
+                    : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                전체
+              </button>
+              <button
+                onClick={() => setCategoryFilter('물품기부')}
+                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                  categoryFilter === '물품기부'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                🎁 물품기부
+              </button>
+              <button
+                onClick={() => setCategoryFilter('청소정리')}
+                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                  categoryFilter === '청소정리'
+                    ? 'bg-green-500 text-white'
+                    : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                🧹 청소정리
+              </button>
+              <button
+                onClick={() => setCategoryFilter('기타')}
+                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                  categoryFilter === '기타'
+                    ? 'bg-purple-500 text-white'
+                    : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                ✨ 기타
+              </button>
+            </div>
+          </div>
+
+          {/* 칭찬 목록 */}
+          <div className="max-w-[600px] mx-auto px-4 py-4 space-y-3">
+            {loading ? (
+              <div className="text-center py-8 text-gray-500">로딩 중...</div>
+            ) : praises.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                {mainTab === 'pending' ? '대기 중인 칭찬이 없습니다' : '아직 칭찬이 없습니다'}
+              </div>
+            ) : (
+              praises.map((praise) => (
+                <PraiseCard
+                  key={praise.id}
+                  praise={praise}
+                  isManager={isManager}
+                  weeklyCount={getWeeklyCount(praise.userId)}
+                  onApprove={handleApprove}
+                  onReject={handleReject}
+                  onUpdate={handleUpdate}
+                />
+              ))
+            )}
+          </div>
+        </>
       )}
-
-      {/* 카테고리 필터 */}
-      <div className="max-w-[600px] mx-auto px-4 py-2">
-        <div className="flex gap-2 overflow-x-auto">
-          <button
-            onClick={() => setCategoryFilter('all')}
-            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-              categoryFilter === 'all'
-                ? 'bg-gray-900 text-white'
-                : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            전체
-          </button>
-          <button
-            onClick={() => setCategoryFilter('물품기부')}
-            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-              categoryFilter === '물품기부'
-                ? 'bg-blue-500 text-white'
-                : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            🎁 물품기부
-          </button>
-          <button
-            onClick={() => setCategoryFilter('청소정리')}
-            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-              categoryFilter === '청소정리'
-                ? 'bg-green-500 text-white'
-                : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            🧹 청소정리
-          </button>
-          <button
-            onClick={() => setCategoryFilter('기타')}
-            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-              categoryFilter === '기타'
-                ? 'bg-purple-500 text-white'
-                : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            ✨ 기타
-          </button>
-        </div>
-      </div>
-
-      {/* 칭찬 목록 */}
-      <div className="max-w-[600px] mx-auto px-4 py-4 space-y-3">
-        {loading ? (
-          <div className="text-center py-8 text-gray-500">로딩 중...</div>
-        ) : praises.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            {statusFilter === 'pending' ? '대기 중인 칭찬이 없습니다' : '아직 칭찬이 없습니다'}
-          </div>
-        ) : (
-          praises.map((praise) => (
-            <PraiseCard
-              key={praise.id}
-              praise={praise}
-              isManager={isManager}
-              weeklyCount={getWeeklyCount(praise.userId)}
-              onApprove={handleApprove}
-              onReject={handleReject}
-              onUpdate={handleUpdate}
-            />
-          ))
-        )}
-      </div>
 
       {/* 플로팅 버튼 */}
       <button

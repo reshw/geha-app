@@ -234,6 +234,36 @@ class AuthService {
       return {};
     }
   }
+
+  // ----- 7) Firestore: 스페이스 멤버 목록 조회 -----
+  async getSpaceMembers(spaceId) {
+    try {
+      console.log('📋 [AuthService] 스페이스 멤버 조회:', spaceId);
+
+      const assignedUsersRef = collection(db, `spaces/${spaceId}/assignedUsers`);
+      const snapshot = await getDocs(assignedUsersRef);
+
+      const memberList = [];
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        memberList.push({
+          userId: docSnap.id,
+          displayName: data.displayName || '이름 없음',
+          email: data.email || '',
+          userType: data.userType || 'guest',
+          profileImage: data.profileImage || '',
+          joinedAt: data.joinedAt,
+          status: data.status || 'active'
+        });
+      });
+
+      console.log('✅ [AuthService] 멤버 조회 완료:', memberList.length, '명');
+      return memberList;
+    } catch (error) {
+      console.error('❌ [AuthService] getSpaceMembers 실패:', error);
+      return [];
+    }
+  }
 }
 
 export default new AuthService();

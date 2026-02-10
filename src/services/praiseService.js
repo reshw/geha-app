@@ -235,10 +235,79 @@ const praiseService = {
     try {
       const docRef = doc(db, `spaces/${spaceId}/praises/${praiseId}`);
       await deleteDoc(docRef);
-      
+
       console.log('✅ 칭찬 삭제:', praiseId);
     } catch (error) {
       console.error('❌ 칭찬 삭제 실패:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 제보자 통계 조회 (관리자용)
+   */
+  async getReporterStats(spaceId, startDate, endDate) {
+    try {
+      console.log('📊 제보자 통계 조회 시작:', { spaceId, startDate, endDate });
+
+      const praisesRef = collection(db, `spaces/${spaceId}/praises`);
+
+      // Firebase 쿼리: approved 상태 + 시작일 필터
+      const startTimestamp = Timestamp.fromDate(startDate);
+
+      const q = query(
+        praisesRef,
+        where('status', '==', 'approved'),
+        where('createdAt', '>=', startTimestamp),
+        orderBy('createdAt', 'desc')
+      );
+
+      const snapshot = await getDocs(q);
+      console.log('📋 Firebase에서 조회된 칭찬 수:', snapshot.size);
+
+      // userId별 그룹핑 + 카운트
+      const userCountMap = new Map();
+
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+
+        // 클라이언트 측 종료일 필터
+        if (data.createdAt && data.createdAt.toDate) {
+          const createdDate = data.createdAt.toDate();
+          if (createdDate > endDate) {
+            return;
+          }
+        }
+
+        const userId = data.userId;
+        if (userId) {
+          userCountMap.set(userId, (userCountMap.get(userId) || 0) + 1);
+        }
+      });
+
+      console.log('👥 제보자 수:', userCountMap.size);
+
+      // 사용자 정보 조회를 위해 authService 동적 import
+      const authService = (await import('./authService.js')).default;
+      const userIds = Array.from(userCountMap.keys());
+      const userProfiles = await authService.getUserProfiles(userIds);
+
+      // 통계 데이터 생성
+      const stats = Array.from(userCountMap.entries()).map(([userId, count]) => ({
+        userId,
+        reportCount: count,
+        userName: userProfiles[userId]?.displayName || '알 수 없음',
+        profileImage: userProfiles[userId]?.profileImage || '',
+        userType: userProfiles[userId]?.userType || 'guest'
+      }));
+
+      // 제보 건수 기준 내림차순 정렬
+      stats.sort((a, b) => b.reportCount - a.reportCount);
+
+      console.log('✅ 제보자 통계 조회 완료:', stats.length, '명');
+      return stats;
+    } catch (error) {
+      console.error('❌ 제보자 통계 조회 실패:', error);
       throw error;
     }
   }

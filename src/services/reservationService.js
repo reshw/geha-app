@@ -603,21 +603,21 @@ class ReservationService {
   async getAllReservations(spaceId, startDate = null, endDate = null) {
     try {
       console.log('📊 통계용 예약 조회 시작, spaceId:', spaceId);
+      console.log('기간:', startDate, '~', endDate);
 
       const reservesRef = collection(db, `spaces/${spaceId}/reserves`);
 
       let q;
 
-      if (startDate && endDate) {
-        // 기간 필터링
+      if (startDate) {
+        // checkIn 필드로만 필터링 (Firebase 제약 회피)
+        // checkOut은 클라이언트에서 필터링
         const start = Timestamp.fromDate(startDate);
-        const end = Timestamp.fromDate(endDate);
 
         q = query(
           reservesRef,
-          where('checkIn', '<=', end),
-          where('checkOut', '>=', start),
-          orderBy('checkIn', 'desc')
+          where('checkIn', '>=', start),
+          orderBy('checkIn', 'asc')
         );
       } else {
         // 전체 조회
@@ -626,7 +626,7 @@ class ReservationService {
 
       const snapshot = await getDocs(q);
 
-      console.log('📋 조회된 예약 수:', snapshot.size);
+      console.log('📋 Firebase에서 조회된 예약 수:', snapshot.size);
 
       const reservations = [];
 
@@ -642,13 +642,26 @@ class ReservationService {
           return;
         }
 
+        const checkIn = data.checkIn.toDate();
+        const checkOut = data.checkOut.toDate();
+
+        // 클라이언트 측 기간 필터링 (날짜 겹침 체크)
+        if (startDate && endDate) {
+          // checkIn이 endDate보다 늦거나, checkOut이 startDate보다 이르면 제외
+          if (checkIn > endDate || checkOut < startDate) {
+            return;
+          }
+        }
+
         reservations.push({
           id: docSnap.id,
           ...data,
-          checkIn: data.checkIn.toDate(),
-          checkOut: data.checkOut.toDate()
+          checkIn,
+          checkOut
         });
       });
+
+      console.log('✅ 필터링 후 예약 수:', reservations.length);
 
       return reservations;
     } catch (error) {
