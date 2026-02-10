@@ -1,12 +1,16 @@
-node_modules/ 
-dist/ 
-.env 
+node_modules/
+dist/
+.env
 .env.local
 .env.*.local
+.env.production
 
 # Local Netlify folder
 .netlify
-".env" 
-"loungeap.zip" 
+netlify/functions/config.json
+netlify/functions/firebase-credentials.json
+
+".env"
+"loungeap.zip"
 .env.local
 .env.*.local
