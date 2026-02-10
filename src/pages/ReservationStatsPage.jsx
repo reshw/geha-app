@@ -17,6 +17,7 @@ import useStore from '../store/useStore';
 import reservationService from '../services/reservationService';
 import authService from '../services/authService';
 import { formatDate } from '../utils/dateUtils';
+import { canManageSpace } from '../utils/permissions';
 
 const ReservationStatsPage = () => {
   const navigate = useNavigate();
@@ -177,6 +178,16 @@ const ReservationStatsPage = () => {
     const myInviteCount = userGuestInvites[user.id] || 0;
     const myInviteNights = userGuestInviteNights[user.id] || 0;
 
+    // 전체 멤버 통계 (부매니저 이상용)
+    const allMemberStats = shareholderMembers.map(member => ({
+      userId: member.userId,
+      userType: member.userType,
+      profile: profiles[member.userId] || {},
+      stayNights: userStayCount[member.userId] || 0,
+      guestInvites: userGuestInvites[member.userId] || 0,
+      guestInviteNights: userGuestInviteNights[member.userId] || 0
+    })).sort((a, b) => b.stayNights - a.stayNights);
+
     return {
       myStayCount,
       myGuestCount,
@@ -187,7 +198,8 @@ const ReservationStatsPage = () => {
       shareholderRanking,
       guestInviteRanking,
       totalReservations: reservations.length,
-      totalShareholders: shareholderIds.length
+      totalShareholders: shareholderIds.length,
+      allMemberStats
     };
   }, [reservations, profiles, user, members]);
 
@@ -198,6 +210,14 @@ const ReservationStatsPage = () => {
     if (period === 'lastSeason') return '지난 시즌 (24.11~25.03)';
     return '전체 기간';
   };
+
+  // 부매니저 이상 권한 체크
+  const isViceManagerOrAbove = useMemo(() => {
+    if (!user || !selectedSpace) return false;
+    const spaceId = selectedSpace.id || selectedSpace.spaceId;
+    const userSpaceData = user.spaceAccess?.find(s => s.spaceId === spaceId);
+    return userSpaceData && canManageSpace(userSpaceData.userType);
+  }, [user, selectedSpace]);
 
   const getRankColor = (rank) => {
     if (rank === 1) return 'text-yellow-600';
@@ -453,6 +473,100 @@ const ReservationStatsPage = () => {
             </div>
           )}
         </div>
+
+        {/* 전체 멤버 통계 (부매니저 이상만) */}
+        {isViceManagerOrAbove && stats?.allMemberStats && (
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Users className="w-5 h-5 text-indigo-600" />
+              <h2 className="text-lg font-bold text-gray-900">전체 멤버 숙박 통계 ({getPeriodLabel()})</h2>
+              <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full">관리자 전용</span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b-2 border-gray-200">
+                    <th className="text-left py-3 px-2 font-semibold text-gray-700">이름</th>
+                    <th className="text-left py-3 px-2 font-semibold text-gray-700">권한</th>
+                    <th className="text-right py-3 px-2 font-semibold text-gray-700">본인 숙박</th>
+                    <th className="text-right py-3 px-2 font-semibold text-gray-700">게스트 초대</th>
+                    <th className="text-right py-3 px-2 font-semibold text-gray-700">합계</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.allMemberStats.map((member, index) => (
+                    <tr
+                      key={member.userId}
+                      className={`border-b border-gray-100 hover:bg-gray-50 ${
+                        String(member.userId) === String(user.id) ? 'bg-purple-50' : ''
+                      }`}
+                    >
+                      <td className="py-3 px-2">
+                        <div className="flex items-center gap-2">
+                          {member.profile.profileImage ? (
+                            <img
+                              src={member.profile.profileImage}
+                              alt={member.profile.displayName}
+                              className="w-6 h-6 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center">
+                              <span className="text-xs font-bold text-indigo-600">
+                                {member.profile.displayName?.[0] || '?'}
+                              </span>
+                            </div>
+                          )}
+                          <span className="font-medium text-gray-900">
+                            {member.profile.displayName || '알 수 없음'}
+                          </span>
+                          {String(member.userId) === String(user.id) && (
+                            <span className="text-xs bg-purple-600 text-white px-1.5 py-0.5 rounded">나</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-2">
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          member.userType === 'manager'
+                            ? 'bg-red-100 text-red-700'
+                            : member.userType === 'vice-manager'
+                            ? 'bg-orange-100 text-orange-700'
+                            : 'bg-blue-100 text-blue-700'
+                        }`}>
+                          {member.userType === 'manager' ? '매니저'
+                            : member.userType === 'vice-manager' ? '부매니저'
+                            : '주주'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-2 text-right font-semibold text-gray-900">
+                        {member.stayNights}박
+                      </td>
+                      <td className="py-3 px-2 text-right">
+                        <div className="font-semibold text-gray-900">{member.guestInviteNights}박</div>
+                        <div className="text-xs text-gray-500">({member.guestInvites}명)</div>
+                      </td>
+                      <td className="py-3 px-2 text-right font-bold text-indigo-600">
+                        {member.stayNights + member.guestInviteNights}박
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="bg-gray-100 font-bold">
+                    <td className="py-3 px-2" colSpan="2">합계</td>
+                    <td className="py-3 px-2 text-right text-gray-900">
+                      {stats.allMemberStats.reduce((sum, m) => sum + m.stayNights, 0)}박
+                    </td>
+                    <td className="py-3 px-2 text-right text-gray-900">
+                      {stats.allMemberStats.reduce((sum, m) => sum + m.guestInviteNights, 0)}박
+                    </td>
+                    <td className="py-3 px-2 text-right text-indigo-600">
+                      {stats.allMemberStats.reduce((sum, m) => sum + m.stayNights + m.guestInviteNights, 0)}박
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
