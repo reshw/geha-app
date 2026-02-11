@@ -1,0 +1,9 @@
+# AI 에이전트 설정 파일
+# 예제 구조:
+
+# researcher:
+#   role: "연구원"
+#   goal: "주어진 주제에 대해 철저히 조사하고 분석합니다"
+#   backstory: "당신은 정보를 찾고 분석하는 데 탁월한 능력을 가진 전문 연구원입니다."
+#   verbose: true
+#   allow_delegation: false

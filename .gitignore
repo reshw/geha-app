@@ -14,3 +14,9 @@ netlify/functions/firebase-credentials.json
 "loungeap.zip"
 .env.local
 .env.*.local
+
+# CrewAI
+crewai/output/
+crewai/.env
+crewai/__pycache__/
+crewai/**/__pycache__/

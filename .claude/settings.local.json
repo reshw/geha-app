@@ -38,7 +38,11 @@
       "Bash(netlify env:list:*)",
       "Bash(npm audit:*)",
       "Bash(netlify:*)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(python -m pip install:*)",
+      "Bash(py:*)",
+      "Bash(where:*)",
+      "Bash(npm run dev:*)"
     ]
   }
 }

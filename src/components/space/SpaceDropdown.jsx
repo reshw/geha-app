@@ -1,6 +1,7 @@
 // src/components/space/SpaceDropdown.jsx
 import { useState, useRef, useEffect } from 'react';
 import { GripVertical, ChevronDown, Plus } from 'lucide-react';
+import UserTypeBadge from '../common/UserTypeBadge';
 
 const SpaceDropdown = ({ spaces, selectedSpace, onSelect, onReorder, onCreateSpace }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -30,12 +31,7 @@ const SpaceDropdown = ({ spaces, selectedSpace, onSelect, onReorder, onCreateSpa
     };
   }, [isOpen]);
 
-  const userTypeMap = {
-    'manager': '관리자',
-    'vice-manager': '부관리자',
-    'shareholder': '주주',
-    'guest': '게스트'
-  };
+  // userTypeMap 제거 - UserTypeBadge 컴포넌트 사용
 
   const handleDragStart = (e, index) => {
     setDraggedIndex(index);
@@ -132,7 +128,7 @@ const SpaceDropdown = ({ spaces, selectedSpace, onSelect, onReorder, onCreateSpa
   };
 
   const selectedSpaceName = selectedSpace?.spaceName || selectedSpace?.name || '방 선택';
-  const selectedUserType = userTypeMap[selectedSpace?.userType] || '게스트';
+  const selectedUserType = selectedSpace?.userType || 'guest';
 
   return (
     <div ref={dropdownRef} style={{ position: 'relative' }}>
@@ -141,7 +137,7 @@ const SpaceDropdown = ({ spaces, selectedSpace, onSelect, onReorder, onCreateSpa
         onClick={() => setIsOpen(!isOpen)}
         style={{
           width: '100%',
-          padding: '12px 16px',
+          padding: '10px 14px',
           background: 'rgba(255,255,255,.08)',
           color: '#fff',
           border: '1px solid rgba(255,255,255,.14)',
@@ -150,14 +146,19 @@ const SpaceDropdown = ({ spaces, selectedSpace, onSelect, onReorder, onCreateSpa
           fontSize: '15px',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
+          gap: '8px',
           cursor: 'pointer',
           transition: 'all 0.2s'
         }}
       >
-        <span>{selectedSpaceName} ({selectedUserType})</span>
-        <ChevronDown 
-          className="w-5 h-5" 
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, minWidth: 0 }}>
+          <UserTypeBadge userType={selectedUserType} size="xs" />
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {selectedSpaceName}
+          </span>
+        </div>
+        <ChevronDown
+          className="w-5 h-5 flex-shrink-0"
           style={{
             transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
             transition: 'transform 0.2s'
@@ -185,7 +186,7 @@ const SpaceDropdown = ({ spaces, selectedSpace, onSelect, onReorder, onCreateSpa
           {orderedSpaces.map((space, index) => {
             const spaceId = space.id || space.spaceId;
             const spaceName = space.spaceName || space.name || spaceId;
-            const userTypeText = userTypeMap[space.userType] || '게스트';
+            const userType = space.userType || 'guest';
             const isSelected = (selectedSpace?.id || selectedSpace?.spaceId) === spaceId;
             const isDragging = draggedIndex === index;
             
@@ -269,22 +270,21 @@ const SpaceDropdown = ({ spaces, selectedSpace, onSelect, onReorder, onCreateSpa
                   style={{
                     flex: 1,
                     display: 'flex',
-                    flexDirection: 'column',
-                    gap: '2px'
+                    alignItems: 'center',
+                    gap: '8px',
+                    minWidth: 0
                   }}
                 >
+                  <UserTypeBadge userType={userType} size="xs" />
                   <div style={{
                     fontWeight: '600',
                     fontSize: '15px',
-                    color: isSelected ? '#2563eb' : '#111827'
+                    color: isSelected ? '#2563eb' : '#111827',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
                   }}>
                     {spaceName}
-                  </div>
-                  <div style={{
-                    fontSize: '13px',
-                    color: '#6b7280'
-                  }}>
-                    {userTypeText}
                   </div>
                 </div>
 

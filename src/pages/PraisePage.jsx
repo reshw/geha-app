@@ -19,6 +19,7 @@ export default function PraisePage() {
   const [categoryFilter, setCategoryFilter] = useState('all');
 
   const isManager = selectedSpace?.userType === 'manager' || selectedSpace?.userType === 'vice-manager';
+  const isMainManager = selectedSpace?.userType === 'manager'; // 통계는 매니저만
 
   // mainTab이 변경될 때만 칭찬 목록 로드 (stats 탭에서는 불필요)
   useEffect(() => {
@@ -135,38 +136,38 @@ export default function PraisePage() {
           </button>
 
           {isManager && (
-            <>
-              <button
-                onClick={() => setMainTab('pending')}
-                className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
-                  mainTab === 'pending'
-                    ? 'bg-amber-500 text-white shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                <Clock size={16} className="inline mr-1" />
-                승인대기중
-              </button>
+            <button
+              onClick={() => setMainTab('pending')}
+              className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
+                mainTab === 'pending'
+                  ? 'bg-amber-500 text-white shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <Clock size={16} className="inline mr-1" />
+              승인대기중
+            </button>
+          )}
 
-              <button
-                onClick={() => setMainTab('stats')}
-                className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
-                  mainTab === 'stats'
-                    ? 'bg-purple-500 text-white shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                <BarChart3 size={16} className="inline mr-1" />
-                통계
-              </button>
-            </>
+          {isMainManager && (
+            <button
+              onClick={() => setMainTab('stats')}
+              className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
+                mainTab === 'stats'
+                  ? 'bg-purple-500 text-white shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <BarChart3 size={16} className="inline mr-1" />
+              통계
+            </button>
           )}
         </div>
       </div>
 
       {/* 탭별 컨텐츠 */}
-      {mainTab === 'stats' ? (
-        // 통계 탭 (관리자만)
+      {mainTab === 'stats' && isMainManager ? (
+        // 통계 탭 (매니저만)
         <PraiseStatsView spaceId={selectedSpace.id} />
       ) : (
         // 게시판 & 승인대기중 탭

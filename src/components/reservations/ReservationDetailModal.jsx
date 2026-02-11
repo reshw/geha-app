@@ -29,9 +29,9 @@ const ReservationDetailModal = ({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={null}>
-      <div className="max-h-[70vh] overflow-y-auto">
+      <div className="flex flex-col max-h-[80vh] overflow-x-hidden">
         {/* 헤더 */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between -mx-6 -mt-6 mb-4">
+        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between flex-shrink-0 z-10">
           <div>
             <h3 className="text-lg font-bold text-gray-900">
               {date.getMonth() + 1}월 {date.getDate()}일 예약자
@@ -62,7 +62,7 @@ const ReservationDetailModal = ({
         </div>
 
         {/* 예약 내용 */}
-        <div className="space-y-4">
+        <div className="space-y-4 p-6 overflow-y-auto flex-1">
           {/* 정규 예약 그룹 */}
           {regularReservations.length > 0 && (
             <div>
@@ -109,8 +109,8 @@ const ReservationDetailModal = ({
 
                   {/* 정보 */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-gray-900 text-base">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-gray-900 text-base truncate">
                         {reservation.name}
                       </span>
                       {isMine && (
@@ -131,7 +131,7 @@ const ReservationDetailModal = ({
                       {!isMember && reservation.hostDisplayName && (
                         <>
                           <span className="text-gray-400">•</span>
-                          <span className="text-gray-600">
+                          <span className="text-gray-600 truncate">
                             {reservation.hostDisplayName} 초대
                           </span>
                         </>
@@ -204,8 +204,8 @@ const ReservationDetailModal = ({
 
                         {/* 정보 */}
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-gray-900 text-base">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-gray-900 text-base truncate">
                               {reservation.name}
                             </span>
                             {isMine && (
@@ -226,7 +226,7 @@ const ReservationDetailModal = ({
                             {!isMember && reservation.hostDisplayName && (
                               <>
                                 <span className="text-gray-400">•</span>
-                                <span className="text-gray-600">
+                                <span className="text-gray-600 truncate">
                                   {reservation.hostDisplayName} 초대
                                 </span>
                               </>

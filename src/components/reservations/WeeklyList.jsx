@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, ChevronDown, Plus, Check, X, Settings2, Share2, GripVertical, User, LogOut, FileText, Shield, UserCog, UserMinus, Wallet, ShieldCheck, List, Calendar, Users, Mars, Venus, Trophy, Utensils } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useReservations } from '../../hooks/useReservations';
+import { useMonthlyReservations } from '../../hooks/useMonthlyReservations';
 import useStore from '../../store/useStore';
 import spaceService from '../../services/spaceService';
 import reservationService from '../../services/reservationService';
@@ -14,7 +15,7 @@ import ReservationModal from './ReservationModal';
 import CancelReservationModal from './CancelReservationModal';
 import ReservationDetailModal from './ReservationDetailModal';
 import WeeklyCalendarView from './WeeklyCalendarView';
-import SpaceDropdown from '../space/SpaceDropdown';
+import MonthlyCalendarView from './MonthlyCalendarView';
 import CreateSpaceModal from '../space/CreateSpaceModal';
 import ReservationManageModal from './ReservationManageModal';
 import ReservationEditModal from './ReservationEditModal';
@@ -111,17 +112,17 @@ const WeeklyList = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [toast, setToast] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSpaceDropdown, setShowSpaceDropdown] = useState(false);
-  const [draggedSpaceIndex, setDraggedSpaceIndex] = useState(null);
-  const [touchStartY, setTouchStartY] = useState(null);
-  const [touchCurrentY, setTouchCurrentY] = useState(null);
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  // 스페이스 드롭다운 및 프로필 메뉴 상태 제거 (GlobalHeader에서 처리)
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [selectedReservationForCancel, setSelectedReservationForCancel] = useState(null);
   const [showReservationDetailModal, setShowReservationDetailModal] = useState(false);
   const [selectedDateForDetail, setSelectedDateForDetail] = useState(null);
   const [selectedReservationsForDetail, setSelectedReservationsForDetail] = useState([]);
   const [viewMode, setViewMode] = useState('list'); // 'list' | 'calendar'
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), 1);
+  });
   const [showManageModal, setShowManageModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedReservationForManage, setSelectedReservationForManage] = useState(null);
@@ -132,8 +133,28 @@ const WeeklyList = () => {
   const [showCreateSpaceModal, setShowCreateSpaceModal] = useState(false);
   const [isCreatingSpace, setIsCreatingSpace] = useState(false);
 
-  const { reservations: reservationsObj, loading: reservationsLoading, createReservation, cancelReservation, refresh } = useReservations(selectedSpace?.id, currentWeekStart);
-  
+  // 월 변경 핸들러 (useCallback으로 안정화 - 무한 루프 방지)
+  const handleMonthChange = useCallback((newMonth) => {
+    setCalendarMonth(newMonth);
+  }, []);
+
+  // 뷰 모드에 따라 다른 데이터 로딩 훅 사용
+  const weeklyData = useReservations(
+    viewMode === 'list' ? selectedSpace?.id : null,
+    currentWeekStart
+  );
+
+  const monthlyData = useMonthlyReservations(
+    viewMode === 'calendar' ? selectedSpace?.id : null,
+    calendarMonth
+  );
+
+  // 현재 뷰 모드에 맞는 데이터 선택
+  const { reservations: reservationsObj, loading: reservationsLoading } =
+    viewMode === 'calendar' ? monthlyData : weeklyData;
+
+  const { createReservation, cancelReservation, refresh } = weeklyData;
+
   // 🆕 스페이스 로드 및 없음 처리
   useEffect(() => {
     const loadSpaces = async () => {
@@ -455,228 +476,63 @@ const WeeklyList = () => {
   
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 헤더 - sticky 추가 */}
-      <div className="bg-gradient-to-br from-blue-600 to-blue-700 text-white sticky top-0 z-30 shadow-lg">
-        <div className="max-w-2xl mx-auto">
-          <div className="flex items-center justify-between p-4">
-            {/* 좌측: 스페이스 선택 */}
-            <div className="relative">
-              <SpaceDropdown
-                spaces={userSpaces}
-                selectedSpace={selectedSpace}
-                onSelect={handleSpaceChange}
-                onReorder={async (updatedSpaces) => {
-                  setUserSpaces(updatedSpaces);
-                  await spaceService.updateSpaceOrder(user.id, updatedSpaces);
-                }}
-                onCreateSpace={() => setShowCreateSpaceModal(true)}
-              />
-            </div>
-
-            {/* 우측: 통계 + 뷰 모드 토글 + 프로필 */}
-            <div className="flex items-center gap-2">
-              {/* 통계 버튼 */}
+      {/* 주간 네비게이션 (리스트 뷰에만 표시) - GlobalHeader 아래 sticky */}
+      {viewMode === 'list' && (
+        <div className="bg-gradient-to-br from-blue-700 to-blue-800 text-white sticky z-20 shadow-md" style={{ top: '60px' }}>
+          <div className="max-w-2xl mx-auto">
+            <div className="flex items-center justify-center gap-2 px-4 py-3">
               <button
-                onClick={() => navigate('/reservation-stats')}
-                className="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors"
-                title="예약 통계"
+                onClick={prevWeek}
+                className="px-3 py-2 rounded-full bg-white/20 hover:bg-white/30 transition-all hover:scale-105 active:scale-95 min-h-[40px]"
+                aria-label="이전 주"
               >
-                <Trophy className="w-4 h-4 text-white" />
-              </button>
-
-              {/* 뷰 모드 토글 */}
-              <div className="flex items-center bg-white/20 rounded-lg p-1">
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`p-1.5 rounded transition-colors ${
-                    viewMode === 'list'
-                      ? 'bg-white text-blue-600'
-                      : 'text-white/70 hover:text-white'
-                  }`}
-                  title="리스트 뷰"
-                >
-                  <List className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setViewMode('calendar')}
-                  className={`p-1.5 rounded transition-colors ${
-                    viewMode === 'calendar'
-                      ? 'bg-white text-blue-600'
-                      : 'text-white/70 hover:text-white'
-                  }`}
-                  title="달력 뷰"
-                >
-                  <Calendar className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* 프로필 메뉴 */}
-              <div className="relative">
-                {user?.profileImage && (
-                  <>
-                    <button
-                      onClick={() => setShowProfileMenu(!showProfileMenu)}
-                      className="w-9 h-9 rounded-full ring-2 ring-white/30 hover:ring-white/50 transition-all"
-                    >
-                      <img 
-                        src={user.profileImage} 
-                        alt={user.name}
-                        className="w-full h-full rounded-full object-cover"
-                      />
-                    </button>
-
-                    {/* 프로필 드롭다운 */}
-                    {showProfileMenu && (
-                      <>
-                        <div 
-                          className="fixed inset-0 z-40" 
-                          onClick={() => setShowProfileMenu(false)}
-                        />
-                        <div className="absolute top-full right-0 mt-2 bg-white rounded-xl shadow-xl z-50 overflow-hidden min-w-[220px]">
-                          {/* 사용자 정보 */}
-                          <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
-                            <div className="font-semibold text-gray-900">{user.displayName}</div>
-                            <div className="text-xs text-gray-500 mt-0.5">
-                              {selectedSpace?.userType && USER_TYPE_LABELS[selectedSpace.userType]}
-                            </div>
-                          </div>
-
-                          {/* 메뉴 아이템 */}
-                          <div className="py-2">
-                            <button
-                              onClick={() => {
-                                setShowProfileMenu(false);
-                                alert('개인정보 수정 기능은 준비 중입니다.');
-                              }}
-                              className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors text-gray-700 flex items-center gap-3"
-                            >
-                              <UserCog className="w-5 h-5 text-gray-500" />
-                              <span className="font-medium">개인정보 수정</span>
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                setShowProfileMenu(false);
-                                navigate('/terms');
-                              }}
-                              className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors text-gray-700 flex items-center gap-3"
-                            >
-                              <FileText className="w-5 h-5 text-gray-500" />
-                              <span className="font-medium">이용약관</span>
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                setShowProfileMenu(false);
-                                navigate('/privacy');
-                              }}
-                              className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors text-gray-700 flex items-center gap-3"
-                            >
-                              <Shield className="w-5 h-5 text-gray-500" />
-                              <span className="font-medium">개인정보 처리방침</span>
-                            </button>
-
-                            {/* 슈퍼어드민 메뉴 */}
-                            {user?.isSuperAdmin && (
-                              <>
-                                <div className="border-t border-gray-100 my-2"></div>
-                                <button
-                                  onClick={() => {
-                                    setShowProfileMenu(false);
-                                    navigate('/super-admin');
-                                  }}
-                                  className="w-full px-4 py-3 text-left hover:bg-purple-50 transition-colors text-purple-700 flex items-center gap-3"
-                                >
-                                  <ShieldCheck className="w-5 h-5 text-purple-600" />
-                                  <span className="font-medium">슈퍼어드민</span>
-                                </button>
-                              </>
-                            )}
-
-                            <div className="border-t border-gray-100 my-2"></div>
-
-                            <button
-                              onClick={() => {
-                                setShowProfileMenu(false);
-                                if (window.confirm('정말 로그아웃 하시겠습니까?')) {
-                                  logout();
-                                  navigate('/');
-                                }
-                              }}
-                              className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors text-gray-700 flex items-center gap-3"
-                            >
-                              <LogOut className="w-5 h-5 text-gray-500" />
-                              <span className="font-medium">로그아웃</span>
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                setShowProfileMenu(false);
-                                if (window.confirm('정말 회원 탈퇴하시겠습니까?\n모든 데이터가 삭제되며 복구할 수 없습니다.')) {
-                                  alert('회원 탈퇴 기능은 준비 중입니다.');
-                                }
-                              }}
-                              className="w-full px-4 py-3 text-left hover:bg-red-50 transition-colors text-red-600 flex items-center gap-3"
-                            >
-                              <UserMinus className="w-5 h-5" />
-                              <span className="font-medium">회원 탈퇴</span>
-                            </button>
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* 주간 네비게이션 (리스트 뷰에만 표시) */}
-          {viewMode === 'list' && (
-            <div className="flex items-center justify-center gap-2 px-4 pb-4">
-              <button onClick={prevWeek} className="px-3 py-2 rounded-full bg-white/20 hover:bg-white/30">
                 <ChevronLeft className="w-5 h-5" />
               </button>
               <button
                 onClick={() => setShowDatePicker(true)}
-                className="px-4 py-2 rounded-full bg-white text-blue-600 font-semibold"
+                className="px-4 py-2 rounded-full bg-white text-blue-700 font-semibold hover:shadow-lg transition-all hover:scale-105 active:scale-95 min-h-[40px]"
+                aria-label="날짜 선택"
               >
                 📅 {weekRange}
               </button>
-              <button onClick={nextWeek} className="px-3 py-2 rounded-full bg-white/20 hover:bg-white/30">
+              <button
+                onClick={nextWeek}
+                className="px-3 py-2 rounded-full bg-white/20 hover:bg-white/30 transition-all hover:scale-105 active:scale-95 min-h-[40px]"
+                aria-label="다음 주"
+              >
                 <ChevronRight className="w-5 h-5" />
               </button>
-              <button onClick={thisWeek} className="px-3 py-2 rounded-full bg-white/20 hover:bg-white/30 text-sm font-semibold">
+              <button
+                onClick={thisWeek}
+                className="px-3 py-2 rounded-full bg-white/20 hover:bg-white/30 text-sm font-semibold transition-all hover:scale-105 active:scale-95 min-h-[40px]"
+                aria-label="이번 주로 이동"
+              >
                 오늘
               </button>
             </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
       
-      {/* 달력 뷰 */}
+      {/* 월간 캘린더 뷰 */}
       {viewMode === 'calendar' && (
-        <div className="pb-24 pt-4">
-          <WeeklyCalendarView
-            currentWeekStart={currentWeekStart}
-            reservationsObj={reservationsObj}
-            profiles={profiles}
-            user={user}
-            onDateClick={(date, reservations) => {
-              setSelectedDateForDetail(date);
-              setSelectedReservationsForDetail(reservations);
-              setShowReservationDetailModal(true);
-            }}
-            onPrevWeek={prevWeek}
-            onNextWeek={nextWeek}
-            onThisWeek={thisWeek}
-          />
-        </div>
+        <MonthlyCalendarView
+          reservationsObj={reservationsObj}
+          profiles={profiles}
+          user={user}
+          selectedSpace={selectedSpace}
+          onMonthChange={handleMonthChange}
+          onDateClick={(date, reservations) => {
+            setSelectedDateForDetail(date);
+            setSelectedReservationsForDetail(reservations);
+            setShowReservationDetailModal(true);
+          }}
+        />
       )}
 
       {/* 리스트 뷰 */}
       {viewMode === 'list' && (
-        <div className="max-w-2xl mx-auto p-4 pb-24">
+        <div className="max-w-2xl mx-auto p-4 pb-36">
         {weekDates.map((date, dateIndex) => {
           const dateStr = formatDate(date);
           const isCurrentDay = isToday(date);
@@ -1235,15 +1091,65 @@ const WeeklyList = () => {
       {/* 로딩 */}
       {isSubmitting && <LoadingOverlay />}
       
-      {/* 플로팅 예약 추가 버튼 */}
+      {/* 플로팅 통계/뷰 전환 버튼 (왼쪽 하단 - 가로 배치) */}
+      <div
+        className="fixed z-40 flex flex-row gap-2"
+        style={{
+          bottom: 'calc(5rem + env(safe-area-inset-bottom))',
+          left: 'max(20px, env(safe-area-inset-left))'
+        }}
+      >
+        {/* 통계 버튼 */}
+        <button
+          onClick={() => navigate('/reservation-stats')}
+          className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-full shadow-lg flex items-center justify-center text-white hover:shadow-xl transition-all hover:scale-105 active:scale-95"
+          title="예약 통계"
+          aria-label="예약 통계 보기"
+        >
+          <Trophy className="w-5 h-5" />
+        </button>
+
+        {/* 리스트 뷰 버튼 */}
+        <button
+          onClick={() => setViewMode('list')}
+          className={`w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105 active:scale-95 ${
+            viewMode === 'list'
+              ? 'bg-white text-blue-600'
+              : 'bg-gradient-to-br from-blue-600 to-blue-700 text-white'
+          }`}
+          title="리스트 뷰"
+          aria-label="리스트 뷰로 전환"
+          aria-pressed={viewMode === 'list'}
+        >
+          <List className="w-5 h-5" />
+        </button>
+
+        {/* 달력 뷰 버튼 */}
+        <button
+          onClick={() => setViewMode('calendar')}
+          className={`w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105 active:scale-95 ${
+            viewMode === 'calendar'
+              ? 'bg-white text-blue-600'
+              : 'bg-gradient-to-br from-blue-600 to-blue-700 text-white'
+          }`}
+          title="달력 뷰"
+          aria-label="달력 뷰로 전환"
+          aria-pressed={viewMode === 'calendar'}
+        >
+          <Calendar className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* 플로팅 예약 추가 버튼 (오른쪽 하단, 여백 증가) */}
       {!showReservationModal && !showDatePicker && (
         <button
           onClick={() => setShowReservationModal(true)}
-          className="fixed bottom-6 right-6 z-40 px-5 py-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full shadow-lg flex items-center gap-2 text-white hover:shadow-xl transition-all hover:scale-105 active:scale-95"
-          style={{ 
-            bottom: 'calc(5rem + env(safe-area-inset-bottom))',
+          className="fixed z-40 px-5 py-4 bg-gradient-to-br from-blue-600 to-blue-700 rounded-full shadow-lg flex items-center gap-2 text-white hover:shadow-xl transition-all hover:scale-105 active:scale-95 min-h-[48px]"
+          style={{
+            bottom: 'calc(6.5rem + env(safe-area-inset-bottom))',
             right: 'max(24px, env(safe-area-inset-right))'
           }}
+          aria-label="새 예약 추가"
         >
           <Plus className="w-5 h-5" />
           <span className="font-semibold">예약하기</span>
