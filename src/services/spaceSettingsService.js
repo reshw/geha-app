@@ -552,6 +552,112 @@ const spaceSettingsService = {
       console.error('❌ 정산 계좌 정보 업데이트 실패:', error);
       throw error;
     }
+  },
+
+  /**
+   * 칭찬 통계 권한 설정 조회
+   */
+  async getPraiseStatsPermission(spaceId) {
+    try {
+      console.log('📊 칭찬 통계 권한 설정 조회:', spaceId);
+
+      const spaceRef = doc(db, 'spaces', spaceId);
+      const spaceDoc = await getDoc(spaceRef);
+
+      if (!spaceDoc.exists()) {
+        throw new Error('스페이스를 찾을 수 없습니다.');
+      }
+
+      const data = spaceDoc.data();
+
+      // 기본값: 매니저만 (manager_only)
+      return data.praiseStatsPermission || 'manager_only';
+    } catch (error) {
+      console.error('❌ 칭찬 통계 권한 설정 조회 실패:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 칭찬 통계 권한 설정 업데이트
+   * @param {string} permission - 'manager_only' | 'vice_manager_up' | 'all_members'
+   */
+  async updatePraiseStatsPermission(spaceId, permission, userId, userName) {
+    try {
+      console.log('💾 칭찬 통계 권한 설정 업데이트:', { spaceId, permission });
+
+      const spaceRef = doc(db, 'spaces', spaceId);
+
+      const updateData = {
+        praiseStatsPermission: permission,
+        praiseStatsPermissionUpdatedAt: new Date(),
+        praiseStatsPermissionUpdatedBy: {
+          id: userId,
+          displayName: userName
+        }
+      };
+
+      await updateDoc(spaceRef, updateData);
+
+      console.log('✅ 칭찬 통계 권한 설정 업데이트 완료');
+
+      return { success: true };
+    } catch (error) {
+      console.error('❌ 칭찬 통계 권한 설정 업데이트 실패:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 기능 설정 조회
+   */
+  async getFeaturesConfig(spaceId) {
+    try {
+      console.log('📋 기능 설정 조회:', spaceId);
+
+      const featuresRef = doc(db, `spaces/${spaceId}/settings`, 'features');
+      const featuresDoc = await getDoc(featuresRef);
+
+      if (!featuresDoc.exists()) {
+        // 기본값 반환 (일정만 활성화)
+        const { DEFAULT_FEATURES_CONFIG } = await import('../utils/features');
+        return DEFAULT_FEATURES_CONFIG;
+      }
+
+      return featuresDoc.data().features || {};
+    } catch (error) {
+      console.error('❌ 기능 설정 조회 실패:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 기능 설정 업데이트
+   */
+  async updateFeaturesConfig(spaceId, featuresConfig, userId, userName) {
+    try {
+      console.log('💾 기능 설정 업데이트:', { spaceId, featuresConfig });
+
+      const featuresRef = doc(db, `spaces/${spaceId}/settings`, 'features');
+
+      const updateData = {
+        features: featuresConfig,
+        updatedAt: new Date(),
+        updatedBy: {
+          id: userId,
+          displayName: userName
+        }
+      };
+
+      await setDoc(featuresRef, updateData);
+
+      console.log('✅ 기능 설정 업데이트 완료');
+
+      return { success: true };
+    } catch (error) {
+      console.error('❌ 기능 설정 업데이트 실패:', error);
+      throw error;
+    }
   }
 };
 

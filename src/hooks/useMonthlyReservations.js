@@ -49,17 +49,15 @@ export const useMonthlyReservations = (spaceId, monthStart) => {
 
       const allUserIds = Array.from(allUserIdsSet);
 
-      console.log(`📅 월간 데이터 로드 (${monthStart.getFullYear()}년 ${monthStart.getMonth() + 1}월):`, Object.keys(allReservations).length, '개 날짜');
       setReservations(allReservations);
 
       // 프로필 가져오기
       if (allUserIds.length > 0) {
         try {
           const profiles = await authService.getUserProfiles(allUserIds);
-          console.log('👥 프로필 로드:', Object.keys(profiles).length, '명');
           addProfiles(profiles);
         } catch (error) {
-          console.warn('⚠️ 프로필 로드 실패:', error.message);
+          // 프로필 로드 실패 시 조용히 무시
         }
       }
     } catch (error) {

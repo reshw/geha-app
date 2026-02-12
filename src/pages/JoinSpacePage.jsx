@@ -15,6 +15,7 @@ const JoinSpacePage = () => {
   const [error, setError] = useState('');
   const [spaceInfo, setSpaceInfo] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [isRejoin, setIsRejoin] = useState(false); // 재가입 여부
 
   useEffect(() => {
     // URL에 코드가 있고 로그인 되어 있으면 자동으로 스페이스 정보 조회
@@ -43,18 +44,27 @@ const JoinSpacePage = () => {
         return;
       }
 
-      // 이미 가입되어 있는지 확인
-      const alreadyJoined = await spaceService.checkUserInSpace(user.id, space.id);
-      
-      if (alreadyJoined) {
-        // 이미 가입된 방이면 메인으로 이동
-        
-        navigate('/', { replace: true });
-        return;
+      // 가입 상태 확인 (status 포함)
+      const spaceStatus = await spaceService.getUserSpaceStatus(user.id, space.id);
+
+      if (spaceStatus.exists) {
+        if (spaceStatus.status === 'active') {
+          // 이미 활성 상태로 가입된 방
+          alert('이미 가입된 방입니다');
+          navigate('/', { replace: true });
+          return;
+        } else if (spaceStatus.status === 'left') {
+          // 이전에 나간 방 - 재가입 확인
+          setSpaceInfo(space);
+          setIsRejoin(true);
+          setShowConfirm(true);
+          return;
+        }
       }
 
-      // 스페이스 정보 표시 및 확인 화면 표시
+      // 신규 가입
       setSpaceInfo(space);
+      setIsRejoin(false);
       setShowConfirm(true);
     } catch (err) {
       console.error('방 조회 실패:', err);
@@ -68,24 +78,32 @@ const JoinSpacePage = () => {
 
   const handleJoinConfirm = async () => {
     if (!spaceInfo) return;
-    
-    setIsLoading(true);
-    
-    try {
-      const result = await spaceService.joinSpace(String(user.id), spaceInfo.id, {
-        displayName: user.displayName,
-        email: user.email,
-        profileImage: user.profileImage
-      });
 
-      if (result.alreadyJoined) {
-        alert('이미 가입된 방입니다');
+    setIsLoading(true);
+
+    try {
+      if (isRejoin) {
+        // 재가입
+        const spaceName = spaceInfo.name || spaceInfo.spaceName || spaceInfo.id;
+        await spaceService.rejoinSpace(String(user.id), spaceInfo.id, spaceName);
+        alert(`${spaceName}에 다시 가입되었습니다!`);
       } else {
-        alert(`${spaceInfo.name}에 가입되었습니다!`);
+        // 신규 가입
+        const result = await spaceService.joinSpace(String(user.id), spaceInfo.id, {
+          displayName: user.displayName,
+          email: user.email,
+          profileImage: user.profileImage
+        });
+
+        if (result.alreadyJoined) {
+          alert('이미 가입된 방입니다');
+        } else {
+          alert(`${spaceInfo.name}에 가입되었습니다!`);
+        }
       }
-      
-      // 메인 화면으로 이동
-      navigate('/', { replace: true });
+
+      // 메인 화면으로 이동 (새로고침하여 스페이스 목록 갱신)
+      window.location.href = '/';
     } catch (err) {
       console.error('방 가입 실패:', err);
       alert(`방 가입에 실패했습니다.\n${err?.message || ''}`);
@@ -97,6 +115,7 @@ const JoinSpacePage = () => {
   const handleCancel = () => {
     setShowConfirm(false);
     setSpaceInfo(null);
+    setIsRejoin(false);
     setSpaceCode('');
     setError('');
   };
@@ -172,13 +191,20 @@ const JoinSpacePage = () => {
           // 가입 확인 화면
           <div className="text-center">
             <div className="mb-6">
-              <div className="text-4xl mb-4">🏠</div>
+              <div className="text-4xl mb-4">{isRejoin ? '🔄' : '🏠'}</div>
               <h2 className="text-xl font-bold text-gray-900 mb-2">
                 {spaceInfo?.name || '방 이름'}
               </h2>
               <p className="text-gray-600">
-                이 방에 가입하시겠습니까?
+                {isRejoin
+                  ? '이전에 나간 방입니다. 다시 가입하시겠습니까?'
+                  : '이 방에 가입하시겠습니까?'}
               </p>
+              {isRejoin && (
+                <p className="text-sm text-blue-600 mt-2">
+                  💡 재가입 시 스페이스 목록 맨 아래에 추가됩니다
+                </p>
+              )}
             </div>
 
             <div className="flex gap-3">
@@ -198,7 +224,7 @@ const JoinSpacePage = () => {
                     ? 'bg-gray-400 cursor-not-allowed'
                     : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
               >
-                {isLoading ? '가입 중...' : '가입하기'}
+                {isLoading ? (isRejoin ? '재가입 중...' : '가입 중...') : (isRejoin ? '재가입하기' : '가입하기')}
               </button>
             </div>
           </div>

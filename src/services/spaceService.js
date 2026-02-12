@@ -36,6 +36,28 @@ class SpaceService {
     }
   }
 
+  // ----- 2-1) 사용자의 스페이스 가입 상태 확인 (status 포함) -----
+  async getUserSpaceStatus(userId, spaceId) {
+    try {
+      const userSpaceRef = doc(db, `users/${userId}/spaceAccess`, spaceId);
+      const userSpaceSnap = await getDoc(userSpaceRef);
+
+      if (!userSpaceSnap.exists()) {
+        return { exists: false, status: null, data: null };
+      }
+
+      const data = userSpaceSnap.data();
+      return {
+        exists: true,
+        status: data.status || 'active', // 기본값 'active'
+        data: data
+      };
+    } catch (error) {
+      console.error('[SpaceService] getUserSpaceStatus 실패:', error);
+      return { exists: false, status: null, data: null };
+    }
+  }
+
   // ----- 3) 스페이스에 사용자 추가 (양방향) -----
   async joinSpace(userId, spaceId, userData) {
     try {
@@ -95,59 +117,76 @@ class SpaceService {
     }
   }
 
-  // ----- 4) 사용자의 모든 스페이스 목록 가져오기 (계좌 정보 포함) -----
-  async getUserSpaces(userId) {
+  // ----- 4) 사용자의 모든 스페이스 목록 가져오기 -----
+  // lightweight=true: users/{userId}/spaceAccess만 읽기 (빠름, 리스트용)
+  // lightweight=false: spaces/{spaceId}도 읽어서 계좌 정보까지 반환 (느림, 상세 정보 필요시)
+  async getUserSpaces(userId, lightweight = true) {
     try {
       const spaceAccessRef = collection(db, `users/${userId}/spaceAccess`);
       const snapshot = await getDocs(spaceAccessRef);
-      
-      // 각 스페이스의 상세 정보를 병렬로 가져오기
-      const spacePromises = [];
-      
+
+      const spaces = [];
+
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
         const spaceId = docSnap.id;
-        
-        // 스페이스 문서에서 계좌 정보 포함한 상세 정보 가져오기
-        const spacePromise = getDoc(doc(db, 'spaces', spaceId)).then(spaceDoc => {
-          const spaceData = spaceDoc.exists() ? spaceDoc.data() : {};
-          
-          console.log('📦 [getUserSpaces] 스페이스 상세 정보:', spaceId, spaceData);
-          
-          // Timestamp를 Date로 변환
-          const joinedAt = data.joinedAt && typeof data.joinedAt.toDate === 'function' 
-            ? data.joinedAt.toDate() 
-            : null;
-          const updatedAt = data.updatedAt && typeof data.updatedAt.toDate === 'function'
-            ? data.updatedAt.toDate()
-            : null;
-          
-          return {
-            id: spaceId,
-            spaceId: spaceId, // 호환성을 위해 둘 다 추가
-            spaceName: data.spaceName || spaceData.name || '',
-            name: spaceData.name || data.spaceName || '', // 스페이스 이름
-            userType: data.userType || 'guest',
-            order: data.order || 0,
-            status: data.status || 'active',
-            joinedAt: joinedAt,
-            updatedAt: updatedAt,
-            // 계좌 정보 추가 (spaces/{spaceId} 문서의 필드)
-            accountBank: spaceData.accountBank,
-            accountNumber: spaceData.accountNumber,
-            accountHolder: spaceData.accountHolder,
-          };
+
+        // status가 'active'인 것만 처리
+        if (data.status !== 'active') {
+          return;
+        }
+
+        // Timestamp를 Date로 변환
+        const joinedAt = data.joinedAt && typeof data.joinedAt.toDate === 'function'
+          ? data.joinedAt.toDate()
+          : null;
+        const updatedAt = data.updatedAt && typeof data.updatedAt.toDate === 'function'
+          ? data.updatedAt.toDate()
+          : null;
+
+        spaces.push({
+          id: spaceId,
+          spaceId: spaceId, // 호환성을 위해 둘 다 추가
+          spaceName: data.spaceName || spaceId,
+          name: data.spaceName || spaceId, // 스페이스 이름
+          userType: data.userType || 'guest',
+          order: data.order || 0,
+          status: data.status || 'active',
+          joinedAt: joinedAt,
+          updatedAt: updatedAt,
         });
-        
-        spacePromises.push(spacePromise);
       });
-      
-      const spaces = await Promise.all(spacePromises);
-      
+
+      // lightweight가 false면 각 스페이스의 상세 정보도 가져오기 (계좌 정보 등)
+      if (!lightweight && spaces.length > 0) {
+        const detailedSpaces = await Promise.all(
+          spaces.map(async (space) => {
+            try {
+              const spaceDoc = await getDoc(doc(db, 'spaces', space.id));
+              const spaceData = spaceDoc.exists() ? spaceDoc.data() : {};
+
+              return {
+                ...space,
+                // spaces 문서의 추가 정보
+                accountBank: spaceData.accountBank,
+                accountNumber: spaceData.accountNumber,
+                accountHolder: spaceData.accountHolder,
+              };
+            } catch (error) {
+              console.error(`spaces/${space.id} 읽기 실패:`, error);
+              return space; // 에러 시 기본 정보만 반환
+            }
+          })
+        );
+
+        // order 기준으로 정렬
+        detailedSpaces.sort((a, b) => (a.order || 0) - (b.order || 0));
+        return detailedSpaces;
+      }
+
       // order 기준으로 정렬
       spaces.sort((a, b) => (a.order || 0) - (b.order || 0));
-      
-      console.log('✅ [getUserSpaces] 결과 (계좌 정보 포함):', spaces);
+
       return spaces;
     } catch (error) {
       console.error('[SpaceService] getUserSpaces 실패:', error);
@@ -168,6 +207,78 @@ class SpaceService {
       console.log('✅ 스페이스 순서 업데이트 완료');
     } catch (error) {
       console.error('[SpaceService] updateSpaceOrder 실패:', error);
+      throw error;
+    }
+  }
+
+  // ----- 5-1) 방 나가기 (status를 'left'로 변경) -----
+  async leaveSpace(userId, spaceId) {
+    try {
+      console.log('🚪 방 나가기 시작:', { userId, spaceId });
+
+      const now = Timestamp.now();
+
+      // users/{userId}/spaceAccess/{spaceId}의 status를 'left'로 변경
+      const userSpaceRef = doc(db, `users/${userId}/spaceAccess`, spaceId);
+      await updateDoc(userSpaceRef, {
+        status: 'left',
+        leftAt: now,
+        updatedAt: now
+      });
+
+      console.log('✅ 방 나가기 완료:', { userId, spaceId });
+      return { success: true };
+    } catch (error) {
+      console.error('❌ [SpaceService] leaveSpace 실패:', error);
+      throw error;
+    }
+  }
+
+  // ----- 5-2) 방 재가입 (status='left'인 경우 다시 'active'로) -----
+  async rejoinSpace(userId, spaceId, spaceName) {
+    try {
+      console.log('🔄 방 재가입 시작:', { userId, spaceId, spaceName });
+
+      const now = Timestamp.now();
+
+      // 1. 현재 active 스페이스들의 최대 order 찾기
+      const spaceAccessRef = collection(db, `users/${userId}/spaceAccess`);
+      const snapshot = await getDocs(spaceAccessRef);
+
+      let maxOrder = -1;
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (data.status === 'active') {
+          const order = data.order || 0;
+          if (order > maxOrder) {
+            maxOrder = order;
+          }
+        }
+      });
+
+      const newOrder = maxOrder + 1;
+
+      // 2. status를 'active'로 변경하고 order를 마지막으로 설정
+      const userSpaceRef = doc(db, `users/${userId}/spaceAccess`, spaceId);
+
+      const updateData = {
+        status: 'active',
+        order: newOrder,
+        rejoinedAt: now,
+        updatedAt: now
+      };
+
+      // spaceName이 있으면 갱신
+      if (spaceName) {
+        updateData.spaceName = spaceName;
+      }
+
+      await updateDoc(userSpaceRef, updateData);
+
+      console.log('✅ 방 재가입 완료:', { userId, spaceId, newOrder });
+      return { success: true, order: newOrder };
+    } catch (error) {
+      console.error('❌ [SpaceService] rejoinSpace 실패:', error);
       throw error;
     }
   }

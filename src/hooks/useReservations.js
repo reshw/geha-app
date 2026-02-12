@@ -40,23 +40,15 @@ export const useReservations = (spaceId, currentWeekStart) => {
         ...nextWeekResult.userIds
       ]));
 
-      if (import.meta.env.DEV) {
-        console.log('📥 예약 데이터 3주치 로드:', Object.keys(allReservations).length, '개 날짜');
-      }
       setReservations(allReservations);
 
       // 프로필 가져오기 (실패해도 계속 진행)
       if (allUserIds.length > 0) {
         try {
           const profiles = await authService.getUserProfiles(allUserIds);
-          if (import.meta.env.DEV) {
-            console.log('👥 프로필 로드:', Object.keys(profiles).length, '명');
-          }
           addProfiles(profiles);
         } catch (error) {
-          if (import.meta.env.DEV) {
-            console.warn('⚠️ 프로필 로드 실패 (예약은 name 필드 사용):', error.message);
-          }
+          // 프로필 로드 실패 시 조용히 무시 (예약은 name 필드 사용)
         }
       }
     } catch (error) {

@@ -1,7 +1,7 @@
 // components/common/GlobalHeader.jsx
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { UserCog, FileText, LogOut } from 'lucide-react';
+import { UserCog, FileText, LogOut, ShieldCheck, TestTube } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import useStore from '../../store/useStore';
 import spaceService from '../../services/spaceService';
@@ -26,24 +26,8 @@ const GlobalHeader = () => {
   const [isCreatingSpace, setIsCreatingSpace] = useState(false);
   const [toast, setToast] = useState(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const hasInitializedSpace = useRef(false);
 
-  // 스페이스 로드
-  useEffect(() => {
-    const loadSpaces = async () => {
-      if (!user?.id || hasInitializedSpace.current) return;
-
-      try {
-        const loadedSpaces = await spaceService.getUserSpaces(user.id);
-        setSpaces(loadedSpaces);
-        hasInitializedSpace.current = true;
-      } catch (error) {
-        console.error('❌ 스페이스 로드 실패:', error);
-      }
-    };
-
-    loadSpaces();
-  }, [user, setSpaces]);
+  // 스페이스 로드는 WeeklyList에서만 처리 (중복 제거)
 
   // 스페이스 순서 변경
   const handleSpaceReorder = async (updatedSpaces) => {
@@ -61,9 +45,14 @@ const GlobalHeader = () => {
   };
 
   // 스페이스 생성 제출
-  const handleSubmitCreateSpace = async (spaceData) => {
+  const handleSubmitCreateSpace = async (spaceNameOrData) => {
     setIsCreatingSpace(true);
     try {
+      // 문자열이면 객체로 변환
+      const spaceData = typeof spaceNameOrData === 'string'
+        ? { spaceName: spaceNameOrData }
+        : spaceNameOrData;
+
       const newSpace = await spaceService.createSpace(user.id, spaceData);
 
       // 새 스페이스를 전역 상태에 추가하고 자동 선택
@@ -172,6 +161,35 @@ const GlobalHeader = () => {
                             <span className="font-medium">개인정보처리방침</span>
                           </button>
 
+                          {/* 슈퍼어드민 메뉴 */}
+                          {user?.isSuperAdmin && (
+                            <>
+                              <div className="border-t border-gray-100 mt-2 pt-2">
+                                <button
+                                  onClick={() => {
+                                    setShowProfileMenu(false);
+                                    navigate('/super-admin');
+                                  }}
+                                  className="w-full px-4 py-3 text-left hover:bg-purple-50 transition-colors text-purple-600 flex items-center gap-3"
+                                >
+                                  <ShieldCheck className="w-5 h-5" />
+                                  <span className="font-medium">슈퍼어드민</span>
+                                </button>
+
+                                <button
+                                  onClick={() => {
+                                    setShowProfileMenu(false);
+                                    navigate('/test-data');
+                                  }}
+                                  className="w-full px-4 py-3 text-left hover:bg-purple-50 transition-colors text-purple-600 flex items-center gap-3"
+                                >
+                                  <TestTube className="w-5 h-5" />
+                                  <span className="font-medium">테스트 데이터</span>
+                                </button>
+                              </div>
+                            </>
+                          )}
+
                           <div className="border-t border-gray-100 mt-2 pt-2">
                             <button
                               onClick={() => {
@@ -199,13 +217,12 @@ const GlobalHeader = () => {
       </div>
 
       {/* 스페이스 생성 모달 */}
-      {showCreateSpaceModal && (
-        <CreateSpaceModal
-          onClose={() => setShowCreateSpaceModal(false)}
-          onSubmit={handleSubmitCreateSpace}
-          isSubmitting={isCreatingSpace}
-        />
-      )}
+      <CreateSpaceModal
+        isOpen={showCreateSpaceModal}
+        onClose={() => setShowCreateSpaceModal(false)}
+        onSubmit={handleSubmitCreateSpace}
+        isLoading={isCreatingSpace}
+      />
 
       {/* 토스트 알림 */}
       {toast && (

@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import useStore from '../store/useStore';
-import { ArrowLeft, Settings, Users, Bell, Info, Crown, DollarSign, CreditCard } from 'lucide-react';
+import { ArrowLeft, Settings, Users, Bell, Info, Crown, DollarSign, CreditCard, CalendarClock, Puzzle } from 'lucide-react';
 import { canManageSpace } from '../utils/permissions';
 import { USER_TYPES } from '../utils/constants';
 import { useEffect } from 'react';
@@ -37,10 +37,18 @@ export default function SpaceManagePage() {
     {
       id: 'space-settings',
       title: '스페이스 설정',
-      description: '스페이스 이름 등 기본 설정',
+      description: '스페이스 이름, 권한 등 기본 설정',
       icon: Settings,
       color: 'from-blue-500 to-blue-600',
       path: '/space/settings'
+    },
+    {
+      id: 'features-manage',
+      title: '추가 기능 관리',
+      description: '사용할 기능 선택 및 하단 메뉴 구성',
+      icon: Puzzle,
+      color: 'from-pink-500 to-pink-600',
+      path: '/space/features'
     },
     {
       id: 'member-manage',
@@ -57,6 +65,14 @@ export default function SpaceManagePage() {
       icon: Bell,
       color: 'from-green-500 to-green-600',
       path: '/space/alimtalk'
+    },
+    {
+      id: 'settlement-schedule',
+      title: '정산 자동화 설정',
+      description: '매월 자동 정산 스케줄 관리',
+      icon: CalendarClock,
+      color: 'from-indigo-500 to-indigo-600',
+      path: '/settlement/schedule'
     },
     {
       id: 'guest-policy',

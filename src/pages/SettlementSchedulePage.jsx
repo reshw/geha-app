@@ -27,7 +27,7 @@ const SettlementSchedulePage = () => {
 
     if (!isManager) {
       alert('정산 설정 권한이 없습니다.');
-      navigate('/more');
+      navigate('/space/manage');
       return;
     }
 
@@ -100,10 +100,10 @@ const SettlementSchedulePage = () => {
           <h2 className="text-2xl font-bold text-gray-900 mb-4">권한이 없습니다</h2>
           <p className="text-gray-600 mb-6">정산 설정은 매니저만 접근할 수 있습니다.</p>
           <button
-            onClick={() => navigate('/more')}
+            onClick={() => navigate('/space/manage')}
             className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
           >
-            돌아가기
+            스페이스 관리로 돌아가기
           </button>
         </div>
       </div>
@@ -121,7 +121,7 @@ const SettlementSchedulePage = () => {
         <div className="px-4 py-4">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate('/more')}
+              onClick={() => navigate('/space/manage')}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <ArrowLeft className="w-6 h-6 text-gray-700" />

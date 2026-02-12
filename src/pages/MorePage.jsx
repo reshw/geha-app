@@ -1,36 +1,46 @@
 // src/pages/MorePage.jsx
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Settings2,
-  Wallet,
   Share2,
-  UserCog,
-  FileText,
-  Shield,
-  ShieldCheck,
   LogOut,
-  UserMinus,
-  ChevronRight,
-  CalendarClock,
-  TestTube,
-  BookOpen,
-  Users,
-  Play,
-  Coffee
+  ChevronRight
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import useStore from '../store/useStore';
+import spaceSettingsService from '../services/spaceSettingsService';
+import spaceService from '../services/spaceService';
+import { AVAILABLE_FEATURES } from '../utils/features';
 import { canManageSpace } from '../utils/permissions';
 import { USER_TYPE_LABELS } from '../utils/constants';
 import LoginOverlay from '../components/auth/LoginOverlay';
-import { useTour } from '../contexts/TourContext';
-import { TOUR_IDS, tours } from '../data/tourData';
 
 const MorePage = () => {
   const navigate = useNavigate();
   const { user, isLoggedIn, logout } = useAuth();
-  const { selectedSpace } = useStore();
-  const { startTour, isTourCompleted } = useTour();
+  const { selectedSpace, spaces, setSpaces, setSelectedSpace } = useStore();
+  const [featuresConfig, setFeaturesConfig] = useState({});
+  const [loadingFeatures, setLoadingFeatures] = useState(true);
+
+  useEffect(() => {
+    if (selectedSpace) {
+      loadFeaturesConfig();
+    }
+  }, [selectedSpace]);
+
+  const loadFeaturesConfig = async () => {
+    try {
+      setLoadingFeatures(true);
+      const spaceId = selectedSpace.id || selectedSpace.spaceId;
+      const config = await spaceSettingsService.getFeaturesConfig(spaceId);
+      setFeaturesConfig(config);
+    } catch (error) {
+      console.error('기능 설정 로드 실패:', error);
+    } finally {
+      setLoadingFeatures(false);
+    }
+  };
 
   if (!isLoggedIn) {
     return <LoginOverlay />;
@@ -75,16 +85,35 @@ const MorePage = () => {
     }
   };
 
-  const handleLogout = () => {
-    if (window.confirm('정말 로그아웃 하시겠습니까?')) {
-      logout();
-      navigate('/');
+  const handleLeaveSpace = async () => {
+    if (!selectedSpace) {
+      alert('스페이스를 선택해주세요.');
+      return;
     }
-  };
 
-  const handleWithdraw = () => {
-    if (window.confirm('정말 회원 탈퇴하시겠습니까?\n모든 데이터가 삭제되며 복구할 수 없습니다.')) {
-      alert('회원 탈퇴 기능은 준비 중입니다.');
+    const spaceName = selectedSpace.spaceName || selectedSpace.name || '이 스페이스';
+
+    if (window.confirm(`정말 "${spaceName}"에서 나가시겠습니까?\n\n스페이스에서 나가면 다시 초대받아야 합니다.`)) {
+      try {
+        const spaceId = selectedSpace.id || selectedSpace.spaceId;
+        await spaceService.leaveSpace(user.id, spaceId);
+
+        // 전역 상태에서 해당 스페이스 제거
+        const updatedSpaces = spaces.filter(s => (s.id || s.spaceId) !== spaceId);
+        setSpaces(updatedSpaces);
+
+        // 다른 스페이스가 있으면 첫 번째 스페이스 선택, 없으면 null
+        if (updatedSpaces.length > 0) {
+          setSelectedSpace(updatedSpaces[0]);
+        } else {
+          setSelectedSpace(null);
+        }
+
+        alert('스페이스에서 나갔습니다.');
+      } catch (error) {
+        console.error('❌ 방 나가기 실패:', error);
+        alert('스페이스 나가기에 실패했습니다.');
+      }
     }
   };
 
@@ -103,214 +132,91 @@ const MorePage = () => {
     return (
       <button
         onClick={onClick}
-        className={`w-full flex items-center justify-between p-4 bg-white rounded-2xl border border-gray-100 transition-all hover:shadow-md hover:border-transparent ${colorClass}`}
+        className={`w-full flex items-center justify-between p-3 bg-white rounded-xl border border-gray-100 transition-all hover:shadow-md hover:border-transparent ${colorClass}`}
       >
-        <div className="flex items-center gap-4">
-          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${iconBgClass}`}>
-            <Icon className={`w-6 h-6 ${iconColorClass}`} />
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${iconBgClass}`}>
+            <Icon className={`w-5 h-5 ${iconColorClass}`} />
           </div>
-          <span className="font-semibold text-base">{label}</span>
+          <span className="font-semibold text-sm">{label}</span>
         </div>
-        <ChevronRight className="w-5 h-5 text-gray-400" />
+        <ChevronRight className="w-4 h-4 text-gray-400" />
       </button>
     );
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 pb-24">
-      {/* 헤더 & 프로필 */}
-      <div className="bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 text-white">
-        <div className="px-6 pt-6 pb-8">
-          <h1 className="text-2xl font-bold mb-6">더보기</h1>
-
-          {/* 프로필 섹션 */}
-          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 shadow-xl">
-            <div className="flex items-center gap-3">
-              {/* 프로필 이미지 */}
-              {user?.profileImage ? (
-                <img
-                  src={user.profileImage}
-                  alt={user.displayName}
-                  className="w-14 h-14 rounded-xl object-cover ring-2 ring-white/30"
-                />
-              ) : (
-                <div className="w-14 h-14 rounded-xl bg-white/20 flex items-center justify-center ring-2 ring-white/30">
-                  <span className="text-xl font-bold">{user?.displayName?.[0] || 'U'}</span>
-                </div>
-              )}
-
-              {/* 사용자 정보 */}
-              <div className="flex-1 min-w-0">
-                <h2 className="text-lg font-bold mb-1 truncate">{user?.displayName || '사용자'}</h2>
-                <div className="text-xs text-white/85 flex items-center gap-1.5">
-                  <span className="truncate">{selectedSpace?.spaceName || '스페이스'}</span>
-                  <span className="text-white/50">•</span>
-                  <span className="font-medium">{selectedSpace?.userType && USER_TYPE_LABELS[selectedSpace.userType] || '게스트'}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* 메뉴 섹션 */}
       <div className="px-4 pt-6 space-y-8 pb-4">
-        {/* 스페이스 관리 메뉴 */}
+        {/* 스페이스 메뉴 */}
         <div className="space-y-3">
           <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider px-3 mb-4">
             스페이스
           </h3>
-
-          {/* 스페이스 관리 (vice-manager, manager만) */}
-          {selectedSpace?.userType && canManageSpace(selectedSpace.userType) && (
-            <>
-              <MenuItem
-                icon={Settings2}
-                label="스페이스 관리"
-                onClick={() => navigate('/space/manage')}
-              />
-
-              <MenuItem
-                icon={CalendarClock}
-                label="정산 자동화 설정"
-                onClick={() => navigate('/settlement/schedule')}
-              />
-            </>
-          )}
-
-          <MenuItem
-            icon={Wallet}
-            label="공용 운영비"
-            onClick={() => navigate('/expenses')}
-          />
-
-          <MenuItem
-            icon={Coffee}
-            label="바텐더 주문"
-            onClick={() => navigate('/bartender/menu')}
-          />
 
           <MenuItem
             icon={Share2}
             label="초대 코드 공유"
             onClick={handleShare}
           />
+
+          {/* 스페이스 관리 (vice-manager, manager만) */}
+          {selectedSpace?.userType && canManageSpace(selectedSpace.userType) && (
+            <MenuItem
+              icon={Settings2}
+              label="스페이스 관리"
+              onClick={() => navigate('/space/manage')}
+            />
+          )}
         </div>
 
-        {/* 개인 설정 메뉴 */}
-        <div className="space-y-3">
-          <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider px-3 mb-4">
-            개인 설정
-          </h3>
+        {/* 추가 기능 메뉴 (활성화된 기능만 표시) */}
+        {!loadingFeatures && (() => {
+          // 활성화된 기능을 순서대로 정렬
+          const enabledFeatures = Object.entries(featuresConfig)
+            .filter(([_, config]) => config.enabled)
+            .sort((a, b) => {
+              const orderA = a[1].order || 999;
+              const orderB = b[1].order || 999;
+              if (orderA !== orderB) return orderA - orderB;
+              return a[0].localeCompare(b[0]);
+            })
+            .map(([id]) => id);
 
-          <MenuItem
-            icon={UserCog}
-            label="개인정보 수정"
-            onClick={() => alert('개인정보 수정 기능은 준비 중입니다.')}
-          />
+          if (enabledFeatures.length === 0) return null;
 
-          <MenuItem
-            icon={FileText}
-            label="이용약관"
-            onClick={() => navigate('/terms')}
-          />
+          return (
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider px-3 mb-4">
+                추가 기능
+              </h3>
 
-          <MenuItem
-            icon={Shield}
-            label="개인정보 처리방침"
-            onClick={() => navigate('/privacy')}
-          />
-        </div>
+              {enabledFeatures.map((featureId) => {
+                const feature = AVAILABLE_FEATURES[featureId];
+                if (!feature) return null;
 
-        {/* 앱 정보 메뉴 */}
-        <div className="space-y-3">
-          <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider px-3 mb-4">
-            앱 정보
-          </h3>
+                const Icon = feature.icon;
 
-          <MenuItem
-            icon={Users}
-            label="사용 가이드"
-            onClick={() => navigate('/user-guide')}
-          />
-
-          <MenuItem
-            icon={BookOpen}
-            label="앱 소개"
-            onClick={() => navigate('/introduction')}
-          />
-
-          {/* 투어 다시보기 */}
-          <div className="bg-white rounded-2xl p-4 border border-gray-100">
-            <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <Play className="w-5 h-5 text-blue-600" />
-              기능 안내 다시보기
-            </h4>
-            <div className="space-y-2">
-              {Object.values(tours).map((tour) => (
-                <button
-                  key={tour.id}
-                  onClick={() => startTour(tour.id)}
-                  className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-blue-50 rounded-xl transition-colors group"
-                >
-                  <div className="flex-1 text-left">
-                    <p className="font-medium text-gray-900 group-hover:text-blue-600 mb-1">
-                      {tour.title}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {tour.description}
-                    </p>
-                  </div>
-                  {isTourCompleted(tour.id) && (
-                    <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium ml-2">
-                      완료
-                    </span>
-                  )}
-                </button>
-              ))}
+                return (
+                  <MenuItem
+                    key={featureId}
+                    icon={Icon}
+                    label={feature.name}
+                    onClick={() => navigate(feature.path)}
+                  />
+                );
+              })}
             </div>
-          </div>
-        </div>
+          );
+        })()}
 
-        {/* 슈퍼어드민 메뉴 */}
-        {user?.isSuperAdmin && (
-          <div className="space-y-3">
-            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider px-3 mb-4">
-              관리자
-            </h3>
-
-            <MenuItem
-              icon={ShieldCheck}
-              label="슈퍼어드민"
-              onClick={() => navigate('/super-admin')}
-              variant="admin"
-            />
-
-            <MenuItem
-              icon={TestTube}
-              label="테스트 데이터 생성"
-              onClick={() => navigate('/test-data')}
-              variant="admin"
-            />
-          </div>
-        )}
-
-        {/* 계정 메뉴 */}
+        {/* 방 나가기 */}
         <div className="space-y-3">
-          <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider px-3 mb-4">
-            계정
-          </h3>
-
           <MenuItem
             icon={LogOut}
-            label="로그아웃"
-            onClick={handleLogout}
-          />
-
-          <MenuItem
-            icon={UserMinus}
-            label="회원 탈퇴"
-            onClick={handleWithdraw}
+            label="방 나가기"
+            onClick={handleLeaveSpace}
             variant="danger"
           />
         </div>

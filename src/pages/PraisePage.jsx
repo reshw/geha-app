@@ -4,6 +4,7 @@ import { Plus, CheckCircle, Clock, BarChart3 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import useStore from '../store/useStore';
 import praiseService from '../services/praiseService';
+import spaceSettingsService from '../services/spaceSettingsService';
 import PraiseModal from '../components/praise/PraiseModal';
 import PraiseCard from '../components/praise/PraiseCard';
 import PraiseStatsView from '../components/praise/PraiseStatsView';
@@ -17,9 +18,34 @@ export default function PraisePage() {
   const [showModal, setShowModal] = useState(false);
   const [mainTab, setMainTab] = useState('board'); // 'board' | 'pending' | 'stats'
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [praiseStatsPermission, setPraiseStatsPermission] = useState('manager_only');
 
   const isManager = selectedSpace?.userType === 'manager' || selectedSpace?.userType === 'vice-manager';
-  const isMainManager = selectedSpace?.userType === 'manager'; // 통계는 매니저만
+
+  // 통계 권한 체크: 스페이스 설정 기반
+  const canViewStats = () => {
+    if (!selectedSpace) return false;
+
+    const userType = selectedSpace.userType;
+
+    switch (praiseStatsPermission) {
+      case 'manager_only':
+        return userType === 'manager';
+      case 'vice_manager_up':
+        return userType === 'manager' || userType === 'vice-manager';
+      case 'all_members':
+        return true;
+      default:
+        return userType === 'manager'; // 기본값: 매니저만
+    }
+  };
+
+  // 칭찬 통계 권한 설정 로드
+  useEffect(() => {
+    if (selectedSpace) {
+      loadPraiseStatsPermission();
+    }
+  }, [selectedSpace]);
 
   // mainTab이 변경될 때만 칭찬 목록 로드 (stats 탭에서는 불필요)
   useEffect(() => {
@@ -27,6 +53,17 @@ export default function PraisePage() {
       loadPraises();
     }
   }, [selectedSpace, mainTab, categoryFilter]);
+
+  const loadPraiseStatsPermission = async () => {
+    try {
+      const spaceId = selectedSpace.id || selectedSpace.spaceId;
+      const permission = await spaceSettingsService.getPraiseStatsPermission(spaceId);
+      setPraiseStatsPermission(permission);
+    } catch (error) {
+      console.error('칭찬 통계 권한 설정 로드 실패:', error);
+      // 에러 발생 시 기본값 유지 (manager_only)
+    }
+  };
 
   const loadPraises = async () => {
     if (!selectedSpace) {
@@ -149,7 +186,7 @@ export default function PraisePage() {
             </button>
           )}
 
-          {isMainManager && (
+          {canViewStats() && (
             <button
               onClick={() => setMainTab('stats')}
               className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
@@ -166,8 +203,8 @@ export default function PraisePage() {
       </div>
 
       {/* 탭별 컨텐츠 */}
-      {mainTab === 'stats' && isMainManager ? (
-        // 통계 탭 (매니저만)
+      {mainTab === 'stats' && canViewStats() ? (
+        // 통계 탭 (권한에 따라)
         <PraiseStatsView spaceId={selectedSpace.id} />
       ) : (
         // 게시판 & 승인대기중 탭

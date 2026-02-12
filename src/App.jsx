@@ -25,6 +25,7 @@ import TestDataPage from './pages/TestDataPage';
 // 스페이스 관리 페이지들
 import SpaceManagePage from './pages/SpaceManagePage';
 import SpaceSettingsPage from './pages/SpaceSettingsPage';
+import FeaturesManagePage from './pages/FeaturesManagePage';
 import MemberManagePage from './pages/MemberManagePage';
 import AlimtalkSettingsPage from './pages/AlimtalkSettingsPage';
 import GuestPolicySettingsPage from './pages/GuestPolicySettingsPage';
@@ -81,6 +82,7 @@ function App() {
           {/* 스페이스 관리 */}
           <Route path="/space/manage" element={<SpaceManagePage />} />
           <Route path="/space/settings" element={<SpaceSettingsPage />} />
+          <Route path="/space/features" element={<FeaturesManagePage />} />
           <Route path="/space/members" element={<MemberManagePage />} />
           <Route path="/space/alimtalk" element={<AlimtalkSettingsPage />} />
           <Route path="/space/guestpolicy" element={<GuestPolicySettingsPage />} />

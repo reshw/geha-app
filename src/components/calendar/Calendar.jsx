@@ -12,30 +12,13 @@ import { canReserveOnDate } from '../../utils/permissions';
 
 const Calendar = () => {
   const { user, isLoggedIn } = useAuth();
-  const { selectedSpace, setSelectedSpace } = useStore();
+  const { selectedSpace, spaces } = useStore(); // spaces는 WeeklyList에서 이미 로드됨
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [userSpaces, setUserSpaces] = useState([]);
-  const [loading, setLoading] = useState(true);
-  
+  const [loading, setLoading] = useState(false);
+
   const { reservations, loading: reservationsLoading } = useReservations(selectedSpace?.id);
-  
-  // 사용자 스페이스 로드
-  useEffect(() => {
-    const loadSpaces = async () => {
-      if (!user?.id) return;
-      
-      setLoading(true);
-      const spaces = await spaceService.getUserSpaces(user.id);
-      setUserSpaces(spaces);
-      
-      if (spaces.length > 0 && !selectedSpace) {
-        setSelectedSpace(spaces[0]);
-      }
-      setLoading(false);
-    };
-    
-    loadSpaces();
-  }, [user, selectedSpace, setSelectedSpace]);
+
+  // 스페이스 로드는 WeeklyList에서 이미 처리됨 (중복 제거)
   
   const prevMonth = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1));
@@ -98,17 +81,17 @@ const Calendar = () => {
       </div>
       
       {/* 스페이스 선택 */}
-      {userSpaces.length > 1 && (
+      {spaces.length > 1 && (
         <div className="mb-4">
           <select 
             value={selectedSpace?.id || ''} 
             onChange={(e) => {
-              const space = userSpaces.find(s => s.id === e.target.value);
+              const space = spaces.find(s => s.id === e.target.value);
               setSelectedSpace(space);
             }}
             className="px-4 py-2 border rounded-lg"
           >
-            {userSpaces.map(space => (
+            {spaces.map(space => (
               <option key={space.id} value={space.id}>
                 {space.name} ({space.userType})
               </option>

@@ -1,79 +1,106 @@
 // components/common/BottomNav.jsx
-import { Home, Heart, MountainSnow, Receipt, MoreHorizontal } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { MoreHorizontal } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import useStore from '../../store/useStore';
+import spaceSettingsService from '../../services/spaceSettingsService';
+import { AVAILABLE_FEATURES } from '../../utils/features';
 
 export default function BottomNav() {
   const location = useLocation();
-  
+  const { selectedSpace } = useStore();
+  const [featuresConfig, setFeaturesConfig] = useState({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (selectedSpace) {
+      loadFeaturesConfig();
+    }
+  }, [selectedSpace]);
+
+  const loadFeaturesConfig = async () => {
+    try {
+      setLoading(true);
+      const spaceId = selectedSpace.id || selectedSpace.spaceId;
+      const config = await spaceSettingsService.getFeaturesConfig(spaceId);
+      setFeaturesConfig(config);
+    } catch (error) {
+      console.error('기능 설정 로드 실패:', error);
+      // 에러 시 기본 설정 사용
+      setFeaturesConfig({
+        reservation: { enabled: true, showInBottomNav: true, order: 1 }
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const isActive = (path) => {
     if (path === '/') {
       return location.pathname === '/';
     }
     return location.pathname.startsWith(path);
   };
-  
+
+  // 하단 메뉴에 표시할 기능들 (활성화 + showInBottomNav = true)
+  const bottomNavFeatures = Object.entries(featuresConfig)
+    .filter(([_, config]) => config.enabled && config.showInBottomNav)
+    .sort((a, b) => {
+      const orderA = a[1].order || 999;
+      const orderB = b[1].order || 999;
+      if (orderA !== orderB) return orderA - orderB;
+      // order가 같으면 id로 정렬 (안정성)
+      return a[0].localeCompare(b[0]);
+    })
+    .map(([id]) => id)
+    .slice(0, 4); // 최대 4개
+
+  if (loading) {
+    return (
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      >
+        <div className="max-w-[600px] mx-auto flex h-16 items-center justify-center">
+          <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      </nav>
+    );
+  }
+
   return (
-    <nav 
+    <nav
       className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="max-w-[600px] mx-auto flex">
-        <Link 
-          to="/" 
-          className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 transition-all ${
-            isActive('/') 
-              ? 'text-blue-600 bg-blue-50' 
-              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-          }`}
-        >
-          <Home size={22} strokeWidth={isActive('/') ? 2.5 : 2} />
-          <span className={`text-xs ${isActive('/') ? 'font-bold' : 'font-normal'}`}>
-            예약
-          </span>
-        </Link>
-        
-        <Link 
-          to="/settlement" 
-          className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 transition-all ${
-            isActive('/settlement') 
-              ? 'text-blue-600 bg-blue-50' 
-              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-          }`}
-        >
-          <Receipt size={22} strokeWidth={isActive('/settlement') ? 2.5 : 2} />
-          <span className={`text-xs ${isActive('/settlement') ? 'font-bold' : 'font-normal'}`}>
-            정산
-          </span>
-        </Link>
-        
-        <Link 
-          to="/praise" 
-          className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 transition-all ${
-            isActive('/praise') 
-              ? 'text-blue-600 bg-blue-50' 
-              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-          }`}
-        >
-          <Heart size={22} strokeWidth={isActive('/praise') ? 2.5 : 2} />
-          <span className={`text-xs ${isActive('/praise') ? 'font-bold' : 'font-normal'}`}>
-            칭찬
-          </span>
-        </Link>
+        {/* 동적 기능 메뉴 */}
+        {bottomNavFeatures.map((featureId) => {
+          const feature = AVAILABLE_FEATURES[featureId];
+          if (!feature) return null;
 
-        <Link
-          to="/slopes"
-          className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 transition-all ${
-            isActive('/slopes')
-              ? 'text-blue-600 bg-blue-50'
-              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-          }`}
-        >
-          <MountainSnow size={22} strokeWidth={isActive('/slopes') ? 2.5 : 2} />
-          <span className={`text-xs ${isActive('/slopes') ? 'font-bold' : 'font-normal'}`}>
-            오픈정보
-          </span>
-        </Link>
+          const Icon = feature.icon;
+          const path = feature.path;
 
+          return (
+            <Link
+              key={featureId}
+              to={path}
+              className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 transition-all ${
+                isActive(path)
+                  ? 'text-blue-600 bg-blue-50'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <Icon size={22} strokeWidth={isActive(path) ? 2.5 : 2} />
+              <span className={`text-xs ${isActive(path) ? 'font-bold' : 'font-normal'}`}>
+                {feature.name}
+              </span>
+            </Link>
+          );
+        })}
+
+        {/* 더보기 (항상 표시) */}
         <Link
           to="/more"
           className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 transition-all ${

@@ -16,7 +16,6 @@ import CancelReservationModal from './CancelReservationModal';
 import ReservationDetailModal from './ReservationDetailModal';
 import WeeklyCalendarView from './WeeklyCalendarView';
 import MonthlyCalendarView from './MonthlyCalendarView';
-import CreateSpaceModal from '../space/CreateSpaceModal';
 import ReservationManageModal from './ReservationManageModal';
 import ReservationEditModal from './ReservationEditModal';
 import SimpleMealModal from './SimpleMealModal';
@@ -89,9 +88,8 @@ const NoSpaceNotice = ({ onJoinSpace }) => (
 const WeeklyList = () => {
   const navigate = useNavigate();
   const { user, isLoggedIn, logout } = useAuth();
-  const { selectedSpace, setSelectedSpace, profiles, setReservations } = useStore();
-  const hasInitializedSpace = useRef(false);
-  
+  const { selectedSpace, spaces, profiles, setReservations } = useStore();
+
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     const today = new Date();
     const day = today.getDay();
@@ -101,12 +99,11 @@ const WeeklyList = () => {
     monday.setHours(0, 0, 0, 0);
     return monday;
   });
-  
+
   const [showReservationModal, setShowReservationModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedDateDetail, setSelectedDateDetail] = useState(null);
-  const [userSpaces, setUserSpaces] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
@@ -130,8 +127,8 @@ const WeeklyList = () => {
   const [mealsByDate, setMealsByDate] = useState({}); // 날짜별 식사 참여자 정보
   const [showMealModal, setShowMealModal] = useState(false);
   const [selectedDateForMeal, setSelectedDateForMeal] = useState(null);
-  const [showCreateSpaceModal, setShowCreateSpaceModal] = useState(false);
-  const [isCreatingSpace, setIsCreatingSpace] = useState(false);
+
+  // 스페이스 로드는 MainLayout에서 처리 (중복 제거)
 
   // 월 변경 핸들러 (useCallback으로 안정화 - 무한 루프 방지)
   const handleMonthChange = useCallback((newMonth) => {
@@ -155,49 +152,7 @@ const WeeklyList = () => {
 
   const { createReservation, cancelReservation, refresh } = weeklyData;
 
-  // 🆕 스페이스 로드 및 없음 처리
-  useEffect(() => {
-    const loadSpaces = async () => {
-      if (!user?.id) return;
-      
-      setLoading(true);
-      try {
-        const spaces = await spaceService.getUserSpaces(user.id);
-        console.log('📦 사용자 스페이스 로드:', spaces);
-        
-        setUserSpaces(spaces);
-        
-        // 스페이스가 있으면 마지막 선택 공간 복원 또는 기본값 선택
-        if (spaces.length > 0 && !hasInitializedSpace.current) {
-          // localStorage에서 마지막 선택 공간 ID 가져오기
-          const lastSelectedId = localStorage.getItem('lastSelectedSpaceId');
-          console.log('💾 마지막 선택 공간 ID:' , lastSelectedId);
-          
-          // 마지막 선택 공간이 현재 스페이스 목록에 있는지 확인
-          const lastSpace = spaces.find(s => s.id === lastSelectedId);
-          
-          // 마지막 선택 공간이 있으면 복원, 없으면 order 0 또는 첫 번째 공간 선택
-          const spaceToSelect = lastSpace || spaces.find(s => s.order === 0) || spaces[0];
-          
-          console.log('✅ 선택된 공간:' , spaceToSelect.spaceName, '(ID:' , spaceToSelect.id, ')' );
-          setSelectedSpace(spaceToSelect);
-          hasInitializedSpace.current = true;
-        }
-        // 스페이스가 없으면 selectedSpace를 null로 설정
-        else if (spaces.length === 0) {
-          setSelectedSpace(null);
-          hasInitializedSpace.current = true;
-        }
-      } catch (error) {
-        console.error('❌ 스페이스 로드 실패:', error);
-        setToast({ message: '스페이스를 불러오는데 실패했습니다', type: 'error' });
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    loadSpaces();
-  }, [user, setSelectedSpace]);
+  // 스페이스 로드는 MainLayout에서 이미 처리됨
 
   // 식사 참여자 정보 로드 함수
   const loadMeals = async () => {
@@ -244,7 +199,7 @@ const WeeklyList = () => {
     monday.setHours(0, 0, 0, 0);
     setCurrentWeekStart(monday);
   };
-  
+
   const goToSelectedDate = () => {
     const targetDate = new Date(selectedYear, selectedMonth, 1);
     const day = targetDate.getDay();
@@ -255,90 +210,9 @@ const WeeklyList = () => {
     setCurrentWeekStart(monday);
     setShowDatePicker(false);
   };
-  
-  // 스페이스 드래그 핸들러
-  const handleSpaceDragStart = (e, index) => {
-    setDraggedSpaceIndex(index);
-    e.dataTransfer.effectAllowed = 'move';
-  };
 
-  const handleSpaceDragOver = (e, index) => {
-    e.preventDefault();
-    if (draggedSpaceIndex === null || draggedSpaceIndex === index) return;
+  // 스페이스 관련 핸들러는 GlobalHeader와 MorePage에서 처리
 
-    const newSpaces = [...userSpaces];
-    const draggedItem = newSpaces[draggedSpaceIndex];
-    newSpaces.splice(draggedSpaceIndex, 1);
-    newSpaces.splice(index, 0, draggedItem);
-
-    setUserSpaces(newSpaces);
-    setDraggedSpaceIndex(index);
-  };
-
-  const handleSpaceDragEnd = async () => {
-    if (draggedSpaceIndex !== null) {
-      const updatedSpaces = userSpaces.map((space, idx) => ({
-        ...space,
-        order: idx
-      }));
-      
-      await spaceService.updateSpaceOrder(user.id, updatedSpaces);
-      setUserSpaces(updatedSpaces);
-    }
-    setDraggedSpaceIndex(null);
-  };
-
-  // 터치 이벤트 핸들러
-  const handleSpaceTouchStart = (e, index) => {
-    const touch = e.touches[0];
-    setTouchStartY(touch.clientY);
-    setTouchCurrentY(touch.clientY);
-    setDraggedSpaceIndex(index);
-  };
-
-  const handleSpaceTouchMove = (e) => {
-    if (draggedSpaceIndex === null || touchStartY === null) return;
-    
-    e.preventDefault();
-    const touch = e.touches[0];
-    setTouchCurrentY(touch.clientY);
-    
-    const itemHeight = 60;
-    const diff = touch.clientY - touchStartY;
-    const steps = Math.round(diff / itemHeight);
-    
-    if (steps !== 0) {
-      const newIndex = Math.max(0, Math.min(userSpaces.length - 1, draggedSpaceIndex + steps));
-      
-      if (newIndex !== draggedSpaceIndex) {
-        const newSpaces = [...userSpaces];
-        const draggedItem = newSpaces[draggedSpaceIndex];
-        newSpaces.splice(draggedSpaceIndex, 1);
-        newSpaces.splice(newIndex, 0, draggedItem);
-        
-        setUserSpaces(newSpaces);
-        setDraggedSpaceIndex(newIndex);
-        setTouchStartY(touch.clientY);
-      }
-    }
-  };
-
-  const handleSpaceTouchEnd = async () => {
-    if (draggedSpaceIndex !== null) {
-      const updatedSpaces = userSpaces.map((space, idx) => ({
-        ...space,
-        order: idx
-      }));
-      
-      await spaceService.updateSpaceOrder(user.id, updatedSpaces);
-      setUserSpaces(updatedSpaces);
-    }
-    
-    setDraggedSpaceIndex(null);
-    setTouchStartY(null);
-    setTouchCurrentY(null);
-  };
-  
   const handleReservationConfirm = async (reservationData) => {
     setIsSubmitting(true);
     try {
@@ -350,67 +224,6 @@ const WeeklyList = () => {
       setToast({ message: error.message || '예약에 실패했습니다', type: 'error' });
     } finally {
       setIsSubmitting(false);
-    }
-  };
-  
-  const handleSpaceChange = (space) => {
-    console.log('🔄 스페이스 변경:', space);
-    setSelectedSpace(space);
-    setShowSpaceDropdown(false);
-  };
-  
-  const handleLeaveSpace = async (spaceId) => {
-    if (!window.confirm('정말로 이 스페이스를 나가시겠습니까?')) {
-      return;
-    }
-
-    try {
-      await spaceService.leaveSpace(user.id, spaceId);
-
-      const updatedSpaces = userSpaces.filter(s => s.id !== spaceId);
-      setUserSpaces(updatedSpaces);
-
-      if (selectedSpace?.id === spaceId) {
-        if (updatedSpaces.length > 0) {
-          setSelectedSpace(updatedSpaces[0]);
-        } else {
-          setSelectedSpace(null);
-        }
-      }
-
-      setToast({ message: '스페이스에서 나갔습니다', type: 'success' });
-      setShowSpaceDropdown(false);
-    } catch (error) {
-      console.error('❌ 스페이스 나가기 실패:', error);
-      setToast({ message: '스페이스 나가기에 실패했습니다', type: 'error' });
-    }
-  };
-
-  // 방 생성 신청 핸들러
-  const handleCreateSpaceRequest = async (spaceName) => {
-    setIsCreatingSpace(true);
-    try {
-      const result = await spaceService.requestSpaceCreation(
-        user.id,
-        user.displayName,
-        spaceName
-      );
-
-      if (result.success) {
-        setToast({
-          message: `방 생성 신청이 완료되었습니다! (코드: ${result.spaceCode})`,
-          type: 'success'
-        });
-        setShowCreateSpaceModal(false);
-      }
-    } catch (error) {
-      console.error('❌ 방 생성 신청 실패:', error);
-      setToast({
-        message: error.message || '방 생성 신청에 실패했습니다',
-        type: 'error'
-      });
-    } finally {
-      setIsCreatingSpace(false);
     }
   };
 
@@ -445,7 +258,7 @@ const WeeklyList = () => {
   }
   
   // 🆕 스페이스 없음 처리
-  if (userSpaces.length === 0) {
+  if (spaces.length === 0) {
     return (
       <NoSpaceNotice 
         onJoinSpace={() => navigate('/join')}
@@ -455,7 +268,7 @@ const WeeklyList = () => {
   
   const weekDates = getWeekDates(currentWeekStart);
   const weekRange = `${currentWeekStart.getMonth() + 1}/${currentWeekStart.getDate()} - ${new Date(currentWeekStart.getTime() + 6 * 24 * 60 * 60 * 1000).getMonth() + 1}/${new Date(currentWeekStart.getTime() + 6 * 24 * 60 * 60 * 1000).getDate()}`;
-  const currentUserType = selectedSpace ? userSpaces.find(s => s.id === selectedSpace.id)?.userType : null;
+  const currentUserType = selectedSpace ? spaces.find(s => s.id === selectedSpace.id)?.userType : null;
   const isGuest = currentUserType === 'guest';
   const isManager = canManageSpace(currentUserType);
   
@@ -537,42 +350,18 @@ const WeeklyList = () => {
           const dateStr = formatDate(date);
           const isCurrentDay = isToday(date);
 
-          console.log(`🗓️ [WeeklyList] 카드 렌더링 [${dateIndex}]:`, {
-            dateStr,
-            date: date.toISOString(),
-            dateObject: date
-          });
-
           // 날짜별 예약 가져오기 (객체에서 직접 접근)
           const dateReservations = reservationsObj[dateStr] || [];
-          
-          // 🔍 디버깅: 예약 데이터 확인
-          console.log(`📅 ${dateStr} (${formatWeekDay(date)}) 디버깅:`, {
-            dateReservations: dateReservations.length,
-            allReservations: dateReservations.map(r => ({
-              id: r.id,
-              userId: r.userId,
-              userIdType: typeof r.userId,
-              name: r.name,
-              type: r.type
-            })),
-            currentUserId: user.id,
-            currentUserIdType: typeof user.id,
-            isGuest: isGuest
-          });
-          
+
           // 게스트는 본인 예약만 상세정보 표시
           const myReservations = dateReservations.filter(r => {
             const match = String(r.userId) === String(user.id);
-            console.log(`  🔍 예약 ${r.id}: userId=${r.userId}, match=${match}`);
             return match;
           }).map(r => ({
             ...r,
             isCheckIn: formatDate(r.checkIn) === dateStr,
             hostDisplayName: profiles[r.hostId]?.displayName || r.hostId
           }));
-          
-          console.log(`  ✅ 내 예약: ${myReservations.length}개`);
           
           // 통계용 전체 예약 (게스트도 총 인원수는 봐야 함)
           const allReservations = dateReservations.map(r => ({
@@ -718,10 +507,6 @@ const WeeklyList = () => {
                                     className={`w-12 h-12 rounded-full object-cover ring-2 ${ringColor} ${isMine ? 'cursor-pointer' : ''}`}
                                     onClick={() => {
                                       if (!isMine) return;
-                                      console.log('📅 프로필 클릭 (이미지 있음):', {
-                                        dateStr,
-                                        reservationId: reservation.id
-                                      });
                                       setSelectedReservationForManage(reservation);
                                       setCurrentDateStrForManage(dateStr);
                                       setShowManageModal(true);
@@ -740,10 +525,6 @@ const WeeklyList = () => {
                                     className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold ring-2 ${ringColor} ${bgColor} ${isMine ? 'cursor-pointer' : ''}`}
                                     onClick={() => {
                                       if (!isMine) return;
-                                      console.log('📅 프로필 클릭 (이미지 없음):', {
-                                        dateStr,
-                                        reservationId: reservation.id
-                                      });
                                       setSelectedReservationForManage(reservation);
                                       setCurrentDateStrForManage(dateStr);
                                       setShowManageModal(true);
@@ -828,10 +609,6 @@ const WeeklyList = () => {
                                     className={`w-12 h-12 rounded-full object-cover ring-2 ${ringColor} ${isMine ? 'cursor-pointer' : ''}`}
                                     onClick={() => {
                                       if (!isMine) return;
-                                      console.log('📅 프로필 클릭 (캘린더 뷰, 이미지 있음):', {
-                                        dateStr,
-                                        reservationId: reservation.id
-                                      });
                                       setSelectedReservationForManage(reservation);
                                       setCurrentDateStrForManage(dateStr);
                                       setShowManageModal(true);
@@ -850,10 +627,6 @@ const WeeklyList = () => {
                                     className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold ring-2 ${ringColor} ${bgColor} ${isMine ? 'cursor-pointer' : ''}`}
                                     onClick={() => {
                                       if (!isMine) return;
-                                      console.log('📅 프로필 클릭 (캘린더 뷰, 이미지 없음):', {
-                                        dateStr,
-                                        reservationId: reservation.id
-                                      });
                                       setSelectedReservationForManage(reservation);
                                       setCurrentDateStrForManage(dateStr);
                                       setShowManageModal(true);
@@ -1016,10 +789,6 @@ const WeeklyList = () => {
           await loadMeals();
         }}
         onEdit={(reservation) => {
-          console.log('📝 [WeeklyList] 예약 수정 버튼 클릭:', {
-            reservation,
-            currentDateStrForManage
-          });
           // ManageModal을 먼저 닫고 EditModal 열기
           setShowManageModal(false);
           setSelectedReservationForManage(reservation);
@@ -1072,11 +841,6 @@ const WeeklyList = () => {
         profiles={profiles}
         user={user}
         onProfileClick={(reservation, clickedDate) => {
-          console.log('👤 [WeeklyList] 상세 모달에서 본인 프로필 클릭:', {
-            reservation,
-            clickedDate,
-            dateStr: formatDate(clickedDate)
-          });
           // 상세 모달 닫고 예약관리 모달 열기
           setShowReservationDetailModal(false);
           setSelectedReservationForManage(reservation);
@@ -1168,14 +932,6 @@ const WeeklyList = () => {
         spaceId={selectedSpace?.id}
         currentUser={user}
         profiles={profiles}
-      />
-
-      {/* 방 생성 신청 모달 */}
-      <CreateSpaceModal
-        isOpen={showCreateSpaceModal}
-        onClose={() => setShowCreateSpaceModal(false)}
-        onSubmit={handleCreateSpaceRequest}
-        isLoading={isCreatingSpace}
       />
     </div>
   );
