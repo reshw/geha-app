@@ -31,6 +31,7 @@ import AlimtalkSettingsPage from './pages/AlimtalkSettingsPage';
 import GuestPolicySettingsPage from './pages/GuestPolicySettingsPage';
 import SettlementSettingsPage from './pages/SettlementSettingsPage';
 import TransferManagerPage from './pages/TransferManagerPage';
+import DataMigrationPage from './pages/DataMigrationPage';
 import SuperAdminPage from './pages/SuperAdminPage';
 import SlopesPage from './pages/SlopesPage';
 import EmailTestPage from './pages/EmailTestPage';
@@ -87,6 +88,7 @@ function App() {
           <Route path="/space/alimtalk" element={<AlimtalkSettingsPage />} />
           <Route path="/space/guestpolicy" element={<GuestPolicySettingsPage />} />
           <Route path="/space/settlement" element={<SettlementSettingsPage />} />
+          <Route path="/space/migration" element={<DataMigrationPage />} />
           <Route path="/space/transfer-manager" element={<TransferManagerPage />} />
           
           {/* 슈퍼 어드민 */}

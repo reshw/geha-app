@@ -1,9 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import useStore from '../store/useStore';
-import { ArrowLeft, Settings, Users, Bell, Info, Crown, DollarSign, CreditCard, CalendarClock, Puzzle } from 'lucide-react';
+import { ArrowLeft, Settings, Users, Bell, Info, Crown, DollarSign, CreditCard, CalendarClock, Puzzle, Database } from 'lucide-react';
 import { canManageSpace } from '../utils/permissions';
 import { USER_TYPES } from '../utils/constants';
 import { useEffect } from 'react';
+import BottomNav from '../components/common/BottomNav';
 
 export default function SpaceManagePage() {
   const navigate = useNavigate();
@@ -91,6 +92,14 @@ export default function SpaceManagePage() {
       path: '/space/settlement'
     },
     {
+      id: 'data-migration',
+      title: '데이터 마이그레이션',
+      description: '예약 데이터 업데이트 및 통계 재생성',
+      icon: Database,
+      color: 'from-slate-500 to-slate-600',
+      path: '/space/migration'
+    },
+    {
       id: 'transfer-manager',
       title: '매니저 권한 양도',
       description: '다른 멤버에게 매니저 권한 이전',
@@ -108,7 +117,7 @@ export default function SpaceManagePage() {
         <div className="max-w-2xl mx-auto px-4 py-4">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/more')}
               className="p-2 hover:bg-white/10 rounded-lg transition-colors"
             >
               <ArrowLeft className="w-5 h-5 text-white" />
@@ -176,6 +185,8 @@ export default function SpaceManagePage() {
           </div>
         </div>
       </div>
+
+      <BottomNav />
     </div>
   );
 }
