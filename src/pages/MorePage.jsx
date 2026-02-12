@@ -5,12 +5,15 @@ import {
   Settings2,
   Share2,
   LogOut,
-  ChevronRight
+  ChevronRight,
+  Database,
+  UserCheck
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import useStore from '../store/useStore';
 import spaceSettingsService from '../services/spaceSettingsService';
 import spaceService from '../services/spaceService';
+import reservationService from '../services/reservationService';
 import { AVAILABLE_FEATURES } from '../utils/features';
 import { canManageSpace } from '../utils/permissions';
 import { USER_TYPE_LABELS } from '../utils/constants';
@@ -117,6 +120,46 @@ const MorePage = () => {
     }
   };
 
+  const handleMigrateGender = async () => {
+    if (!selectedSpace) {
+      alert('스페이스를 선택해주세요.');
+      return;
+    }
+
+    if (!window.confirm('예약 데이터에 gender 정보를 추가합니다.\n(users 컬렉션에서 조회)\n\n계속하시겠습니까?')) {
+      return;
+    }
+
+    try {
+      const spaceId = selectedSpace.id || selectedSpace.spaceId;
+      const result = await reservationService.migrateReservationGender(spaceId);
+      alert(`✅ Gender 마이그레이션 완료!\n\n업데이트: ${result.updatedCount}개\n스킵: ${result.skippedCount}개\n오류: ${result.errorCount}개`);
+    } catch (error) {
+      console.error('❌ 마이그레이션 실패:', error);
+      alert('마이그레이션에 실패했습니다.');
+    }
+  };
+
+  const handleMigrateDailyStats = async () => {
+    if (!selectedSpace) {
+      alert('스페이스를 선택해주세요.');
+      return;
+    }
+
+    if (!window.confirm('기존 예약 데이터로 dailyStats를 생성합니다.\n\n이 작업은 시간이 걸릴 수 있습니다. 계속하시겠습니까?')) {
+      return;
+    }
+
+    try {
+      const spaceId = selectedSpace.id || selectedSpace.spaceId;
+      const result = await reservationService.migrateDailyStats(spaceId);
+      alert(`✅ 마이그레이션 완료!\n총 ${result.count}개 예약 처리됨`);
+    } catch (error) {
+      console.error('❌ 마이그레이션 실패:', error);
+      alert('마이그레이션에 실패했습니다.');
+    }
+  };
+
   // 메뉴 아이템 컴포넌트
   const MenuItem = ({ icon: Icon, label, onClick, variant = 'default' }) => {
     const colorClass = variant === 'danger' ? 'text-red-600 hover:bg-red-50 active:bg-red-100' :
@@ -163,11 +206,25 @@ const MorePage = () => {
 
           {/* 스페이스 관리 (vice-manager, manager만) */}
           {selectedSpace?.userType && canManageSpace(selectedSpace.userType) && (
-            <MenuItem
-              icon={Settings2}
-              label="스페이스 관리"
-              onClick={() => navigate('/space/manage')}
-            />
+            <>
+              <MenuItem
+                icon={Settings2}
+                label="스페이스 관리"
+                onClick={() => navigate('/space/manage')}
+              />
+              <MenuItem
+                icon={UserCheck}
+                label="예약 성별 정보 채우기"
+                onClick={handleMigrateGender}
+                variant="admin"
+              />
+              <MenuItem
+                icon={Database}
+                label="캘린더 통계 초기화"
+                onClick={handleMigrateDailyStats}
+                variant="admin"
+              />
+            </>
           )}
         </div>
 

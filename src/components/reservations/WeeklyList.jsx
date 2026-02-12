@@ -88,7 +88,7 @@ const NoSpaceNotice = ({ onJoinSpace }) => (
 const WeeklyList = () => {
   const navigate = useNavigate();
   const { user, isLoggedIn, logout } = useAuth();
-  const { selectedSpace, spaces, profiles, setReservations } = useStore();
+  const { selectedSpace, spaces, profiles, setReservations, invalidateCalendarCache } = useStore();
 
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     const today = new Date();
@@ -115,6 +115,7 @@ const WeeklyList = () => {
   const [showReservationDetailModal, setShowReservationDetailModal] = useState(false);
   const [selectedDateForDetail, setSelectedDateForDetail] = useState(null);
   const [selectedReservationsForDetail, setSelectedReservationsForDetail] = useState([]);
+  const [loadingReservationDetail, setLoadingReservationDetail] = useState(false);
   const [viewMode, setViewMode] = useState('list'); // 'list' | 'calendar'
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const today = new Date();
@@ -147,8 +148,8 @@ const WeeklyList = () => {
   );
 
   // 현재 뷰 모드에 맞는 데이터 선택
-  const { reservations: reservationsObj, loading: reservationsLoading } =
-    viewMode === 'calendar' ? monthlyData : weeklyData;
+  const { reservations: reservationsObj, loading: reservationsLoading } = weeklyData;
+  const { dailyStats, myReservations, loading: monthlyLoading, fetchDateReservations } = monthlyData;
 
   const { createReservation, cancelReservation, refresh } = weeklyData;
 
@@ -330,15 +331,22 @@ const WeeklyList = () => {
       {/* 월간 캘린더 뷰 */}
       {viewMode === 'calendar' && (
         <MonthlyCalendarView
-          reservationsObj={reservationsObj}
-          profiles={profiles}
+          dailyStats={dailyStats}
+          myReservations={myReservations}
           user={user}
           selectedSpace={selectedSpace}
           onMonthChange={handleMonthChange}
-          onDateClick={(date, reservations) => {
+          onDateClick={async (date) => {
+            // 모달 먼저 표시 (로딩 상태)
             setSelectedDateForDetail(date);
-            setSelectedReservationsForDetail(reservations);
+            setSelectedReservationsForDetail([]);
+            setLoadingReservationDetail(true);
             setShowReservationDetailModal(true);
+
+            // 백그라운드에서 데이터 로드
+            const reservations = await fetchDateReservations(date);
+            setSelectedReservationsForDetail(reservations);
+            setLoadingReservationDetail(false);
           }}
         />
       )}
@@ -817,6 +825,7 @@ const WeeklyList = () => {
               { ...updateData, userId: user.id }  // userId 전달
             );
 
+            invalidateCalendarCache(); // 캘린더 캐시 무효화
             await refresh();
             setToast({ message: '예약이 수정되었습니다', type: 'success' });
             setShowEditModal(false);
@@ -835,11 +844,13 @@ const WeeklyList = () => {
           setShowReservationDetailModal(false);
           setSelectedDateForDetail(null);
           setSelectedReservationsForDetail([]);
+          setLoadingReservationDetail(false);
         }}
         date={selectedDateForDetail}
         reservations={selectedReservationsForDetail}
         profiles={profiles}
         user={user}
+        loading={loadingReservationDetail}
         onProfileClick={(reservation, clickedDate) => {
           // 상세 모달 닫고 예약관리 모달 열기
           setShowReservationDetailModal(false);

@@ -114,7 +114,7 @@ const BartenderMenuPage = () => {
     };
 
     await bartenderService.createOrder(selectedSpace.id, orderData);
-    alert('주문이 완료되었습니다!\n바텐더에게 알림이 전송되었습니다.');
+    alert('주문이 완료되었습니다!\n메뉴판 담당자에게 알림이 전송되었습니다.');
     setCart([]);
   };
 
@@ -135,7 +135,7 @@ const BartenderMenuPage = () => {
             >
               <ArrowLeft className="w-6 h-6" />
             </button>
-            <h1 className="text-2xl font-bold flex-1">바텐더 메뉴</h1>
+            <h1 className="text-2xl font-bold flex-1">메뉴판</h1>
             <button
               onClick={() => navigate('/bartender/orders')}
               className="p-2 hover:bg-white/20 rounded-full transition-colors"

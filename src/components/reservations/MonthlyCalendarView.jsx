@@ -1,10 +1,10 @@
 // src/components/reservations/MonthlyCalendarView.jsx
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Mars, Venus } from 'lucide-react';
 
 const MonthlyCalendarView = ({
-  reservationsObj,
-  profiles,
+  dailyStats,
+  myReservations,
   user,
   onDateClick,
   selectedSpace,
@@ -152,7 +152,9 @@ const MonthlyCalendarView = ({
           <div className="grid grid-cols-7 divide-x divide-y divide-gray-200">
             {calendarDays.map((dayInfo, index) => {
               const dateKey = formatDateKey(dayInfo.date);
-              const dateReservations = reservationsObj[dateKey] || [];
+              const stats = dailyStats[dateKey] || { totalCount: 0, maleCount: 0, femaleCount: 0, guestCount: 0 };
+              const myReservation = myReservations[dateKey]?.[0]; // 내 예약 (있으면 배열의 첫 번째)
+              const hasReservations = stats.totalCount > 0;
               const isToday = dayInfo.date.getTime() === today.getTime();
               const dayOfWeek = dayInfo.date.getDay();
               const isSunday = dayOfWeek === 0;
@@ -161,16 +163,16 @@ const MonthlyCalendarView = ({
               return (
                 <div
                   key={index}
-                  className={`min-h-[100px] p-2 ${
-                    !dayInfo.isCurrentMonth ? 'bg-gray-50' : 'bg-white hover:bg-blue-50'
+                  className={`min-h-[100px] p-2 relative ${
+                    !dayInfo.isCurrentMonth ? 'bg-gray-50' : myReservation ? 'bg-green-50/40 hover:bg-green-50/60' : 'bg-white hover:bg-blue-50'
                   } ${
-                    dateReservations.length > 0 && dayInfo.isCurrentMonth
+                    hasReservations && dayInfo.isCurrentMonth
                       ? 'cursor-pointer'
                       : ''
-                  } transition-colors`}
+                  } ${myReservation ? 'ring-1 ring-green-400/40 ring-inset' : ''} transition-colors`}
                   onClick={() => {
-                    if (dateReservations.length > 0 && dayInfo.isCurrentMonth) {
-                      onDateClick(dayInfo.date, dateReservations);
+                    if (hasReservations && dayInfo.isCurrentMonth) {
+                      onDateClick(dayInfo.date);
                     }
                   }}
                 >
@@ -193,39 +195,43 @@ const MonthlyCalendarView = ({
                     </span>
                   </div>
 
-                  {/* 예약자 정보 표시 (심플 버전) */}
-                  {dayInfo.isCurrentMonth && dateReservations.length > 0 && (
+                  {/* 예약자 정보 표시 */}
+                  {dayInfo.isCurrentMonth && hasReservations && (
                     <div className="space-y-0.5 text-xs">
                       {/* 총 인원수 */}
-                      <div className="font-bold text-blue-600">
-                        {dateReservations.length}명
+                      <div className={`font-bold ${myReservation ? 'text-green-600' : 'text-blue-600'}`}>
+                        {stats.totalCount}명
                       </div>
 
-                      {/* 성별 통계 */}
-                      {(() => {
-                        const maleCount = dateReservations.filter(r => profiles[r.userId]?.gender === 'male').length;
-                        const femaleCount = dateReservations.filter(r => profiles[r.userId]?.gender === 'female').length;
-                        return (
-                          <div className="text-gray-600">
-                            남{maleCount} / 여{femaleCount}
+                      {/* 성별 통계 (아이콘) - 세로 배치 */}
+                      <div className="flex flex-col gap-0.5">
+                        {stats.maleCount > 0 && (
+                          <div className="flex items-center gap-0.5 text-blue-600">
+                            <Mars className="w-3 h-3" />
+                            <span>{stats.maleCount}</span>
                           </div>
-                        );
-                      })()}
+                        )}
+                        {stats.femaleCount > 0 && (
+                          <div className="flex items-center gap-0.5 text-pink-600">
+                            <Venus className="w-3 h-3" />
+                            <span>{stats.femaleCount}</span>
+                          </div>
+                        )}
+                      </div>
 
                       {/* 게스트 수 */}
-                      {(() => {
-                        const memberTypes = ['shareholder', 'manager', 'vice-manager'];
-                        const guestCount = dateReservations.filter(r => !memberTypes.includes(r.type)).length;
-                        if (guestCount > 0) {
-                          return (
-                            <div className="text-orange-600">
-                              게{guestCount}
-                            </div>
-                          );
-                        }
-                        return null;
-                      })()}
+                      {stats.guestCount > 0 && (
+                        <div className="text-orange-600">
+                          게{stats.guestCount}
+                        </div>
+                      )}
                     </div>
+                  )}
+
+                  {/* 내 예약 표시 (우측 상단 인디케이터) */}
+                  {myReservation && dayInfo.isCurrentMonth && (
+                    <div className="absolute top-1 right-1 w-2 h-2 bg-green-400 rounded-full"
+                         title="내 예약" />
                   )}
                 </div>
               );

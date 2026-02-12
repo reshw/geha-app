@@ -86,7 +86,7 @@ export default function BartenderOrderModal({ cart, onClose, onSubmit }) {
               value={memo}
               onChange={(e) => setMemo(e.target.value)}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              placeholder="주문 시 바텐더에게 전달할 메모를 입력하세요"
+              placeholder="주문 시 담당자에게 전달할 메모를 입력하세요"
               rows={3}
               disabled={loading}
             />

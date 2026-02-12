@@ -84,6 +84,49 @@ const useStore = create((set, get) => ({
   addProfiles: (newProfiles) => set((state) => ({
     profiles: { ...state.profiles, ...newProfiles }
   })),
+
+  // 📊 캘린더 캐시 (중복 조회 방지)
+  calendarCache: {
+    // spaceId_monthKey: { dailyStats, myReservations, timestamp }
+  },
+
+  // 캘린더 데이터 캐시 저장
+  setCachedCalendarData: (spaceId, monthKey, data) => {
+    set((state) => ({
+      calendarCache: {
+        ...state.calendarCache,
+        [`${spaceId}_${monthKey}`]: {
+          ...data,
+          timestamp: Date.now()
+        }
+      }
+    }));
+  },
+
+  // 캘린더 데이터 캐시 조회 (30초 이내면 재사용)
+  getCachedCalendarData: (spaceId, monthKey) => {
+    const cache = get().calendarCache[`${spaceId}_${monthKey}`];
+    if (!cache) return null;
+
+    const age = Date.now() - cache.timestamp;
+    const MAX_AGE = 30 * 1000; // 30초
+
+    if (age > MAX_AGE) {
+      // 만료된 캐시 삭제
+      const { calendarCache } = get();
+      const newCache = { ...calendarCache };
+      delete newCache[`${spaceId}_${monthKey}`];
+      set({ calendarCache: newCache });
+      return null;
+    }
+
+    return cache;
+  },
+
+  // 예약 생성/취소 시 캐시 무효화
+  invalidateCalendarCache: () => {
+    set({ calendarCache: {} });
+  },
 }));
 
 export default useStore;

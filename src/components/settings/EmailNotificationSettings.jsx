@@ -459,10 +459,10 @@ const EmailNotificationSettings = ({ spaceId, settings, onSave }) => {
         )}
       </div>
 
-      {/* 바텐더 주문 알림 */}
+      {/* 메뉴판 주문 알림 */}
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-gray-900">🍸 바텐더 주문 알림</h3>
+          <h3 className="text-lg font-bold text-gray-900">🍸 메뉴판 주문 알림</h3>
           <label className="relative inline-flex items-center cursor-pointer">
             <input
               type="checkbox"
@@ -475,7 +475,7 @@ const EmailNotificationSettings = ({ spaceId, settings, onSave }) => {
         </div>
 
         <p className="text-sm text-gray-600 mb-4">
-          바텐더 주문이 들어올 때 이메일 알림을 받습니다.
+          메뉴판 주문이 들어올 때 이메일 알림을 받습니다.
         </p>
 
         {emailSettings.bartender_order.enabled && (

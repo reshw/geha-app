@@ -49,7 +49,7 @@ export const AVAILABLE_FEATURES = {
   },
   bartender: {
     id: 'bartender',
-    name: '바텐더',
+    name: '메뉴판',
     icon: Coffee,
     path: '/bartender/menu',
     description: '음료 주문 및 관리',

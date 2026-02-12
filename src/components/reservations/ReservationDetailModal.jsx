@@ -10,9 +10,24 @@ const ReservationDetailModal = ({
   reservations,
   profiles,
   user,
-  onProfileClick
+  onProfileClick,
+  loading = false
 }) => {
-  if (!date || !reservations) return null;
+  if (!date) return null;
+
+  // 로딩 중일 때
+  if (loading) {
+    return (
+      <Modal isOpen={isOpen} onClose={onClose} title={null}>
+        <div className="flex flex-col items-center justify-center py-12 px-6">
+          <div className="w-12 h-12 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin mb-4" />
+          <p className="text-gray-600 font-medium">예약 정보 불러오는 중...</p>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (!reservations) return null;
 
   // 예약 그룹 분리: 정규 예약 vs 당일치기
   const regularReservations = reservations.filter(r => !r.isDayTrip && r.nights !== 0);

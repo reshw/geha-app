@@ -4,7 +4,7 @@ import reservationService from '../services/reservationService';
 import authService from '../services/authService';
 
 export const useReservations = (spaceId, currentWeekStart) => {
-  const { reservations, setReservations, addProfiles } = useStore();
+  const { reservations, setReservations, addProfiles, invalidateCalendarCache } = useStore();
   const [loading, setLoading] = useState(false);
   
   const fetchReservations = useCallback(async () => {
@@ -64,11 +64,13 @@ export const useReservations = (spaceId, currentWeekStart) => {
   
   const createReservation = async (reservationData) => {
     await reservationService.createReservation(spaceId, reservationData);
+    invalidateCalendarCache(); // 캘린더 캐시 무효화
     await fetchReservations();
   };
-  
+
   const cancelReservation = async (reservationId, userId, cancelReason = '') => {
     await reservationService.cancelReservation(spaceId, reservationId, userId, cancelReason);
+    invalidateCalendarCache(); // 캘린더 캐시 무효화
     await fetchReservations();
   };
   
