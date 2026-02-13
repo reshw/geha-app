@@ -6,8 +6,9 @@ import { db } from '../config/firebase';
 import { useAuth } from '../hooks/useAuth';
 import useStore from '../store/useStore';
 import expenseService from '../services/expenseService';
+import spaceSettingsService from '../services/spaceSettingsService';
 import ExpenseDetailModal from '../components/expenses/ExpenseDetailModal';
-import { canManageSpace } from '../utils/permissions';
+import { canManageSpace, canAccessFinance } from '../utils/permissions';
 
 const ExpenseListPage = () => {
   const navigate = useNavigate();
@@ -35,13 +36,30 @@ const ExpenseListPage = () => {
   
   const isManager = selectedSpace?.userType && canManageSpace(selectedSpace.userType);
   
-  // 운영비 목록 조회
+  // 권한 체크 및 운영비 목록 조회
   useEffect(() => {
-    if (selectedSpace?.id) {
-      loadExpenses();
-      loadDefaultSettings();
-    }
-  }, [selectedSpace]);
+    const checkPermissionAndLoad = async () => {
+      if (!selectedSpace?.id || !user) return;
+
+      try {
+        const financePermission = await spaceSettingsService.getFinancePermission(selectedSpace.id);
+        const hasAccess = canAccessFinance(selectedSpace.userType, financePermission);
+
+        if (!hasAccess) {
+          alert('재정 관리 페이지에 접근 권한이 없습니다.');
+          navigate('/');
+          return;
+        }
+
+        loadExpenses();
+        loadDefaultSettings();
+      } catch (error) {
+        console.error('권한 체크 실패:', error);
+      }
+    };
+
+    checkPermissionAndLoad();
+  }, [selectedSpace, user, navigate]);
   
   // 필터링
   useEffect(() => {
@@ -249,7 +267,14 @@ const ExpenseListPage = () => {
     });
   };
   
-  const getItemsSummary = (items) => {
+  const getItemsSummary = (expense) => {
+    // 입금 타입 처리
+    if (expense.type === 'income') {
+      return expense.itemName || '입금';
+    }
+
+    // 지출 타입 처리 (기존 로직)
+    const items = expense.items;
     if (!items || items.length === 0) return '항목 없음';
     if (items.length === 1) return items[0].itemName;
     if (items.length === 2) return `${items[0].itemName}, ${items[1].itemName}`;
@@ -284,10 +309,82 @@ const ExpenseListPage = () => {
     }
   };
   
+  // 잔액 계산
+  const balance = useMemo(() => {
+    const approvedIncomes = filteredExpenses.filter(e =>
+      e.status === 'approved' && e.type === 'income'
+    );
+    const approvedExpenses = filteredExpenses.filter(e =>
+      e.status === 'approved' && (e.type === 'expense' || !e.type)
+    );
+
+    const totalIncome = approvedIncomes.reduce((sum, e) => sum + (e.totalAmount || 0), 0);
+    const totalExpense = approvedExpenses.reduce((sum, e) => sum + (e.totalAmount || 0), 0);
+
+    return {
+      totalIncome,
+      totalExpense,
+      balance: totalIncome - totalExpense
+    };
+  }, [filteredExpenses]);
+
+  // 날짜별 그룹화 (최신순)
+  const groupedByDate = useMemo(() => {
+    const groups = {};
+
+    filteredExpenses.forEach(expense => {
+      const date = new Date(expense.usedAt);
+      const dateKey = date.toISOString().split('T')[0]; // YYYY-MM-DD
+
+      if (!groups[dateKey]) {
+        groups[dateKey] = {
+          date: date,
+          expenses: [],
+          totalIncome: 0,
+          totalExpense: 0
+        };
+      }
+
+      groups[dateKey].expenses.push(expense);
+
+      // 일자별 합계
+      if (expense.type === 'income') {
+        groups[dateKey].totalIncome += expense.totalAmount || 0;
+      } else {
+        groups[dateKey].totalExpense += expense.totalAmount || 0;
+      }
+    });
+
+    // 날짜별로 정렬 (최신순)
+    return Object.entries(groups)
+      .sort(([dateA], [dateB]) => dateB.localeCompare(dateA))
+      .map(([dateKey, data]) => ({ dateKey, ...data }));
+  }, [filteredExpenses]);
+
+  // 날짜 표시 포맷 (오늘/어제/날짜)
+  const getDateLabel = (date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const targetDate = new Date(date);
+    targetDate.setHours(0, 0, 0, 0);
+
+    if (targetDate.getTime() === today.getTime()) {
+      return '오늘';
+    } else if (targetDate.getTime() === yesterday.getTime()) {
+      return '어제';
+    } else {
+      return formatDate(date);
+    }
+  };
+
   const counts = useMemo(() => {
     // 날짜 필터가 적용된 expenses를 기준으로 카운트
     let dateFiltered = expenses;
-    
+
     // 날짜 필터 적용
     if (startDate) {
       const start = new Date(startDate);
@@ -406,7 +503,21 @@ const ExpenseListPage = () => {
           </div>
         </div>
       )}
-      
+
+      {/* 잔액 카드 */}
+      <div className="max-w-2xl mx-auto px-4 py-4">
+        <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl p-6 text-white shadow-lg">
+          <div className="text-sm opacity-80 mb-1">현재 잔액</div>
+          <div className="text-4xl font-bold mb-3">
+            {formatCurrency(balance.balance)}
+          </div>
+          <div className="flex justify-between text-sm opacity-90">
+            <span>💰 입금 {formatCurrency(balance.totalIncome)}</span>
+            <span>💸 지출 {formatCurrency(balance.totalExpense)}</span>
+          </div>
+        </div>
+      </div>
+
       {/* 필터 탭 */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
         <div className="max-w-2xl mx-auto px-4">
@@ -456,7 +567,7 @@ const ExpenseListPage = () => {
       </div>
       
       {/* 목록 */}
-      <div className="max-w-2xl mx-auto p-4 space-y-3">
+      <div className="max-w-2xl mx-auto p-4 space-y-6">
         {isLoading ? (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
@@ -465,14 +576,45 @@ const ExpenseListPage = () => {
         ) : filteredExpenses.length === 0 ? (
           <div className="bg-white rounded-xl p-12 text-center">
             <p className="text-gray-500">
-              {filter === 'all' 
+              {filter === 'all'
                 ? (startDate || endDate ? '해당 기간에 운영비 내역이 없습니다.' : '운영비 내역이 없습니다.')
                 : `${filter === 'pending' ? '대기중인' : filter === 'approved' ? '승인된' : '거부된'} 청구가 없습니다.`
               }
             </p>
           </div>
         ) : (
-          filteredExpenses.map((expense) => {
+          groupedByDate.map((dateGroup) => (
+            <div key={dateGroup.dateKey} className="space-y-3">
+              {/* 날짜 헤더 */}
+              <div className="sticky top-0 z-10 bg-gradient-to-r from-slate-100 to-slate-50 rounded-lg px-4 py-3 border-l-4 border-blue-500 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-blue-600" />
+                    <span className="font-bold text-gray-900">{getDateLabel(dateGroup.date)}</span>
+                    <span className="text-sm text-gray-500">
+                      {getDateLabel(dateGroup.date) === '오늘' || getDateLabel(dateGroup.date) === '어제'
+                        ? `(${formatDate(dateGroup.date)})`
+                        : ''
+                      }
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 text-sm">
+                    {dateGroup.totalIncome > 0 && (
+                      <span className="text-blue-600 font-semibold">
+                        +{formatCurrency(dateGroup.totalIncome)}
+                      </span>
+                    )}
+                    {dateGroup.totalExpense > 0 && (
+                      <span className="text-red-600 font-semibold">
+                        -{formatCurrency(dateGroup.totalExpense)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* 해당 날짜의 expense 리스트 */}
+              {dateGroup.expenses.map((expense) => {
             const isExpanded = expandedId === expense.id;
             
             return (
@@ -496,26 +638,40 @@ const ExpenseListPage = () => {
                         {expense.userName}
                       </span>
                     </div>
-                    {getStatusBadge(expense.status)}
+                    <div className="flex items-center gap-1">
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        expense.type === 'income'
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-red-100 text-red-700'
+                      }`}>
+                        {expense.type === 'income' ? '입금' : '지출'}
+                      </span>
+                      {getStatusBadge(expense.status)}
+                    </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
                     <Calendar className="w-4 h-4" />
-                    사용일: {formatDate(expense.usedAt)}
+                    {expense.type === 'income' ? '입금일' : '사용일'}: {formatDate(expense.usedAt)}
                   </div>
-                  
+
                   {/* 품목 요약 */}
                   <div className="text-sm text-gray-700 mb-2 line-clamp-1">
-                    {getItemsSummary(expense.items)}
+                    {getItemsSummary(expense)}
                   </div>
                   
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-gray-500">
-                      {expense.items.length}개 품목
+                      {expense.type === 'income'
+                        ? (expense.transactionType === 'auto_guest_reservation' ? '🏠 게스트 예약' : '입금')
+                        : `${expense.items?.length || 0}개 품목`
+                      }
                     </span>
                     <div className="flex items-center gap-2">
-                      <span className="text-xl font-bold text-blue-600">
-                        {formatCurrency(expense.totalAmount)}
+                      <span className={`text-xl font-bold ${
+                        expense.type === 'income' ? 'text-blue-600' : 'text-red-600'
+                      }`}>
+                        {expense.type === 'income' ? '+' : '-'}{formatCurrency(expense.totalAmount)}
                       </span>
                       {isExpanded ? (
                         <ChevronUp className="w-5 h-5 text-blue-600" />
@@ -532,18 +688,35 @@ const ExpenseListPage = () => {
                     {/* 품목 내역 */}
                     <div>
                       <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                        📋 품목 내역
+                        {expense.type === 'income' ? '💰 입금 정보' : '📋 품목 내역'}
                       </h4>
-                      <div className="space-y-2">
-                        {expense.items.map((item, idx) => (
-                          <div key={idx} className="bg-white rounded-lg p-3 flex justify-between shadow-sm">
-                            <div>
-                              <div className="font-medium text-gray-900">
-                                {item.itemName}
-                                {item.itemSpec && (
-                                  <span className="text-gray-500 text-sm ml-1">({item.itemSpec})</span>
-                                )}
-                              </div>
+                      {expense.type === 'income' ? (
+                        <div className="bg-white rounded-lg p-3 shadow-sm">
+                          <div className="flex justify-between items-center">
+                            <div className="font-medium text-gray-900">
+                              {expense.itemName}
+                              {expense.transactionType === 'auto_guest_reservation' && expense.guestInfo && (
+                                <div className="text-xs text-gray-500 mt-1">
+                                  게스트: {expense.guestInfo.name} · {expense.guestInfo.nights}박
+                                </div>
+                              )}
+                            </div>
+                            <div className="text-lg font-bold text-blue-600">
+                              +{formatCurrency(expense.totalAmount)}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {expense.items?.map((item, idx) => (
+                            <div key={idx} className="bg-white rounded-lg p-3 flex justify-between shadow-sm">
+                              <div>
+                                <div className="font-medium text-gray-900">
+                                  {item.itemName}
+                                  {item.itemSpec && (
+                                    <span className="text-gray-500 text-sm ml-1">({item.itemSpec})</span>
+                                  )}
+                                </div>
                               <div className="text-sm text-gray-600 mt-1">
                                 {formatCurrency(item.itemPrice)} × {item.itemQty}
                               </div>
@@ -552,10 +725,11 @@ const ExpenseListPage = () => {
                               {formatCurrency(item.total)}
                             </div>
                           </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    
+
                     {/* 메모 */}
                     {expense.memo && (
                       <div className="bg-white rounded-lg p-3 shadow-sm">
@@ -580,7 +754,9 @@ const ExpenseListPage = () => {
                 )}
               </div>
             );
-          })
+          })}
+            </div>
+          ))
         )}
       </div>
       

@@ -14,6 +14,8 @@ export default function SpaceSettingsPage() {
   const [emailSettings, setEmailSettings] = useState(null);
   const [praiseStatsPermission, setPraiseStatsPermission] = useState('manager_only');
   const [originalPraiseStatsPermission, setOriginalPraiseStatsPermission] = useState('manager_only');
+  const [financePermission, setFinancePermission] = useState('vice_manager_up');
+  const [originalFinancePermission, setOriginalFinancePermission] = useState('vice_manager_up');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -41,9 +43,10 @@ export default function SpaceSettingsPage() {
   // 변경사항 감지
   useEffect(() => {
     const nameChanged = spaceName !== originalName && spaceName.trim() !== '';
-    const permissionChanged = praiseStatsPermission !== originalPraiseStatsPermission;
-    setHasChanges(nameChanged || permissionChanged);
-  }, [spaceName, originalName, praiseStatsPermission, originalPraiseStatsPermission]);
+    const praisePermissionChanged = praiseStatsPermission !== originalPraiseStatsPermission;
+    const financePermissionChanged = financePermission !== originalFinancePermission;
+    setHasChanges(nameChanged || praisePermissionChanged || financePermissionChanged);
+  }, [spaceName, originalName, praiseStatsPermission, originalPraiseStatsPermission, financePermission, originalFinancePermission]);
 
   const loadSettings = async () => {
     try {
@@ -60,6 +63,11 @@ export default function SpaceSettingsPage() {
       const praisePermission = await spaceSettingsService.getPraiseStatsPermission(spaceId);
       setPraiseStatsPermission(praisePermission);
       setOriginalPraiseStatsPermission(praisePermission);
+
+      // 재정 관리 권한 설정
+      const financePermission = await spaceSettingsService.getFinancePermission(spaceId);
+      setFinancePermission(financePermission);
+      setOriginalFinancePermission(financePermission);
 
       // 이메일 알림 설정
       const emailSettingsData = await spaceSettingsService.getEmailSettings(spaceId);
@@ -94,15 +102,17 @@ export default function SpaceSettingsPage() {
     }
 
     const nameChanged = spaceName !== originalName;
-    const permissionChanged = praiseStatsPermission !== originalPraiseStatsPermission;
+    const praisePermissionChanged = praiseStatsPermission !== originalPraiseStatsPermission;
+    const financePermissionChanged = financePermission !== originalFinancePermission;
 
     let confirmMessage = '';
-    if (nameChanged && permissionChanged) {
-      confirmMessage = `다음 설정을 변경하시겠습니까?\n\n- 스페이스 이름: "${trimmedName}"\n- 칭찬 통계 권한 변경\n\n모든 멤버에게 변경사항이 즉시 반영됩니다.`;
-    } else if (nameChanged) {
-      confirmMessage = `스페이스 이름을 "${trimmedName}"(으)로 변경하시겠습니까?\n\n모든 멤버에게 변경된 이름이 표시됩니다.`;
-    } else if (permissionChanged) {
-      confirmMessage = `칭찬 통계 권한을 변경하시겠습니까?\n\n모든 멤버에게 변경사항이 즉시 반영됩니다.`;
+    const changes = [];
+    if (nameChanged) changes.push(`스페이스 이름: "${trimmedName}"`);
+    if (praisePermissionChanged) changes.push('칭찬 통계 권한 변경');
+    if (financePermissionChanged) changes.push('재정 관리 권한 변경');
+
+    if (changes.length > 0) {
+      confirmMessage = `다음 설정을 변경하시겠습니까?\n\n${changes.map(c => `- ${c}`).join('\n')}\n\n모든 멤버에게 변경사항이 즉시 반영됩니다.`;
     }
 
     const confirmed = window.confirm(confirmMessage);
@@ -128,7 +138,7 @@ export default function SpaceSettingsPage() {
       }
 
       // 칭찬 통계 권한 변경
-      if (permissionChanged) {
+      if (praisePermissionChanged) {
         await spaceSettingsService.updatePraiseStatsPermission(
           spaceId,
           praiseStatsPermission,
@@ -136,6 +146,17 @@ export default function SpaceSettingsPage() {
           user.displayName
         );
         setOriginalPraiseStatsPermission(praiseStatsPermission);
+      }
+
+      // 재정 관리 권한 변경
+      if (financePermissionChanged) {
+        await spaceSettingsService.updateFinancePermission(
+          spaceId,
+          financePermission,
+          user.id,
+          user.displayName
+        );
+        setOriginalFinancePermission(financePermission);
       }
 
       alert('설정이 저장되었습니다.');
@@ -249,6 +270,33 @@ export default function SpaceSettingsPage() {
               </select>
               <p className="mt-2 text-xs text-slate-400">
                 칭찬 페이지의 통계 탭을 볼 수 있는 권한
+              </p>
+            </div>
+
+            {/* 재정 관리 권한 */}
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                재정 관리 권한 (입금/지출)
+              </label>
+              <select
+                value={financePermission}
+                onChange={(e) => setFinancePermission(e.target.value)}
+                disabled={saving}
+                className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-50 transition-all appearance-none cursor-pointer"
+                style={{
+                  backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23cbd5e1' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+                  backgroundPosition: 'right 0.5rem center',
+                  backgroundRepeat: 'no-repeat',
+                  backgroundSize: '1.5em 1.5em',
+                  paddingRight: '2.5rem'
+                }}
+              >
+                <option value="manager_only">매니저만</option>
+                <option value="vice_manager_up">부매니저 이상</option>
+                <option value="all_members">전체 멤버</option>
+              </select>
+              <p className="mt-2 text-xs text-slate-400">
+                입금 및 지출 내역 조회/등록 권한을 설정합니다
               </p>
             </div>
           </div>

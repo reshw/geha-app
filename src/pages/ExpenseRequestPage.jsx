@@ -1,18 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Trash2, Calendar, ImageIcon, X } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import useStore from '../store/useStore';
 import expenseService from '../services/expenseService';
+import spaceSettingsService from '../services/spaceSettingsService';
+import { canAccessFinance } from '../utils/permissions';
 import { uploadImage, validateImage, createPreviewUrl, revokePreviewUrl } from '../utils/imageUpload';
 
 const ExpenseRequestPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { selectedSpace } = useStore();
-  
+
+  const [selectedType, setSelectedType] = useState('expense'); // 'expense' | 'income'
   const [usedAt, setUsedAt] = useState(new Date().toISOString().split('T')[0]); // YYYY-MM-DD
   const [memo, setMemo] = useState('');
+
+  // 지출용 상태
   const [items, setItems] = useState([
     {
       itemName: '',
@@ -21,10 +26,36 @@ const ExpenseRequestPage = () => {
       itemSpec: '',
     }
   ]);
+
+  // 입금용 상태
+  const [incomeName, setIncomeName] = useState('');
+  const [incomeAmount, setIncomeAmount] = useState('');
+
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
+  // 권한 체크
+  useEffect(() => {
+    const checkPermission = async () => {
+      if (!selectedSpace?.id || !user) return;
+
+      try {
+        const financePermission = await spaceSettingsService.getFinancePermission(selectedSpace.id);
+        const hasAccess = canAccessFinance(selectedSpace.userType, financePermission);
+
+        if (!hasAccess) {
+          alert('재정 관리 페이지에 접근 권한이 없습니다.');
+          navigate('/');
+        }
+      } catch (error) {
+        console.error('권한 체크 실패:', error);
+      }
+    };
+
+    checkPermission();
+  }, [selectedSpace, user, navigate]);
+
   // 항목 추가
   const addItem = () => {
     setItems([...items, {
@@ -88,6 +119,9 @@ const ExpenseRequestPage = () => {
   
   // 총액 계산
   const calculateTotal = () => {
+    if (selectedType === 'income') {
+      return parseFloat(incomeAmount) || 0;
+    }
     return items.reduce((sum, item) => {
       const price = parseFloat(item.itemPrice) || 0;
       const qty = parseInt(item.itemQty) || 0;
@@ -99,44 +133,61 @@ const ExpenseRequestPage = () => {
   const validateForm = () => {
     // 사용일자 체크
     if (!usedAt) {
-      alert('사용일자를 선택해주세요.');
+      alert(selectedType === 'income' ? '입금일자를 선택해주세요.' : '사용일자를 선택해주세요.');
       return false;
     }
-    
-    // 항목 체크
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      
-      if (!item.itemName.trim()) {
-        alert(`${i + 1}번 항목의 품목명을 입력해주세요.`);
+
+    if (selectedType === 'income') {
+      // 입금 타입 검증
+      if (!incomeName.trim()) {
+        alert('항목명을 입력해주세요.');
         return false;
       }
-      
-      if (!item.itemPrice || parseFloat(item.itemPrice) <= 0) {
-        alert(`${i + 1}번 항목의 단가를 입력해주세요.`);
+
+      if (!incomeAmount || parseFloat(incomeAmount) <= 0) {
+        alert('금액을 입력해주세요.');
         return false;
       }
-      
-      if (!item.itemQty || parseInt(item.itemQty) <= 0) {
-        alert(`${i + 1}번 항목의 수량을 입력해주세요.`);
-        return false;
+    } else {
+      // 지출 타입 검증 (기존 로직)
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+
+        if (!item.itemName.trim()) {
+          alert(`${i + 1}번 항목의 품목명을 입력해주세요.`);
+          return false;
+        }
+
+        if (!item.itemPrice || parseFloat(item.itemPrice) <= 0) {
+          alert(`${i + 1}번 항목의 단가를 입력해주세요.`);
+          return false;
+        }
+
+        if (!item.itemQty || parseInt(item.itemQty) <= 0) {
+          alert(`${i + 1}번 항목의 수량을 입력해주세요.`);
+          return false;
+        }
       }
     }
-    
+
     return true;
   };
   
   // 제출
   const handleSubmit = async () => {
     if (!validateForm()) return;
-    
-    if (!window.confirm('운영비를 청구하시겠습니까?')) return;
-    
+
+    const confirmMessage = selectedType === 'income'
+      ? '입금 내역을 등록하시겠습니까?'
+      : '운영비를 청구하시겠습니까?';
+
+    if (!window.confirm(confirmMessage)) return;
+
     setIsSubmitting(true);
-    
+
     try {
-      console.log('💰 운영비 청구 시작');
-      
+      console.log(`💰 ${selectedType === 'income' ? '입금' : '지출'} 등록 시작`);
+
       // 이미지 업로드 (있는 경우만)
       let imageUrl = '';
       if (imageFile) {
@@ -144,41 +195,49 @@ const ExpenseRequestPage = () => {
         imageUrl = await uploadImage(imageFile, selectedSpace.id);
         console.log('✅ 이미지 업로드 완료:', imageUrl);
       }
-      
-      // 항목 데이터 정리
-      const cleanedItems = items.map(item => ({
-        itemName: item.itemName.trim(),
-        itemPrice: parseFloat(item.itemPrice),
-        itemQty: parseInt(item.itemQty),
-        itemSpec: item.itemSpec.trim(),
-      }));
-      
+
       // Firebase에 저장
       const requestData = {
+        type: selectedType,
         userId: user.id,
         userName: user.displayName || user.name,
         usedAt: new Date(usedAt),
         memo: memo.trim(),
-        items: cleanedItems,
         imageUrl: imageUrl,
       };
-      
+
+      if (selectedType === 'income') {
+        // 입금 타입
+        requestData.itemName = incomeName.trim();
+        requestData.totalAmount = parseFloat(incomeAmount);
+        requestData.transactionType = 'manual';
+      } else {
+        // 지출 타입
+        const cleanedItems = items.map(item => ({
+          itemName: item.itemName.trim(),
+          itemPrice: parseFloat(item.itemPrice),
+          itemQty: parseInt(item.itemQty),
+          itemSpec: item.itemSpec.trim(),
+        }));
+        requestData.items = cleanedItems;
+      }
+
       console.log('📤 청구 데이터:', requestData);
-      
+
       await expenseService.createExpense(selectedSpace.id, requestData);
-      
-      console.log('✅ 청구 완료');
-      alert('운영비 청구가 완료되었습니다!');
-      
+
+      console.log('✅ 등록 완료');
+      alert(selectedType === 'income' ? '입금 내역이 등록되었습니다!' : '운영비 청구가 완료되었습니다!');
+
       // 이미지 프리뷰 정리
       if (imagePreview) {
         revokePreviewUrl(imagePreview);
       }
-      
+
       navigate('/expenses');
     } catch (error) {
-      console.error('❌ 청구 실패:', error);
-      alert('청구 처리 중 오류가 발생했습니다.');
+      console.error('❌ 등록 실패:', error);
+      alert('처리 중 오류가 발생했습니다.');
     } finally {
       setIsSubmitting(false);
     }
@@ -201,22 +260,48 @@ const ExpenseRequestPage = () => {
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div className="flex-1">
-              <h1 className="text-2xl font-bold">운영비 청구</h1>
+              <h1 className="text-2xl font-bold">재정 관리</h1>
               <p className="text-white/80 text-sm mt-1">
-                {selectedSpace?.spaceName || '스페이스'} 운영비 청구하기
+                {selectedSpace?.spaceName || '스페이스'} 입금 및 지출 관리
               </p>
             </div>
           </div>
         </div>
       </div>
-      
+
+      {/* 타입 선택 탭 */}
+      <div className="max-w-2xl mx-auto px-4 -mt-4 mb-4 relative z-10">
+        <div className="bg-white rounded-xl shadow-sm p-2 flex gap-2">
+          <button
+            onClick={() => setSelectedType('expense')}
+            className={`flex-1 py-3 rounded-lg font-semibold transition-all ${
+              selectedType === 'expense'
+                ? 'bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-md'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            💸 지출
+          </button>
+          <button
+            onClick={() => setSelectedType('income')}
+            className={`flex-1 py-3 rounded-lg font-semibold transition-all ${
+              selectedType === 'income'
+                ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            💰 입금
+          </button>
+        </div>
+      </div>
+
       {/* 폼 */}
       <div className="max-w-2xl mx-auto p-4 space-y-6">
         {/* 사용일자 */}
         <div className="bg-white rounded-xl shadow-sm p-4">
           <label className="flex items-center gap-2 text-gray-700 font-semibold mb-2">
             <Calendar className="w-5 h-5 text-blue-600" />
-            사용일자
+            {selectedType === 'income' ? '입금일자' : '사용일자'}
           </label>
           <input
             type="date"
@@ -269,18 +354,52 @@ const ExpenseRequestPage = () => {
           )}
         </div>
         
-        {/* 품목 리스트 */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-gray-900">📋 품목 내역</h2>
-            <button
-              onClick={addItem}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              항목 추가
-            </button>
+        {/* 입금 폼 (입금 타입일 때) */}
+        {selectedType === 'income' ? (
+          <div className="bg-white rounded-xl shadow-sm p-4 space-y-4">
+            <h2 className="text-lg font-bold text-gray-900">💰 입금 정보</h2>
+
+            {/* 항목명 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                항목명 *
+              </label>
+              <input
+                type="text"
+                value={incomeName}
+                onChange={(e) => setIncomeName(e.target.value)}
+                placeholder="예: 회비, 게스트비, 기부금"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* 금액 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                금액 *
+              </label>
+              <input
+                type="number"
+                value={incomeAmount}
+                onChange={(e) => setIncomeAmount(e.target.value)}
+                placeholder="0"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
           </div>
+        ) : (
+          /* 지출 폼 (기존 품목 리스트) */
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-gray-900">📋 품목 내역</h2>
+              <button
+                onClick={addItem}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                항목 추가
+              </button>
+            </div>
           
           {items.map((item, index) => (
             <div key={index} className="bg-white rounded-xl shadow-sm p-4 space-y-3">
@@ -363,8 +482,9 @@ const ExpenseRequestPage = () => {
               </div>
             </div>
           ))}
-        </div>
-        
+          </div>
+        )}
+
         {/* 메모 */}
         <div className="bg-white rounded-xl shadow-sm p-4">
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -373,7 +493,7 @@ const ExpenseRequestPage = () => {
           <textarea
             value={memo}
             onChange={(e) => setMemo(e.target.value)}
-            placeholder="청구 사유나 참고사항을 입력해주세요"
+            placeholder={selectedType === 'income' ? '입금 관련 참고사항을 입력해주세요' : '청구 사유나 참고사항을 입력해주세요'}
             rows={4}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
@@ -393,11 +513,15 @@ const ExpenseRequestPage = () => {
         <button
           onClick={handleSubmit}
           disabled={isSubmitting}
-          className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-bold text-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className={`w-full py-4 text-white rounded-xl font-bold text-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+            selectedType === 'income'
+              ? 'bg-gradient-to-r from-blue-600 to-indigo-600'
+              : 'bg-gradient-to-r from-red-600 to-pink-600'
+          }`}
         >
-          {isSubmitting 
-            ? '청구 처리 중...'
-            : '청구하기'
+          {isSubmitting
+            ? (selectedType === 'income' ? '입금 등록 중...' : '청구 처리 중...')
+            : (selectedType === 'income' ? '입금 등록하기' : '청구하기')
           }
         </button>
       </div>

@@ -609,6 +609,60 @@ const spaceSettingsService = {
   },
 
   /**
+   * 재정 관리 권한 설정 조회
+   */
+  async getFinancePermission(spaceId) {
+    try {
+      console.log('💰 재정 관리 권한 설정 조회:', spaceId);
+
+      const spaceRef = doc(db, 'spaces', spaceId);
+      const spaceDoc = await getDoc(spaceRef);
+
+      if (!spaceDoc.exists()) {
+        throw new Error('스페이스를 찾을 수 없습니다.');
+      }
+
+      const data = spaceDoc.data();
+
+      // 기본값: 부매니저 이상 (vice_manager_up)
+      return data.financePermission || 'vice_manager_up';
+    } catch (error) {
+      console.error('❌ 재정 관리 권한 설정 조회 실패:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 재정 관리 권한 설정 업데이트
+   * @param {string} permission - 'manager_only' | 'vice_manager_up' | 'all_members'
+   */
+  async updateFinancePermission(spaceId, permission, userId, userName) {
+    try {
+      console.log('💾 재정 관리 권한 설정 업데이트:', { spaceId, permission });
+
+      const spaceRef = doc(db, 'spaces', spaceId);
+
+      const updateData = {
+        financePermission: permission,
+        financePermissionUpdatedAt: new Date(),
+        financePermissionUpdatedBy: {
+          id: userId,
+          displayName: userName
+        }
+      };
+
+      await updateDoc(spaceRef, updateData);
+
+      console.log('✅ 재정 관리 권한 설정 업데이트 완료');
+
+      return { success: true };
+    } catch (error) {
+      console.error('❌ 재정 관리 권한 설정 업데이트 실패:', error);
+      throw error;
+    }
+  },
+
+  /**
    * 기능 설정 조회
    */
   async getFeaturesConfig(spaceId) {

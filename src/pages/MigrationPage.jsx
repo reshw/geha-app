@@ -1,16 +1,28 @@
 import { useState } from 'react';
 import { Play, AlertTriangle, CheckCircle, Key } from 'lucide-react';
 import { runMigration, runMigrationConfirmed } from '../services/migrateExpenses';
+import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
+import { db } from '../config/firebase';
 
 const MigrationPage = () => {
   const [spaceId, setSpaceId] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [logs, setLogs] = useState([]);
   const [result, setResult] = useState(null);
+
+  // Type 필드 마이그레이션
+  const [typeSpaceId, setTypeSpaceId] = useState('');
+  const [isTypeRunning, setIsTypeRunning] = useState(false);
+  const [typeLogs, setTypeLogs] = useState([]);
+  const [typeResult, setTypeResult] = useState(null);
   
   // 콘솔 출력을 화면에 표시
   const addLog = (message, type = 'info') => {
     setLogs(prev => [...prev, { message, type, time: new Date() }]);
+  };
+
+  const addTypeLog = (message, type = 'info') => {
+    setTypeLogs(prev => [...prev, { message, type, time: new Date() }]);
   };
   
   // Dry Run 실행
@@ -98,7 +110,127 @@ const MigrationPage = () => {
       setIsRunning(false);
     }
   };
-  
+
+  // Type 필드 추가 마이그레이션 - Dry Run
+  const handleTypeFieldDryRun = async () => {
+    if (!typeSpaceId.trim()) {
+      alert('방 코드를 입력해주세요.');
+      return;
+    }
+
+    setIsTypeRunning(true);
+    setTypeLogs([]);
+    setTypeResult(null);
+
+    try {
+      addTypeLog('🔍 Type 필드 Dry Run 시작...', 'info');
+      addTypeLog(`📍 방 코드: ${typeSpaceId}`, 'info');
+
+      const expensesRef = collection(db, 'spaces', typeSpaceId, 'Expense');
+      const snapshot = await getDocs(expensesRef);
+
+      let needsUpdate = 0;
+      let alreadyHasType = 0;
+
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        if (!data.type) {
+          needsUpdate++;
+        } else {
+          alreadyHasType++;
+        }
+      });
+
+      const total = snapshot.size;
+
+      setTypeResult({
+        dryRun: true,
+        total,
+        needsUpdate,
+        alreadyHasType
+      });
+
+      addTypeLog('✅ Dry Run 완료!', 'success');
+      addTypeLog(`📊 전체 문서: ${total}개`, 'info');
+      addTypeLog(`✏️ 업데이트 필요: ${needsUpdate}개`, 'warning');
+      addTypeLog(`✅ 이미 처리됨: ${alreadyHasType}개`, 'success');
+
+    } catch (error) {
+      console.error('Type Field Dry Run 실패:', error);
+      addTypeLog(`❌ 오류 발생: ${error.message}`, 'error');
+    } finally {
+      setIsTypeRunning(false);
+    }
+  };
+
+  // Type 필드 추가 마이그레이션 - 실제 실행
+  const handleTypeFieldRealRun = async () => {
+    if (!typeSpaceId.trim()) {
+      alert('방 코드를 입력해주세요.');
+      return;
+    }
+
+    if (!typeResult || typeResult.dryRun !== true) {
+      alert('먼저 Dry Run을 실행해주세요.');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `⚠️ Type 필드 마이그레이션을 실행합니다!\n\n` +
+      `방 코드: ${typeSpaceId}\n` +
+      `업데이트될 문서: ${typeResult.needsUpdate}개\n\n` +
+      `모든 기존 expense 문서에 type: 'expense' 필드가 추가됩니다.\n\n` +
+      `계속하시겠습니까?`
+    );
+
+    if (!confirmed) return;
+
+    setIsTypeRunning(true);
+    setTypeLogs([]);
+
+    try {
+      addTypeLog('🚀 Type 필드 마이그레이션 시작...', 'info');
+
+      const expensesRef = collection(db, 'spaces', typeSpaceId, 'Expense');
+      const snapshot = await getDocs(expensesRef);
+
+      const batch = writeBatch(db);
+      let count = 0;
+
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (!data.type) {
+          batch.update(docSnap.ref, {
+            type: 'expense',
+            transactionType: 'manual'
+          });
+          count++;
+        }
+      });
+
+      await batch.commit();
+
+      setTypeResult({
+        dryRun: false,
+        updated: count
+      });
+
+      addTypeLog('🎉 마이그레이션 완료!', 'success');
+      addTypeLog(`✅ ${count}개 문서 업데이트 완료`, 'success');
+
+      setTimeout(() => {
+        alert('Type 필드 마이그레이션이 완료되었습니다!');
+      }, 1000);
+
+    } catch (error) {
+      console.error('Type Field 마이그레이션 실패:', error);
+      addTypeLog(`❌ 오류 발생: ${error.message}`, 'error');
+      alert('마이그레이션 실패! Firebase Console을 확인해주세요.');
+    } finally {
+      setIsTypeRunning(false);
+    }
+  };
+
   const getLogColor = (type) => {
     switch (type) {
       case 'success': return 'text-green-400';
@@ -210,6 +342,116 @@ const MigrationPage = () => {
             <h3 className="text-lg font-bold text-gray-900 mb-4">📝 로그</h3>
             <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm max-h-96 overflow-y-auto">
               {logs.map((log, index) => (
+                <div key={index} className={getLogColor(log.type)}>
+                  {log.message}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 구분선 */}
+        <div className="my-8 border-t-4 border-gray-300"></div>
+
+        {/* Type 필드 마이그레이션 섹션 */}
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            🏷️ Type 필드 추가 마이그레이션
+          </h1>
+          <p className="text-gray-600">
+            기존 expense 문서에 type: 'expense' 필드 추가
+          </p>
+        </div>
+
+        {/* 경고 */}
+        <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-6">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-6 h-6 text-blue-600 flex-shrink-0 mt-1" />
+            <div>
+              <h3 className="font-bold text-blue-900 mb-2">ℹ️ 안내사항</h3>
+              <ul className="text-sm text-blue-800 space-y-1">
+                <li>• 입금/지출 구분을 위해 type 필드를 추가합니다.</li>
+                <li>• 기존 모든 문서는 type: 'expense'로 설정됩니다.</li>
+                <li>• 이미 type 필드가 있는 문서는 건너뜁니다.</li>
+                <li>• 안전한 작업이며 기존 데이터는 변경되지 않습니다.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* 방 코드 입력 */}
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+          <label className="flex items-center gap-2 text-gray-700 font-semibold mb-3">
+            <Key className="w-5 h-5 text-blue-600" />
+            방 코드 (Space ID)
+          </label>
+          <input
+            type="text"
+            value={typeSpaceId}
+            onChange={(e) => setTypeSpaceId(e.target.value)}
+            placeholder="예: 308308"
+            disabled={isTypeRunning}
+            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-lg font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+          />
+          <p className="text-sm text-gray-500 mt-2">
+            💡 Firebase의 Space ID를 입력하세요 (예: 308308)
+          </p>
+        </div>
+
+        {/* 버튼 */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <button
+            onClick={handleTypeFieldDryRun}
+            disabled={isTypeRunning || !typeSpaceId.trim()}
+            className="py-4 px-6 bg-blue-600 text-white rounded-xl font-bold text-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            <Play className="w-5 h-5" />
+            1단계: Dry Run (미리보기)
+          </button>
+
+          <button
+            onClick={handleTypeFieldRealRun}
+            disabled={isTypeRunning || !typeResult || typeResult.dryRun !== true}
+            className="py-4 px-6 bg-green-600 text-white rounded-xl font-bold text-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            <CheckCircle className="w-5 h-5" />
+            2단계: 실제 실행
+          </button>
+        </div>
+
+        {/* Type 결과 */}
+        {typeResult && (
+          <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">📊 결과</h3>
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div className="bg-blue-50 rounded-lg p-4 border-2 border-blue-200">
+                <div className="text-3xl font-bold text-blue-600">{typeResult.total || typeResult.updated}</div>
+                <div className="text-sm text-gray-600 mt-1 font-semibold">
+                  {typeResult.dryRun ? '전체 문서' : '업데이트 완료'}
+                </div>
+              </div>
+              {typeResult.dryRun && (
+                <>
+                  <div className="bg-yellow-50 rounded-lg p-4 border-2 border-yellow-200">
+                    <div className="text-3xl font-bold text-yellow-600">{typeResult.needsUpdate}</div>
+                    <div className="text-sm text-gray-600 mt-1 font-semibold">업데이트 필요</div>
+                  </div>
+                  <div className="bg-green-50 rounded-lg p-4 border-2 border-green-200">
+                    <div className="text-3xl font-bold text-green-600">{typeResult.alreadyHasType}</div>
+                    <div className="text-sm text-gray-600 mt-1 font-semibold">이미 처리됨</div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Type 로그 */}
+        {typeLogs.length > 0 && (
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">📝 로그</h3>
+            <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm max-h-96 overflow-y-auto">
+              {typeLogs.map((log, index) => (
                 <div key={index} className={getLogColor(log.type)}>
                   {log.message}
                 </div>

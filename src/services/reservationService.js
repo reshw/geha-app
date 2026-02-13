@@ -2,6 +2,8 @@ import { collection, getDocs, addDoc, deleteDoc, doc, setDoc, getDoc, query, whe
 import { db } from '../config/firebase';
 import { formatDate } from '../utils/dateUtils';
 import * as notificationService from './notificationService';  // ✅ named import로 변경
+import expenseService from './expenseService';
+import spaceSettingsService from './spaceSettingsService';
 
 class ReservationService {
   async getReservations(spaceId, currentWeekStart) {
@@ -370,7 +372,29 @@ class ReservationService {
         // 알림 실패해도 예약은 성공으로 처리
         console.error('⚠️ 알림 발송 실패 (예약은 완료됨):', notifyError);
       }
-      
+
+      // 💰 게스트 예약 시 자동 입금 생성
+      if (reservationData.type === 'guest') {
+        try {
+          const guestPolicy = await spaceSettingsService.getGuestPolicy(spaceId);
+
+          if (guestPolicy?.guestPricePerNight && reservationData.nights > 0) {
+            await expenseService.createAutoGuestIncome(spaceId, {
+              ...reservationData,
+              reservationId: docId,
+              hostId: reservationData.hostId || reservationData.userId,
+              hostDisplayName: reservationData.hostDisplayName || '운영진'
+            }, guestPolicy);
+
+            console.log('✅ 게스트 입금 자동 생성 완료');
+          } else {
+            console.log('ℹ️ 게스트 요금 설정 없음 또는 당일치기 (자동 입금 생성 건너뜀)');
+          }
+        } catch (incomeError) {
+          console.error('⚠️ 게스트 입금 생성 실패 (예약은 완료됨):', incomeError);
+        }
+      }
+
       return { docId, ...dataToSave };
     } catch (error) {
       console.error('❌ createReservation 에러:', error);
@@ -477,6 +501,19 @@ class ReservationService {
         },
         -1 // 취소
       );
+
+      // 💰 게스트 예약 취소 시 연결된 입금 반려
+      if (reserveData.type === 'guest') {
+        try {
+          await expenseService.rejectLinkedIncome(spaceId, reservationId, {
+            rejecterId: String(userId),
+            rejecterName: userName
+          });
+          console.log('✅ 연결된 입금 반려 완료');
+        } catch (incomeError) {
+          console.error('⚠️ 연결된 입금 반려 실패:', incomeError);
+        }
+      }
 
       return { success: true };
     } catch (error) {

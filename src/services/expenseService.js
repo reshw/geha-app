@@ -94,51 +94,44 @@ const expenseService = {
    * 운영비 청구 생성
    * @param {string} spaceId - 스페이스 ID
    * @param {Object} requestData - 청구 데이터
+   * @param {string} requestData.type - 'expense' | 'income'
    * @param {string} requestData.userId - 청구자 ID
    * @param {string} requestData.userName - 청구자 이름
    * @param {Date} requestData.usedAt - 사용일자
    * @param {string} requestData.memo - 청구 사유/메모
    * @param {string} requestData.imageUrl - 증빙 이미지 URL
-   * @param {Array} requestData.items - 항목 배열
+   * @param {Array} requestData.items - 항목 배열 (expense only)
    * @param {string} requestData.items[].itemName - 품목명
    * @param {number} requestData.items[].itemPrice - 단가
    * @param {number} requestData.items[].itemQty - 수량
    * @param {string} requestData.items[].itemSpec - 규격
+   * @param {string} requestData.itemName - 항목명 (income only)
+   * @param {number} requestData.totalAmount - 금액 (income only)
+   * @param {string} requestData.transactionType - 'manual' | 'auto_guest_reservation'
    */
   async createExpense(spaceId, requestData) {
     try {
       console.log('💰 운영비 청구 생성:', { spaceId, requestData });
-      
-      const { userId, userName, usedAt, memo, items, imageUrl } = requestData;
+
+      const { userId, userName, usedAt, memo, items, imageUrl, type = 'expense', itemName, totalAmount, transactionType = 'manual' } = requestData;
       
       // ID 생성 (현재 시각 기준)
       const now = new Date();
       const expenseId = generateExpenseId(now);
       const createdAt = Timestamp.fromDate(now);
       const usedAtTimestamp = Timestamp.fromDate(usedAt);
-      
-      // 총액 계산
-      const totalAmount = items.reduce((sum, item) => {
-        return sum + (item.itemPrice * item.itemQty);
-      }, 0);
-      
-      // 단일 문서로 생성
-      const expenseRef = doc(db, 'spaces', spaceId, 'Expense', expenseId);
+
+      // 타입별 데이터 준비
+      let finalTotalAmount = 0;
       const expenseData = {
+        type: type,
+        transactionType: transactionType,
         userId: userId,
         userName: userName,
         usedAt: usedAtTimestamp,
         createdAt: createdAt,
         memo: memo || '',
         imageUrl: imageUrl || '',
-        items: items.map(item => ({
-          itemName: item.itemName,
-          itemPrice: item.itemPrice,
-          itemQty: item.itemQty,
-          itemSpec: item.itemSpec || '',
-          total: item.itemPrice * item.itemQty,
-        })),
-        totalAmount: totalAmount,
         approved: false,
         status: 'pending',
         approvedAt: null,
@@ -149,6 +142,38 @@ const expenseService = {
         rejectedByName: null,
         rejectionReason: null,
       };
+
+      if (type === 'income') {
+        // 입금 타입: 단일 항목명과 금액
+        expenseData.itemName = itemName;
+        expenseData.totalAmount = totalAmount;
+        finalTotalAmount = totalAmount;
+
+        // 게스트 자동 입금의 경우 추가 정보
+        if (requestData.linkedReservationId) {
+          expenseData.linkedReservationId = requestData.linkedReservationId;
+        }
+        if (requestData.guestInfo) {
+          expenseData.guestInfo = requestData.guestInfo;
+        }
+      } else {
+        // 지출 타입: 기존 items 배열 방식
+        finalTotalAmount = items.reduce((sum, item) => {
+          return sum + (item.itemPrice * item.itemQty);
+        }, 0);
+
+        expenseData.items = items.map(item => ({
+          itemName: item.itemName,
+          itemPrice: item.itemPrice,
+          itemQty: item.itemQty,
+          itemSpec: item.itemSpec || '',
+          total: item.itemPrice * item.itemQty,
+        }));
+        expenseData.totalAmount = finalTotalAmount;
+      }
+
+      // 단일 문서로 생성
+      const expenseRef = doc(db, 'spaces', spaceId, 'Expense', expenseId);
       
       await setDoc(expenseRef, expenseData);
 
@@ -177,12 +202,13 @@ const expenseService = {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              type: 'expense',
+              type: type === 'income' ? 'income' : 'expense',
               userName: userName,
               usedAt: usedAt,
               createdAt: now,
-              totalAmount: totalAmount,
+              totalAmount: finalTotalAmount,
               items: expenseData.items,
+              itemName: expenseData.itemName,
               memo: memo,
               imageUrl: imageUrl,
               spaceName: spaceData.name || '라운지',
@@ -333,7 +359,7 @@ const expenseService = {
   async getRejectedExpenses(spaceId) {
     try {
       console.log('❌ 거부된 청구 조회:', spaceId);
-      
+
       const expenseRef = collection(db, 'spaces', spaceId, 'Expense');
       const q = query(
         expenseRef,
@@ -341,7 +367,7 @@ const expenseService = {
         orderBy('rejectedAt', 'desc')
       );
       const snapshot = await getDocs(q);
-      
+
       const expenses = [];
       snapshot.forEach((doc) => {
         expenses.push({
@@ -352,11 +378,136 @@ const expenseService = {
           rejectedAt: doc.data().rejectedAt?.toDate(),
         });
       });
-      
+
       console.log('✅ 거부된 청구 조회 완료:', expenses.length);
       return expenses;
     } catch (error) {
       console.error('❌ 거부된 청구 조회 실패:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 게스트 예약 자동 입금 생성
+   * @param {string} spaceId - 스페이스 ID
+   * @param {Object} reservationData - 예약 데이터
+   * @param {Object} guestPolicy - 게스트 정책
+   */
+  async createAutoGuestIncome(spaceId, reservationData, guestPolicy) {
+    try {
+      console.log('💰 게스트 자동 입금 생성:', { spaceId, reservationData });
+
+      const now = new Date();
+      const expenseId = generateExpenseId(now);
+      const totalAmount = guestPolicy.guestPricePerNight * reservationData.nights;
+
+      const incomeData = {
+        type: 'income',
+        transactionType: 'auto_guest_reservation',
+        userId: String(reservationData.hostId),
+        userName: reservationData.hostDisplayName,
+        usedAt: Timestamp.fromDate(reservationData.checkIn),
+        createdAt: Timestamp.now(),
+        itemName: `게스트비 - ${reservationData.name}`,
+        totalAmount: totalAmount,
+        memo: `${reservationData.nights}박 × ${guestPolicy.guestPricePerNight.toLocaleString()}원`,
+        imageUrl: '',
+        status: 'pending',
+        approved: false,
+        approvedAt: null,
+        approvedBy: null,
+        approvedByName: null,
+        rejectedAt: null,
+        rejectedBy: null,
+        rejectedByName: null,
+        rejectionReason: null,
+        linkedReservationId: reservationData.reservationId,
+        guestInfo: {
+          name: reservationData.name,
+          checkIn: reservationData.checkIn,
+          checkOut: reservationData.checkOut,
+          nights: reservationData.nights
+        }
+      };
+
+      const expenseRef = doc(db, 'spaces', spaceId, 'Expense', expenseId);
+      await setDoc(expenseRef, incomeData);
+
+      console.log('✅ 게스트 자동 입금 생성 완료:', expenseId);
+      return expenseId;
+    } catch (error) {
+      console.error('❌ 게스트 자동 입금 생성 실패:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 잔액 조회 (승인된 입금 - 승인된 지출)
+   * @param {string} spaceId - 스페이스 ID
+   */
+  async getBalance(spaceId) {
+    try {
+      console.log('💰 잔액 조회:', spaceId);
+
+      const expenses = await this.getExpenses(spaceId);
+
+      const totalIncome = expenses
+        .filter(e => e.type === 'income' && e.status === 'approved')
+        .reduce((sum, e) => sum + (e.totalAmount || 0), 0);
+
+      const totalExpense = expenses
+        .filter(e => (e.type === 'expense' || !e.type) && e.status === 'approved')
+        .reduce((sum, e) => sum + (e.totalAmount || 0), 0);
+
+      const balance = totalIncome - totalExpense;
+
+      console.log('✅ 잔액 조회 완료:', { totalIncome, totalExpense, balance });
+      return {
+        totalIncome,
+        totalExpense,
+        balance
+      };
+    } catch (error) {
+      console.error('❌ 잔액 조회 실패:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 예약 취소 시 연결된 입금 반려
+   * @param {string} spaceId - 스페이스 ID
+   * @param {string} reservationId - 예약 ID
+   * @param {Object} rejecterData - 반려자 정보
+   */
+  async rejectLinkedIncome(spaceId, reservationId, rejecterData) {
+    try {
+      console.log('❌ 연결된 입금 반려:', { spaceId, reservationId });
+
+      const expenseRef = collection(db, 'spaces', spaceId, 'Expense');
+      const q = query(expenseRef, where('linkedReservationId', '==', reservationId));
+      const snapshot = await getDocs(q);
+
+      if (snapshot.empty) {
+        console.log('ℹ️ 연결된 입금 없음');
+        return;
+      }
+
+      const incomeDoc = snapshot.docs[0];
+      const incomeData = incomeDoc.data();
+
+      if (incomeData.status === 'pending') {
+        await this.rejectExpense(
+          spaceId,
+          incomeDoc.id,
+          rejecterData,
+          '예약이 취소되었습니다'
+        );
+        console.log('✅ 연결된 입금 자동 반려 완료');
+      } else {
+        console.log('⚠️ 입금이 이미 처리됨 (수동 조정 필요):', incomeData.status);
+      }
+    } catch (error) {
+      console.error('❌ 연결된 입금 반려 실패:', error);
       throw error;
     }
   },

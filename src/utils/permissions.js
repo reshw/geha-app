@@ -37,3 +37,17 @@ export const hasHigherOrEqualLevel = (userType, targetUserType) => {
   const targetLevel = USER_TYPE_LEVEL[targetUserType] || 0;
   return userLevel >= targetLevel;
 };
+
+// 재정 관리 접근 권한 체크
+export const canAccessFinance = (userType, financePermission) => {
+  switch (financePermission) {
+    case 'manager_only':
+      return userType === USER_TYPES.MANAGER;
+    case 'vice_manager_up':
+      return userType === USER_TYPES.MANAGER || userType === USER_TYPES.VICE_MANAGER;
+    case 'all_members':
+      return true;
+    default:
+      return userType === USER_TYPES.MANAGER; // 안전한 기본값
+  }
+};
