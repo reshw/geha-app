@@ -9,12 +9,16 @@ import { ArrowLeft, UserMinus, Shield, Users, Search, X } from 'lucide-react';
 
 export default function MemberManagePage() {
   const navigate = useNavigate();
-  const { user, selectedSpace } = useStore();
+  const { user, selectedSpace, getTierConfig } = useStore();
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredMembers, setFilteredMembers] = useState([]);
+
+  // tierConfig 가져오기
+  const spaceId = selectedSpace?.id || selectedSpace?.spaceId;
+  const tierConfig = spaceId ? getTierConfig(spaceId) : null;
 
   // 권한 체크
   useEffect(() => {
@@ -341,9 +345,15 @@ export default function MemberManagePage() {
                       disabled={processing}
                       className="flex-1 px-3 py-2 bg-slate-700/50 border border-slate-600/30 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-50"
                     >
-                      <option value={USER_TYPES.GUEST}>{USER_TYPE_LABELS.guest}</option>
-                      <option value={USER_TYPES.SHAREHOLDER}>{USER_TYPE_LABELS.shareholder}</option>
-                      <option value={USER_TYPES.VICE_MANAGER}>{USER_TYPE_LABELS['vice-manager']}</option>
+                      <option value={USER_TYPES.GUEST}>
+                        {tierConfig?.tierNames?.c1 || USER_TYPE_LABELS.guest}
+                      </option>
+                      <option value={USER_TYPES.SHAREHOLDER}>
+                        {tierConfig?.tierNames?.c2 || USER_TYPE_LABELS.shareholder}
+                      </option>
+                      <option value={USER_TYPES.VICE_MANAGER}>
+                        {tierConfig?.tierNames?.['vice-master'] || USER_TYPE_LABELS['vice-manager']}
+                      </option>
                     </select>
 
                     {/* 내보내기 버튼 */}

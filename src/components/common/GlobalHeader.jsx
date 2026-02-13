@@ -5,6 +5,7 @@ import { UserCog, FileText, LogOut, ShieldCheck, TestTube } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import useStore from '../../store/useStore';
 import spaceService from '../../services/spaceService';
+import tierService from '../../services/tierService';
 import SpaceDropdown from '../space/SpaceDropdown';
 import CreateSpaceModal from '../space/CreateSpaceModal';
 import UserTypeBadge from './UserTypeBadge';
@@ -18,6 +19,7 @@ const GlobalHeader = () => {
     selectedSpace,
     setSpaces,
     setSelectedSpace,
+    setTierConfig,
     updateSpaceOrder,
     removeSpace
   } = useStore();
@@ -28,6 +30,25 @@ const GlobalHeader = () => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   // 스페이스 로드는 WeeklyList에서만 처리 (중복 제거)
+
+  // 스페이스 선택 시 tierConfig 자동 로드
+  const handleSelectSpace = async (space) => {
+    // 스페이스 선택
+    setSelectedSpace(space);
+
+    // tierConfig 로드 및 캐싱
+    if (space?.id || space?.spaceId) {
+      try {
+        const spaceId = space.id || space.spaceId;
+        const tierConfig = await tierService.getTierConfig(spaceId);
+        setTierConfig(spaceId, tierConfig);
+        console.log('✅ tierConfig 로드 완료:', spaceId);
+      } catch (error) {
+        console.error('⚠️ tierConfig 로드 실패:', error);
+        // 에러 발생해도 스페이스 선택은 정상 진행
+      }
+    }
+  };
 
   // 스페이스 순서 변경
   const handleSpaceReorder = async (updatedSpaces) => {
@@ -85,7 +106,7 @@ const GlobalHeader = () => {
               <SpaceDropdown
                 spaces={spaces}
                 selectedSpace={selectedSpace}
-                onSelect={setSelectedSpace}
+                onSelect={handleSelectSpace}
                 onReorder={handleSpaceReorder}
                 onCreateSpace={handleCreateSpace}
               />

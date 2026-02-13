@@ -1,18 +1,19 @@
 // components/common/UserTypeBadge.jsx
 // 재사용 가능한 직급 배지 컴포넌트
+import { getTierDisplayName, mapUserTypeToTier } from '../../utils/tierPermissions';
 
 /**
- * 직급별 색상 및 레이블 정의
+ * 직급별 색상 정의
  */
 export const USER_TYPE_CONFIG = {
   manager: {
-    label: '관리자',
+    label: '매니저',
     bgColor: 'bg-purple-500',
     textColor: 'text-white',
     borderColor: 'border-purple-600',
   },
   'vice-manager': {
-    label: '부관리자',
+    label: '부매니저',
     bgColor: 'bg-blue-500',
     textColor: 'text-white',
     borderColor: 'border-blue-600',
@@ -34,11 +35,21 @@ export const USER_TYPE_CONFIG = {
 /**
  * 직급 배지 컴포넌트
  * @param {string} userType - 'manager' | 'vice-manager' | 'shareholder' | 'guest'
- * @param {string} size - 'sm' | 'md' | 'lg' (기본: 'sm')
+ * @param {object} tierConfig - 커스텀 등급 설정 (선택사항)
+ * @param {string} size - 'xs' | 'sm' | 'md' | 'lg' (기본: 'sm')
  * @param {boolean} rounded - 라운드 처리 여부 (기본: true)
  */
-const UserTypeBadge = ({ userType, size = 'sm', rounded = true }) => {
+const UserTypeBadge = ({ userType, tierConfig, size = 'sm', rounded = true }) => {
   const config = USER_TYPE_CONFIG[userType] || USER_TYPE_CONFIG.guest;
+
+  // 커스텀 등급명 사용 (tierConfig가 있으면)
+  let displayLabel = config.label;
+  if (tierConfig) {
+    const customName = getTierDisplayName(tierConfig, userType);
+    if (customName) {
+      displayLabel = customName;
+    }
+  }
 
   const sizeClasses = {
     xs: 'px-1.5 py-0.5 text-[10px]',
@@ -61,7 +72,7 @@ const UserTypeBadge = ({ userType, size = 'sm', rounded = true }) => {
         whitespace-nowrap
       `}
     >
-      {config.label}
+      {displayLabel}
     </span>
   );
 };

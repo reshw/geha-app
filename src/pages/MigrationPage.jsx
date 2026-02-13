@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Play, AlertTriangle, CheckCircle, Key } from 'lucide-react';
 import { runMigration, runMigrationConfirmed } from '../services/migrateExpenses';
-import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
+import { collection, getDocs, writeBatch, doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import tierService from '../services/tierService';
 
 const MigrationPage = () => {
   const [spaceId, setSpaceId] = useState('');
@@ -15,6 +16,11 @@ const MigrationPage = () => {
   const [isTypeRunning, setIsTypeRunning] = useState(false);
   const [typeLogs, setTypeLogs] = useState([]);
   const [typeResult, setTypeResult] = useState(null);
+
+  // TierConfig 초기화 (테스트 스페이스 jwbIZM)
+  const [isTierInitRunning, setIsTierInitRunning] = useState(false);
+  const [tierInitLogs, setTierInitLogs] = useState([]);
+  const [tierInitResult, setTierInitResult] = useState(null);
   
   // 콘솔 출력을 화면에 표시
   const addLog = (message, type = 'info') => {
@@ -23,6 +29,10 @@ const MigrationPage = () => {
 
   const addTypeLog = (message, type = 'info') => {
     setTypeLogs(prev => [...prev, { message, type, time: new Date() }]);
+  };
+
+  const addTierInitLog = (message, type = 'info') => {
+    setTierInitLogs(prev => [...prev, { message, type, time: new Date() }]);
   };
   
   // Dry Run 실행
@@ -228,6 +238,130 @@ const MigrationPage = () => {
       alert('마이그레이션 실패! Firebase Console을 확인해주세요.');
     } finally {
       setIsTypeRunning(false);
+    }
+  };
+
+  // TierConfig 초기화 (테스트 스페이스 jwbIZM)
+  const handleTierConfigInit = async () => {
+    const testSpaceId = 'jwbIZM';
+
+    setIsTierInitRunning(true);
+    setTierInitLogs([]);
+    setTierInitResult(null);
+
+    try {
+      addTierInitLog('🔍 TierConfig 초기화 시작...', 'info');
+      addTierInitLog(`📍 테스트 스페이스: ${testSpaceId}`, 'info');
+
+      // 이미 존재하는지 확인
+      const tierRef = doc(db, `spaces/${testSpaceId}/settings`, 'tiers');
+      const tierDoc = await getDoc(tierRef);
+
+      if (tierDoc.exists()) {
+        addTierInitLog('⚠️ 이미 tierConfig가 존재합니다', 'warning');
+        setTierInitResult({
+          alreadyExists: true,
+          data: tierDoc.data()
+        });
+        return;
+      }
+
+      // 기본 tierConfig 생성
+      const defaultConfig = {
+        tierNames: {
+          master: '매니저',
+          'vice-master': '부매니저',
+          c2: '주주',
+          c1: '게스트',
+          c3: null,
+          c4: null
+        },
+        tierLevels: {
+          master: 6,
+          'vice-master': 5,
+          c2: 4,
+          c1: 3,
+          c3: 2,
+          c4: 1
+        },
+        permissions: {
+          finance: {
+            view: 'c2',
+            createIncome: 'vice-master',
+            createExpense: 'vice-master',
+            approve: 'master',
+            delete: 'master'
+          },
+          praise: {
+            view: 'c1',
+            create: 'c1',
+            viewStats: 'c2',
+            approve: 'vice-master',
+            delete: 'master'
+          },
+          settlement: {
+            view: 'c2',
+            createBill: 'vice-master',
+            approveBill: 'master',
+            delete: 'master'
+          },
+          reservation: {
+            create: 'c1',
+            createPast: 'vice-master',
+            cancelOwn: 'c1',
+            cancelAny: 'vice-master',
+            viewStats: 'c2'
+          },
+          expense: {
+            view: 'c2',
+            create: 'vice-master',
+            approve: 'master',
+            delete: 'master'
+          },
+          space: {
+            manageMembers: 'vice-master',
+            changeSettings: 'master',
+            transferOwnership: 'master',
+            deleteMember: 'vice-master'
+          },
+          bartender: {
+            view: 'c1',
+            order: 'c1',
+            manageMenu: 'vice-master',
+            viewOrders: 'c2'
+          }
+        },
+        enabledTiers: ['master', 'vice-master', 'c2', 'c1'],
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+        updatedBy: {
+          id: 'migration',
+          displayName: 'System Migration'
+        }
+      };
+
+      await setDoc(tierRef, defaultConfig);
+
+      setTierInitResult({
+        alreadyExists: false,
+        created: true
+      });
+
+      addTierInitLog('🎉 TierConfig 초기화 완료!', 'success');
+      addTierInitLog(`✅ spaces/${testSpaceId}/settings/tiers 문서 생성됨`, 'success');
+      addTierInitLog(`📊 기본 4개 등급 설정됨`, 'info');
+      addTierInitLog(`🔒 기능별 권한 설정 완료`, 'info');
+
+      setTimeout(() => {
+        alert('TierConfig 초기화가 완료되었습니다!\n\n테스트 스페이스(jwbIZM)의 설정 페이지에서 확인할 수 있습니다.');
+      }, 1000);
+
+    } catch (error) {
+      console.error('TierConfig 초기화 실패:', error);
+      addTierInitLog(`❌ 오류 발생: ${error.message}`, 'error');
+      alert('초기화 실패! Firebase Console을 확인해주세요.');
+    } finally {
+      setIsTierInitRunning(false);
     }
   };
 
@@ -452,6 +586,87 @@ const MigrationPage = () => {
             <h3 className="text-lg font-bold text-gray-900 mb-4">📝 로그</h3>
             <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm max-h-96 overflow-y-auto">
               {typeLogs.map((log, index) => (
+                <div key={index} className={getLogColor(log.type)}>
+                  {log.message}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 구분선 */}
+        <div className="my-8 border-t-4 border-purple-300"></div>
+
+        {/* TierConfig 초기화 섹션 (테스트 스페이스 전용) */}
+        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl shadow-sm p-6 mb-6 border-2 border-purple-200">
+          <h1 className="text-2xl font-bold text-purple-900 mb-2 flex items-center gap-2">
+            🎖️ 커스텀 등급 시스템 초기화
+            <span className="bg-purple-500 text-white text-xs px-2 py-1 rounded">TEST</span>
+          </h1>
+          <p className="text-purple-700">
+            테스트 스페이스 (jwbIZM)에 커스텀 등급 시스템 초기 설정 생성
+          </p>
+        </div>
+
+        {/* 안내 */}
+        <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-4 mb-6">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-6 h-6 text-purple-600 flex-shrink-0 mt-1" />
+            <div>
+              <h3 className="font-bold text-purple-900 mb-2">ℹ️ 안내사항</h3>
+              <ul className="text-sm text-purple-800 space-y-1">
+                <li>• 테스트 스페이스 (jwbIZM)에만 적용됩니다.</li>
+                <li>• spaces/jwbIZM/settings/tiers 문서를 생성합니다.</li>
+                <li>• 기본 4개 등급 (매니저, 부매니저, 주주, 게스트) 설정됩니다.</li>
+                <li>• 기능별 세부 권한이 기본값으로 설정됩니다.</li>
+                <li>• 이미 존재하는 경우 건너뜁니다.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* 실행 버튼 */}
+        <div className="mb-6">
+          <button
+            onClick={handleTierConfigInit}
+            disabled={isTierInitRunning}
+            className="w-full py-4 px-6 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-bold text-lg hover:from-purple-700 hover:to-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            <Play className="w-5 h-5" />
+            {isTierInitRunning ? '초기화 중...' : 'TierConfig 초기화 실행'}
+          </button>
+        </div>
+
+        {/* TierConfig 결과 */}
+        {tierInitResult && (
+          <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">📊 결과</h3>
+            {tierInitResult.alreadyExists ? (
+              <div className="bg-yellow-50 rounded-lg p-4 border-2 border-yellow-200 text-center">
+                <div className="text-2xl mb-2">⚠️</div>
+                <div className="font-bold text-yellow-800">이미 TierConfig가 존재합니다</div>
+                <div className="text-sm text-yellow-600 mt-2">
+                  spaces/jwbIZM/settings/tiers 문서가 이미 생성되어 있습니다.
+                </div>
+              </div>
+            ) : (
+              <div className="bg-green-50 rounded-lg p-4 border-2 border-green-200 text-center">
+                <div className="text-2xl mb-2">✅</div>
+                <div className="font-bold text-green-800">TierConfig 초기화 완료!</div>
+                <div className="text-sm text-green-600 mt-2">
+                  커스텀 등급 시스템이 테스트 스페이스에 적용되었습니다.
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TierConfig 로그 */}
+        {tierInitLogs.length > 0 && (
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">📝 로그</h3>
+            <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm max-h-96 overflow-y-auto">
+              {tierInitLogs.map((log, index) => (
                 <div key={index} className={getLogColor(log.type)}>
                   {log.message}
                 </div>

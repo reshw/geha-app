@@ -5,6 +5,8 @@ import spaceSettingsService from '../services/spaceSettingsService';
 import { canManageSpace } from '../utils/permissions';
 import { ArrowLeft, Save, AlertCircle, Info } from 'lucide-react';
 import EmailNotificationSettings from '../components/settings/EmailNotificationSettings';
+import TierNameEditor from '../components/settings/TierNameEditor';
+import PermissionMatrixEditor from '../components/settings/PermissionMatrixEditor';
 
 export default function SpaceSettingsPage() {
   const navigate = useNavigate();
@@ -19,6 +21,10 @@ export default function SpaceSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+
+  // 커스텀 등급 시스템 모달
+  const [showTierNameEditor, setShowTierNameEditor] = useState(false);
+  const [showPermissionMatrix, setShowPermissionMatrix] = useState(false);
 
   // 권한 체크 및 초기 데이터 로드
   useEffect(() => {
@@ -302,6 +308,58 @@ export default function SpaceSettingsPage() {
           </div>
         </div>
 
+        {/* 커스텀 등급 시스템 */}
+        <div className="bg-gradient-to-br from-purple-900/30 to-indigo-900/30 backdrop-blur-sm border-2 border-purple-500/50 rounded-xl shadow-lg overflow-hidden">
+          <div className="px-5 py-4 border-b border-purple-500/30 bg-purple-900/30">
+            <h2 className="text-base font-bold text-white">
+              등급 및 권한 관리
+            </h2>
+            <p className="text-xs text-purple-300 mt-0.5">
+              스페이스 회원 등급명과 기능별 세부 권한을 설정합니다
+            </p>
+          </div>
+
+          <div className="p-5 space-y-4">
+            <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3">
+              <p className="text-xs text-purple-200">
+                💡 각 스페이스마다 고유한 등급명과 세부 권한을 설정할 수 있습니다.
+              </p>
+            </div>
+
+              {/* 등급 이름 편집 */}
+              <div>
+                <button
+                  onClick={() => setShowTierNameEditor(true)}
+                  className="w-full px-4 py-3 bg-blue-600/20 border border-blue-500/30 rounded-lg text-blue-400 hover:bg-blue-600/30 transition-all text-left flex items-center justify-between"
+                >
+                  <div>
+                    <div className="font-medium">등급 이름 편집</div>
+                    <div className="text-xs text-blue-300 mt-0.5">
+                      매니저, 부매니저, 주주, 게스트 등의 이름 변경
+                    </div>
+                  </div>
+                  <span className="text-2xl">✏️</span>
+                </button>
+              </div>
+
+              {/* 권한 매트릭스 편집 */}
+              <div>
+                <button
+                  onClick={() => setShowPermissionMatrix(true)}
+                  className="w-full px-4 py-3 bg-purple-600/20 border border-purple-500/30 rounded-lg text-purple-400 hover:bg-purple-600/30 transition-all text-left flex items-center justify-between"
+                >
+                  <div>
+                    <div className="font-medium">권한 설정</div>
+                    <div className="text-xs text-purple-300 mt-0.5">
+                      기능별 세부 액션 권한 설정 (조회/생성/승인/삭제 등)
+                    </div>
+                  </div>
+                  <span className="text-2xl">🛡️</span>
+                </button>
+              </div>
+          </div>
+        </div>
+
         {/* 변경사항 안내 */}
         {hasChanges && (
           <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
@@ -377,6 +435,21 @@ export default function SpaceSettingsPage() {
           </div>
         </div>
       </div>
+
+      {/* 커스텀 등급 모달들 */}
+      {showTierNameEditor && (
+        <TierNameEditor
+          spaceId={selectedSpace.id || selectedSpace.spaceId}
+          onClose={() => setShowTierNameEditor(false)}
+        />
+      )}
+
+      {showPermissionMatrix && (
+        <PermissionMatrixEditor
+          spaceId={selectedSpace.id || selectedSpace.spaceId}
+          onClose={() => setShowPermissionMatrix(false)}
+        />
+      )}
     </div>
   );
 }

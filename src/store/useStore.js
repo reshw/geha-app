@@ -127,6 +127,31 @@ const useStore = create((set, get) => ({
   invalidateCalendarCache: () => {
     set({ calendarCache: {} });
   },
+
+  // 🎖️ 커스텀 등급 시스템 캐시 (테스트 스페이스 jwbIZM 전용)
+  tierConfigs: {
+    // spaceId: tierConfig
+  },
+
+  // 등급 설정 캐시 저장
+  setTierConfig: (spaceId, config) => {
+    set((state) => ({
+      tierConfigs: {
+        ...state.tierConfigs,
+        [spaceId]: config
+      }
+    }));
+  },
+
+  // 등급 설정 캐시 조회
+  getTierConfig: (spaceId) => {
+    return get().tierConfigs[spaceId] || null;
+  },
+
+  // 등급 설정 캐시 초기화
+  clearTierConfigs: () => {
+    set({ tierConfigs: {} });
+  },
 }));
 
 export default useStore;

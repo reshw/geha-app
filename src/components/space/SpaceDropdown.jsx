@@ -2,8 +2,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { GripVertical, ChevronDown, Plus } from 'lucide-react';
 import UserTypeBadge from '../common/UserTypeBadge';
+import useStore from '../../store/useStore';
 
 const SpaceDropdown = ({ spaces, selectedSpace, onSelect, onReorder, onCreateSpace }) => {
+  const { getTierConfig } = useStore();
   const [isOpen, setIsOpen] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [orderedSpaces, setOrderedSpaces] = useState(spaces);
@@ -130,6 +132,10 @@ const SpaceDropdown = ({ spaces, selectedSpace, onSelect, onReorder, onCreateSpa
   const selectedSpaceName = selectedSpace?.spaceName || selectedSpace?.name || '방 선택';
   const selectedUserType = selectedSpace?.userType || 'guest';
 
+  // 선택된 스페이스의 tierConfig 가져오기
+  const selectedSpaceId = selectedSpace?.id || selectedSpace?.spaceId;
+  const selectedTierConfig = selectedSpaceId ? getTierConfig(selectedSpaceId) : null;
+
   return (
     <div ref={dropdownRef} style={{ position: 'relative' }}>
       {/* 선택된 방 표시 */}
@@ -152,7 +158,7 @@ const SpaceDropdown = ({ spaces, selectedSpace, onSelect, onReorder, onCreateSpa
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, minWidth: 0 }}>
-          <UserTypeBadge userType={selectedUserType} size="xs" />
+          <UserTypeBadge userType={selectedUserType} tierConfig={selectedTierConfig} size="xs" />
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {selectedSpaceName}
           </span>
@@ -189,6 +195,9 @@ const SpaceDropdown = ({ spaces, selectedSpace, onSelect, onReorder, onCreateSpa
             const userType = space.userType || 'guest';
             const isSelected = (selectedSpace?.id || selectedSpace?.spaceId) === spaceId;
             const isDragging = draggedIndex === index;
+
+            // 이 스페이스의 tierConfig 가져오기
+            const spaceTierConfig = getTierConfig(spaceId);
             
             // 드래그 중일 때 이동 거리 계산
             let translateY = 0;
@@ -275,7 +284,7 @@ const SpaceDropdown = ({ spaces, selectedSpace, onSelect, onReorder, onCreateSpa
                     minWidth: 0
                   }}
                 >
-                  <UserTypeBadge userType={userType} size="xs" />
+                  <UserTypeBadge userType={userType} tierConfig={spaceTierConfig} size="xs" />
                   <div style={{
                     fontWeight: '600',
                     fontSize: '15px',
