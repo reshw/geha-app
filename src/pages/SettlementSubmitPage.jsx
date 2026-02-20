@@ -304,6 +304,17 @@ const SettlementSubmitPage = () => {
     updateItem(itemId, 'splitAmong', item.splitAmong.filter(id => String(id) !== userIdString));
   };
 
+  // 주주 전체 분담자 추가 (프리셋: guest 제외)
+  const addShareholdersToSplit = (itemId) => {
+    const shareholderIds = members
+      .filter(m => ['shareholder', 'manager', 'vice-manager'].includes(m.userType))
+      .map(m => String(m.userId));
+    const item = items.find(i => i.id === itemId);
+    const currentIds = item.splitAmong.map(id => String(id));
+    const merged = [...new Set([...currentIds, ...shareholderIds])];
+    updateItem(itemId, 'splitAmong', merged);
+  };
+
   // 검색 입력 처리
   const handleSearchChange = (itemId, value) => {
     setItems(items.map(item =>
@@ -711,6 +722,15 @@ const SettlementSubmitPage = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       분담자 선택
                     </label>
+
+                    {/* 프리셋 버튼 */}
+                    <button
+                      type="button"
+                      onClick={() => addShareholdersToSplit(item.id)}
+                      className="mb-2 text-xs text-gray-500 border border-gray-300 rounded-full px-3 py-1 hover:bg-gray-50 active:bg-gray-100"
+                    >
+                      + 주주 전체 추가
+                    </button>
 
                     {/* 선택된 멤버들 표시 */}
                     {item.splitAmong.length > 0 && (
