@@ -11,6 +11,7 @@ import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import ExpenseListPage from './pages/ExpenseListPage';
 import ExpenseRequestPage from './pages/ExpenseRequestPage';
 import MigrationPage from './pages/MigrationPage';
+import CarpoolCreatePage from './pages/CarpoolCreatePage';
 
 // 투어 관련
 import { TourProvider } from './contexts/TourContext';
@@ -79,7 +80,10 @@ function App() {
           <Route path="/user-guide" element={<UserGuidePage />} />
           <Route path="/reservation-stats" element={<ReservationStatsPage />} />
           <Route path="/migration" element={<MigrationPage />} />
-          
+
+          {/* 카풀 */}
+          <Route path="/carpool/create" element={<CarpoolCreatePage />} />
+
           {/* 스페이스 관리 */}
           <Route path="/space/manage" element={<SpaceManagePage />} />
           <Route path="/space/settings" element={<SpaceSettingsPage />} />

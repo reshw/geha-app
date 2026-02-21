@@ -1,17 +1,22 @@
-// components/carpool/CarpoolCreateModal.jsx
+// pages/CarpoolCreatePage.jsx
 import { useState, useEffect } from 'react';
-import { X, Car, MapPin, Calendar, Clock, DollarSign, Package, ArrowLeftRight, Save, FolderOpen, Trash2 } from 'lucide-react';
-import Modal from '../common/Modal';
-import carpoolPresetService from '../../services/carpoolPresetService';
-import { useAuth } from '../../hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
+import { X, Car, MapPin, Calendar, Clock, DollarSign, Package, ArrowLeftRight, Save, FolderOpen, Trash2, ChevronLeft } from 'lucide-react';
+import carpoolPresetService from '../services/carpoolPresetService';
+import carpoolService from '../services/carpoolService';
+import { useAuth } from '../hooks/useAuth';
+import useStore from '../store/useStore';
 
-const CarpoolCreateModal = ({ isOpen, onClose, onSubmit, resortName }) => {
+const CarpoolCreatePage = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
+  const { selectedResort } = useStore();
 
   const [formData, setFormData] = useState({
     type: 'offer',
     departureDate: '',
     departureTime: '',
+    timeNegotiable: false, // 시간 협의가능
     departureLocation: '',
     direction: 'toResort', // toResort | fromResort
     cost: '',
@@ -24,16 +29,17 @@ const CarpoolCreateModal = ({ isOpen, onClose, onSubmit, resortName }) => {
   const [presets, setPresets] = useState([]);
   const [showPresets, setShowPresets] = useState(false);
   const [presetName, setPresetName] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 출발지 프리셋 (4개로 축소)
+  // 출발지 프리셋 (4개)
   const popularLocations = ['강남', '잠실', '홍대', '수원'];
 
   // 프리셋 로드
   useEffect(() => {
-    if (isOpen && user?.id) {
+    if (user?.id) {
       loadPresets();
     }
-  }, [isOpen, user?.id]);
+  }, [user?.id]);
 
   const loadPresets = async () => {
     try {
@@ -73,8 +79,9 @@ const CarpoolCreateModal = ({ isOpen, onClose, onSubmit, resortName }) => {
       }
     }
 
-    if (!formData.departureTime) {
-      newErrors.departureTime = '시간을 선택해주세요';
+    // 시간은 협의가능이 체크되지 않았을 때만 필수
+    if (!formData.timeNegotiable && !formData.departureTime) {
+      newErrors.departureTime = '시간을 선택하거나 협의가능을 체크해주세요';
     }
 
     if (!formData.departureLocation.trim()) {
@@ -96,17 +103,32 @@ const CarpoolCreateModal = ({ isOpen, onClose, onSubmit, resortName }) => {
   const handleSubmit = async () => {
     if (!validate()) return;
 
-    const submitData = {
-      ...formData,
-      departureDate: new Date(formData.departureDate),
-      cost: parseInt(formData.cost, 10),
-      equipmentCost: formData.hasEquipment ? parseInt(formData.equipmentCost, 10) : 0,
-      kakaoId: user?.kakaoId || user?.id || 'unknown',
-      destination: resortName
-    };
+    setIsSubmitting(true);
+    try {
+      const submitData = {
+        ...formData,
+        departureDate: new Date(formData.departureDate),
+        departureTime: formData.timeNegotiable ? '협의가능' : formData.departureTime,
+        cost: parseInt(formData.cost, 10),
+        equipmentCost: formData.hasEquipment ? parseInt(formData.equipmentCost, 10) : 0,
+        kakaoId: user?.kakaoId || user?.id || 'unknown',
+        destination: selectedResort?.name || '스키장',
+        resortId: selectedResort?.id,
+        resortName: selectedResort?.name,
+        userId: user.id,
+        userName: user.displayName,
+        userProfileImage: user.profileImage || ''
+      };
 
-    await onSubmit(submitData);
-    handleClose();
+      await carpoolService.createCarpoolPost(submitData);
+      alert('카풀이 등록되었습니다');
+      navigate(-1); // 이전 페이지로
+    } catch (error) {
+      console.error('카풀 등록 실패:', error);
+      alert('카풀 등록에 실패했습니다');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // 프리셋 저장
@@ -135,6 +157,7 @@ const CarpoolCreateModal = ({ isOpen, onClose, onSubmit, resortName }) => {
       type: preset.type,
       departureDate: '',
       departureTime: '',
+      timeNegotiable: preset.timeNegotiable || false,
       departureLocation: preset.departureLocation,
       direction: preset.direction,
       cost: preset.cost.toString(),
@@ -159,71 +182,55 @@ const CarpoolCreateModal = ({ isOpen, onClose, onSubmit, resortName }) => {
     }
   };
 
-  const handleClose = () => {
-    setFormData({
-      type: 'offer',
-      departureDate: '',
-      departureTime: '',
-      departureLocation: '',
-      direction: 'toResort',
-      cost: '',
-      hasEquipment: false,
-      equipmentCost: '',
-      memo: ''
-    });
-    setErrors({});
-    setShowPresets(false);
-    setPresetName('');
-    onClose();
-  };
-
   // 방향 레이블
   const getLocationLabel = () => {
     if (formData.direction === 'toResort') {
-      return { left: formData.departureLocation || '출발지', right: resortName };
+      return { left: formData.departureLocation || '출발지', right: selectedResort?.name || '스키장' };
     } else {
-      return { left: resortName, right: formData.departureLocation || '목적지' };
+      return { left: selectedResort?.name || '스키장', right: formData.departureLocation || '목적지' };
     }
   };
 
   const locationLabel = getLocationLabel();
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} maxWidth="600px">
-      <div className="bg-white rounded-2xl max-h-[90vh] flex flex-col">
-        {/* 헤더 */}
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10 rounded-t-2xl">
-          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <Car className="w-6 h-6 text-green-600" />
-            카풀 등록
-          </h2>
-          <div className="flex items-center gap-2">
+    <div className="min-h-screen bg-gray-50 pb-8">
+      {/* 헤더 */}
+      <div className="sticky top-0 z-10 bg-gradient-to-br from-green-600 to-green-700 shadow-lg">
+        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
             <button
-              onClick={() => setShowPresets(!showPresets)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              title="프리셋 불러오기"
+              onClick={() => navigate(-1)}
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
             >
-              <FolderOpen className="w-5 h-5 text-gray-600" />
+              <ChevronLeft className="w-6 h-6 text-white" />
             </button>
-            <button
-              onClick={handleClose}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5 text-gray-500" />
-            </button>
+            <h1 className="text-xl font-bold text-white flex items-center gap-2">
+              <Car className="w-6 h-6" />
+              카풀 등록
+            </h1>
           </div>
+          <button
+            onClick={() => setShowPresets(!showPresets)}
+            className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+          >
+            <FolderOpen className="w-5 h-5 text-white" />
+            <span className="text-sm font-semibold text-white">자주쓰는거 불러오기</span>
+          </button>
         </div>
+      </div>
 
+      <div className="max-w-3xl mx-auto px-4 py-6">
         {/* 프리셋 목록 */}
         {showPresets && presets.length > 0 && (
-          <div className="px-6 py-3 bg-blue-50 border-b border-blue-200">
-            <div className="text-sm font-semibold text-blue-900 mb-2">저장된 프리셋</div>
+          <div className="mb-6 bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
+            <div className="text-sm font-bold text-blue-900 mb-3">저장된 프리셋</div>
             <div className="space-y-2">
               {presets.map(preset => (
-                <div key={preset.id} className="flex items-center gap-2 bg-white rounded-lg p-2">
+                <div key={preset.id} className="flex items-center gap-2 bg-white rounded-lg p-3 shadow-sm">
                   <button
                     onClick={() => handleLoadPreset(preset)}
-                    className="flex-1 text-left text-sm hover:bg-gray-50 px-2 py-1 rounded"
+                    className="flex-1 text-left hover:bg-gray-50 px-2 py-1 rounded transition-colors"
                   >
                     <div className="font-semibold text-gray-900">{preset.name}</div>
                     <div className="text-xs text-gray-500">
@@ -243,7 +250,7 @@ const CarpoolCreateModal = ({ isOpen, onClose, onSubmit, resortName }) => {
         )}
 
         {/* 폼 */}
-        <div className="px-6 py-6 overflow-y-auto space-y-6">
+        <div className="bg-white rounded-xl shadow-md p-6 space-y-6">
           {/* 타입 선택 */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -361,16 +368,28 @@ const CarpoolCreateModal = ({ isOpen, onClose, onSubmit, resortName }) => {
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1">
               <Clock className="w-4 h-4" />
-              시간 *
+              시간 {!formData.timeNegotiable && '*'}
             </label>
             <input
               type="time"
               value={formData.departureTime}
               onChange={(e) => handleChange('departureTime', e.target.value)}
+              disabled={formData.timeNegotiable}
               className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 ${
+                formData.timeNegotiable ? 'bg-gray-100 cursor-not-allowed' : ''
+              } ${
                 errors.departureTime ? 'border-red-500' : 'border-gray-300'
               }`}
             />
+            <label className="flex items-center gap-2 mt-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.timeNegotiable}
+                onChange={(e) => handleChange('timeNegotiable', e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+              />
+              <span className="text-sm text-gray-700">협의가능</span>
+            </label>
             {errors.departureTime && (
               <p className="mt-1 text-sm text-red-600">{errors.departureTime}</p>
             )}
@@ -441,21 +460,22 @@ const CarpoolCreateModal = ({ isOpen, onClose, onSubmit, resortName }) => {
           </div>
 
           {/* 프리셋 저장 */}
-          <div className="pt-4 border-t border-gray-200">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              프리셋으로 저장 (선택)
+          <div className="pt-4 border-t-2 border-green-100">
+            <label className="block text-base font-bold text-green-700 mb-3 flex items-center gap-2">
+              <Save className="w-5 h-5" />
+              자주쓰는 카풀 저장 (선택)
             </label>
             <div className="flex gap-2">
               <input
                 type="text"
                 value={presetName}
                 onChange={(e) => setPresetName(e.target.value)}
-                placeholder="프리셋 이름"
+                placeholder="프리셋 이름 (예: 주말 강남출발)"
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
               />
               <button
                 onClick={handleSavePreset}
-                className="px-4 py-2 bg-blue-100 hover:bg-blue-200 rounded-lg font-semibold text-blue-700 transition-all flex items-center gap-2"
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-semibold text-white transition-all flex items-center gap-2 shadow-md"
               >
                 <Save className="w-4 h-4" />
                 저장
@@ -464,24 +484,25 @@ const CarpoolCreateModal = ({ isOpen, onClose, onSubmit, resortName }) => {
           </div>
         </div>
 
-        {/* 푸터 */}
-        <div className="px-6 py-4 border-t border-gray-200 flex gap-3 sticky bottom-0 bg-white rounded-b-2xl">
+        {/* 하단 버튼 */}
+        <div className="mt-6 flex gap-3">
           <button
-            onClick={handleClose}
-            className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl font-semibold text-gray-700 transition-colors"
+            onClick={() => navigate(-1)}
+            className="flex-1 px-4 py-4 bg-gray-100 hover:bg-gray-200 rounded-xl font-semibold text-gray-700 transition-colors"
           >
             취소
           </button>
           <button
             onClick={handleSubmit}
-            className="flex-1 px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 rounded-xl font-semibold text-white transition-all shadow-md"
+            disabled={isSubmitting}
+            className="flex-1 px-4 py-4 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 rounded-xl font-semibold text-white transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            등록하기
+            {isSubmitting ? '등록 중...' : '등록하기'}
           </button>
         </div>
       </div>
-    </Modal>
+    </div>
   );
 };
 
-export default CarpoolCreateModal;
+export default CarpoolCreatePage;
