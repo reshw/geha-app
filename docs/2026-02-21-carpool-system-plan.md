@@ -361,7 +361,7 @@ async enrichWithReputation(posts) {
 - [x] ResortService 개발
 - [x] CarpoolService 개발
 - [x] 보안 규칙 추가
-- [ ] 테스트: CRUD 동작 확인 (Firestore 데이터 생성 후)
+- [x] 초기 스키장 데이터 생성 (node 스크립트 실행)
 
 ### Phase 3: 카풀 UI 기본 (3-4일)
 - [ ] ResortDropdown
