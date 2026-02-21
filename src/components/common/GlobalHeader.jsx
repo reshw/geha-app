@@ -6,6 +6,7 @@ import { useAuth } from '../../hooks/useAuth';
 import useStore from '../../store/useStore';
 import spaceService from '../../services/spaceService';
 import tierService from '../../services/tierService';
+import AppSwitcher from './AppSwitcher';
 import SpaceDropdown from '../space/SpaceDropdown';
 import CreateSpaceModal from '../space/CreateSpaceModal';
 import UserTypeBadge from './UserTypeBadge';
@@ -15,13 +16,17 @@ const GlobalHeader = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const {
+    currentApp,
+    setCurrentApp,
     spaces,
     selectedSpace,
     setSpaces,
     setSelectedSpace,
     setTierConfig,
     updateSpaceOrder,
-    removeSpace
+    removeSpace,
+    resorts,
+    selectedResort
   } = useStore();
 
   const [showCreateSpaceModal, setShowCreateSpaceModal] = useState(false);
@@ -91,9 +96,26 @@ const GlobalHeader = () => {
     }
   };
 
-  // 로그인하지 않았거나 스페이스가 없으면 표시하지 않음
-  if (!user || !spaces || spaces.length === 0) {
-    return null;
+  // 앱 전환 핸들러
+  const handleAppSwitch = (appId) => {
+    setCurrentApp(appId);
+    // 앱 전환 시 메인 페이지로 이동
+    navigate('/');
+  };
+
+  // 로그인하지 않았거나 컨텍스트(스페이스/스키장)가 없으면 표시하지 않음
+  const hasContext = currentApp === 'geha'
+    ? (spaces && spaces.length > 0)
+    : (resorts && resorts.length > 0);
+
+  if (!user || !hasContext) {
+    // 카풀 앱인데 스키장이 없는 경우는 일단 표시 (나중에 자동 추가)
+    if (!user) return null;
+    if (currentApp === 'carpool') {
+      // 카풀 앱은 스키장이 없어도 헤더 표시 (초기화 로직이 있음)
+    } else if (!hasContext) {
+      return null;
+    }
   }
 
   return (
@@ -101,15 +123,34 @@ const GlobalHeader = () => {
       <div className="sticky top-0 z-40 bg-gradient-to-br from-blue-700 to-blue-800 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            {/* 스페이스 드롭다운 */}
-            <div className="flex-1 max-w-xs">
-              <SpaceDropdown
-                spaces={spaces}
-                selectedSpace={selectedSpace}
-                onSelect={handleSelectSpace}
-                onReorder={handleSpaceReorder}
-                onCreateSpace={handleCreateSpace}
+            {/* 왼쪽: 앱 전환 + 컨텍스트 선택 */}
+            <div className="flex items-center gap-3 flex-1">
+              {/* 앱 전환 드롭다운 */}
+              <AppSwitcher
+                currentApp={currentApp}
+                onSwitch={handleAppSwitch}
               />
+
+              {/* 컨텍스트 드롭다운 (스페이스 or 스키장) */}
+              {currentApp === 'geha' && spaces && spaces.length > 0 && (
+                <div className="flex-1 max-w-xs">
+                  <SpaceDropdown
+                    spaces={spaces}
+                    selectedSpace={selectedSpace}
+                    onSelect={handleSelectSpace}
+                    onReorder={handleSpaceReorder}
+                    onCreateSpace={handleCreateSpace}
+                  />
+                </div>
+              )}
+
+              {currentApp === 'carpool' && (
+                <div className="flex-1 max-w-xs">
+                  <div className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm">
+                    스키장: {selectedResort?.name || '로딩 중...'}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* 오른쪽: 프로필 메뉴 */}
