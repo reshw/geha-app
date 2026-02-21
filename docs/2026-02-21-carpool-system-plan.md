@@ -347,12 +347,13 @@ async enrichWithReputation(posts) {
 
 ## 구현 단계
 
-### Phase 1: 앱 전환 인프라 (1-2일)
+### Phase 1: 앱 전환 인프라 (1-2일) ✅ 완료
 - [x] Zustand 확장
 - [x] apps.js 생성
-- [ ] AppSwitcher 컴포넌트
-- [ ] GlobalHeader 개선
-- [ ] 테스트: 앱 전환 동작 확인
+- [x] AppSwitcher 컴포넌트
+- [x] GlobalHeader 개선
+- [x] UI 간결화 (아이콘 버튼)
+- [x] 테스트: 앱 전환 동작 확인
 
 ### Phase 2: 카풀 데이터 레이어 (2-3일)
 - [ ] Firestore 컬렉션 설정
@@ -465,8 +466,8 @@ Collection: carpool_posts
 ### 기능 테스트
 
 **Phase 1:**
-- [ ] 앱 전환 후 새로고침 → 마지막 앱 복원
-- [ ] 기존 geha 기능 무결성
+- [x] 앱 전환 후 새로고침 → 마지막 앱 복원
+- [x] 기존 geha 기능 무결성
 
 **Phase 2:**
 - [ ] Firestore CRUD 동작
