@@ -220,10 +220,10 @@ const CarpoolCreatePage = () => {
   const locationLabel = getLocationLabel();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-50 to-white pb-24">
+    <div className="min-h-screen bg-gradient-to-b from-green-50 to-white pb-24 overflow-x-hidden">
       {/* 헤더 */}
       <div className="sticky top-0 z-10 bg-gradient-to-br from-green-600 via-green-600 to-emerald-700 shadow-xl">
-        <div className="max-w-3xl mx-auto px-4 py-4">
+        <div className="w-full max-w-3xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between mb-3">
             <button
               onClick={() => navigate(-1)}
@@ -254,7 +254,7 @@ const CarpoolCreatePage = () => {
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
+      <div className="w-full max-w-3xl mx-auto px-4 py-6 space-y-4">
         {/* 프리셋 목록 */}
         {showPresets && presets.length > 0 && (
           <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-4 shadow-lg animate-slideDown">
@@ -267,13 +267,13 @@ const CarpoolCreatePage = () => {
                 <div key={preset.id} className="flex items-center gap-2 bg-white rounded-xl p-3 shadow-md hover:shadow-lg transition-all">
                   <button
                     onClick={() => handleLoadPreset(preset)}
-                    className="flex-1 text-left hover:bg-blue-50 px-3 py-2 rounded-lg transition-colors"
+                    className="flex-1 text-left hover:bg-blue-50 px-3 py-2 rounded-lg transition-colors min-w-0"
                   >
-                    <div className="font-bold text-gray-900 flex items-center gap-2">
-                      <span className={`w-2 h-2 rounded-full ${preset.type === 'offer' ? 'bg-green-500' : 'bg-blue-500'}`} />
-                      {preset.name}
+                    <div className="font-bold text-gray-900 flex items-center gap-2 truncate">
+                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${preset.type === 'offer' ? 'bg-green-500' : 'bg-blue-500'}`} />
+                      <span className="truncate">{preset.name}</span>
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">
+                    <div className="text-xs text-gray-500 mt-1 truncate">
                       {preset.departureLocation} · {preset.cost?.toLocaleString()}원
                     </div>
                   </button>
@@ -336,25 +336,25 @@ const CarpoolCreatePage = () => {
             방향 설정
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex-1 px-4 py-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border-2 border-gray-200">
+            <div className="flex-1 px-4 py-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border-2 border-gray-200 min-w-0">
               <div className="text-xs text-gray-500 mb-1 font-semibold">
                 {formData.direction === 'toResort' ? '🚗 출발' : '🏁 도착'}
               </div>
-              <div className="font-bold text-gray-900 text-lg">{locationLabel.left}</div>
+              <div className="font-bold text-gray-900 text-lg truncate">{locationLabel.left}</div>
             </div>
 
             <button
               onClick={toggleDirection}
-              className="p-4 bg-gradient-to-br from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 rounded-2xl text-white transition-all shadow-lg hover:shadow-xl active:scale-95"
+              className="p-4 bg-gradient-to-br from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 rounded-2xl text-white transition-all shadow-lg hover:shadow-xl active:scale-95 flex-shrink-0"
             >
               <ArrowLeftRight className="w-6 h-6" />
             </button>
 
-            <div className="flex-1 px-4 py-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border-2 border-gray-200">
+            <div className="flex-1 px-4 py-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border-2 border-gray-200 min-w-0">
               <div className="text-xs text-gray-500 mb-1 font-semibold">
                 {formData.direction === 'toResort' ? '🏁 도착' : '🚗 출발'}
               </div>
-              <div className="font-bold text-gray-900 text-lg">{locationLabel.right}</div>
+              <div className="font-bold text-gray-900 text-lg truncate">{locationLabel.right}</div>
             </div>
           </div>
         </div>
@@ -372,19 +372,19 @@ const CarpoolCreatePage = () => {
               <div className={`px-5 py-4 rounded-xl border-2 bg-gradient-to-br ${
                 formData.departureRegion ? LOCATION_REGIONS[formData.departureRegion]?.color : 'from-green-500 to-emerald-600'
               } text-white shadow-md`}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-xs opacity-80 mb-1">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs opacity-80 mb-1 truncate">
                       {formData.departureRegion && LOCATION_REGIONS[formData.departureRegion]?.emoji}{' '}
                       {formData.departureRegion && LOCATION_REGIONS[formData.departureRegion]?.name}
                     </div>
-                    <div className="text-lg font-bold">{formData.departureLocation}</div>
+                    <div className="text-lg font-bold truncate">{formData.departureLocation}</div>
                   </div>
                   <button
                     onClick={() => {
                       setFormData(prev => ({ ...prev, departureLocation: '', departureRegion: '' }));
                     }}
-                    className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                    className="p-2 hover:bg-white/20 rounded-lg transition-colors flex-shrink-0"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -434,7 +434,7 @@ const CarpoolCreatePage = () => {
                         <button
                           key={location}
                           onClick={() => handleLocationSelect(location, regionId)}
-                          className={`px-3 py-2 rounded-lg font-semibold transition-all bg-white hover:shadow-md`}
+                          className="px-3 py-2 rounded-lg font-semibold transition-all bg-white hover:shadow-md break-keep"
                         >
                           {location}
                         </button>
@@ -589,7 +589,7 @@ const CarpoolCreatePage = () => {
             <MessageSquare className="w-5 h-5 text-yellow-600" />
             오픈채팅방 링크 *
           </div>
-          <p className="text-xs text-gray-500 mb-3">
+          <p className="text-xs text-gray-500 mb-3 break-keep">
             💬 카카오톡 오픈채팅방 링크를 입력하세요
           </p>
           <input
@@ -597,7 +597,7 @@ const CarpoolCreatePage = () => {
             value={formData.kakaoOpenChatLink}
             onChange={(e) => handleChange('kakaoOpenChatLink', e.target.value)}
             placeholder="https://open.kakao.com/o/xxxxxxxx"
-            className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 transition-all ${
+            className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 transition-all truncate ${
               errors.kakaoOpenChatLink ? 'border-red-500' : 'border-gray-200'
             }`}
           />
@@ -606,7 +606,7 @@ const CarpoolCreatePage = () => {
               <span>⚠️</span> {errors.kakaoOpenChatLink}
             </p>
           )}
-          <p className="mt-2 text-xs text-gray-500">
+          <p className="mt-2 text-xs text-gray-500 break-keep">
             ℹ️ 오픈채팅방 링크는 카카오톡 앱에서 [⋯] → [공유] → [링크 복사]로 확인할 수 있습니다
           </p>
         </div>
