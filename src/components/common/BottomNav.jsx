@@ -8,9 +8,14 @@ import { AVAILABLE_FEATURES } from '../../utils/features';
 
 export default function BottomNav() {
   const location = useLocation();
-  const { selectedSpace } = useStore();
+  const { currentApp, selectedSpace } = useStore();
   const [featuresConfig, setFeaturesConfig] = useState({});
   const [loading, setLoading] = useState(true);
+
+  // 카풀 앱일 때는 BottomNav 숨김
+  if (currentApp === 'carpool') {
+    return null;
+  }
 
   useEffect(() => {
     if (selectedSpace) {

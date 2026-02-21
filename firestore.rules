@@ -174,5 +174,12 @@ service cloud.firestore {
       allow read: if isUser(userId);
       allow write: if isUser(userId);
     }
+
+    // 사용자별 카풀 프리셋 (users/{userId}/carpoolPresets)
+    match /users/{userId}/carpoolPresets/{presetId} {
+      allow read: if isUser(userId);
+      allow write: if isUser(userId);
+      allow delete: if isUser(userId);
+    }
   }
 }

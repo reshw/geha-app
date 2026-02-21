@@ -23,7 +23,7 @@ const CarpoolCard = ({ post, onClick }) => {
   const getDirectionText = () => {
     if (post.direction === 'toResort') return '→';
     if (post.direction === 'fromResort') return '←';
-    return '⇄';
+    return '→'; // 기본값
   };
 
   // 상태 배지
@@ -103,10 +103,12 @@ const CarpoolCard = ({ post, onClick }) => {
         <div className="flex items-center gap-2 text-gray-700">
           <DollarSign className="w-5 h-5 text-gray-500 flex-shrink-0" />
           <span className="font-semibold text-green-600">
-            {post.cost?.toLocaleString()}원
+            카풀 {post.cost?.toLocaleString()}원
           </span>
-          {post.direction === 'roundTrip' && (
-            <span className="text-xs text-gray-500">(왕복)</span>
+          {post.hasEquipment && post.equipmentCost > 0 && (
+            <span className="text-sm text-gray-600">
+              + 장비 {post.equipmentCost?.toLocaleString()}원
+            </span>
           )}
         </div>
 
@@ -116,8 +118,10 @@ const CarpoolCard = ({ post, onClick }) => {
             <Package className="w-5 h-5 text-gray-500 flex-shrink-0" />
             <span className="text-sm">
               장비 가능
-              {post.equipmentDetails && (
-                <span className="text-gray-500 ml-1">({post.equipmentDetails})</span>
+              {post.equipmentCost > 0 && (
+                <span className="font-semibold text-green-600 ml-2">
+                  +{post.equipmentCost?.toLocaleString()}원
+                </span>
               )}
             </span>
           </div>
