@@ -220,9 +220,9 @@ const CarpoolCreatePage = () => {
   const locationLabel = getLocationLabel();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-50 to-white pb-24 overflow-x-hidden">
+    <div className="min-h-screen bg-gradient-to-b from-teal-50 to-white pb-24 overflow-x-hidden">
       {/* 헤더 */}
-      <div className="sticky top-0 z-10 bg-gradient-to-br from-green-600 via-green-600 to-emerald-700 shadow-xl">
+      <div className="sticky top-0 z-10 bg-gradient-to-br from-teal-600 via-teal-600 to-cyan-700 shadow-xl">
         <div className="w-full max-w-3xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between mb-3">
             <button
@@ -242,19 +242,76 @@ const CarpoolCreatePage = () => {
           {presets.length > 0 && (
             <button
               onClick={() => setShowPresets(!showPresets)}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl transition-all backdrop-blur-sm border border-white/20"
+              className="w-full flex items-center justify-center gap-2 px-3 py-3 bg-white/10 hover:bg-white/20 rounded-xl transition-all backdrop-blur-sm border border-white/20"
             >
-              <FolderOpen className="w-5 h-5 text-white" />
-              <span className="text-sm font-bold text-white">자주쓰는거 불러오기</span>
-              <span className="ml-auto px-2 py-0.5 bg-white/20 rounded-full text-xs text-white">
-                {presets.length}개
+              <FolderOpen className="w-4 h-4 text-white flex-shrink-0" />
+              <span className="text-sm font-bold text-white truncate">프리셋 불러오기</span>
+              <span className="px-2 py-0.5 bg-white/20 rounded-full text-xs text-white flex-shrink-0">
+                {presets.length}
               </span>
             </button>
           )}
         </div>
       </div>
 
-      <div className="w-full max-w-3xl mx-auto px-4 py-6 space-y-4">
+      <div className="w-full max-w-3xl mx-auto px-4 py-6 space-y-6">
+        {/* 필수 입력: 날짜 & 시간 */}
+        <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-1">
+          <div className="bg-white rounded-xl shadow-lg p-5">
+            <div className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-teal-600" />
+              <span>날짜 & 시간</span>
+              <span className="ml-auto text-xs px-2 py-1 bg-red-100 text-red-700 rounded-full font-bold">필수</span>
+            </div>
+            <div className="space-y-3">
+              <input
+                type="date"
+                value={formData.departureDate}
+                onChange={(e) => handleChange('departureDate', e.target.value)}
+                className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all ${
+                  errors.departureDate ? 'border-red-500' : 'border-gray-200'
+                }`}
+              />
+              {errors.departureDate && (
+                <p className="text-sm text-red-600 flex items-center gap-1">
+                  <span>⚠️</span> {errors.departureDate}
+                </p>
+              )}
+
+              <div className="relative">
+                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                <input
+                  type="time"
+                  value={formData.departureTime}
+                  onChange={(e) => handleChange('departureTime', e.target.value)}
+                  disabled={formData.timeNegotiable}
+                  className={`w-full pl-11 pr-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all ${
+                    formData.timeNegotiable ? 'bg-gray-100 cursor-not-allowed' : ''
+                  } ${
+                    errors.departureTime ? 'border-red-500' : 'border-gray-200'
+                  }`}
+                />
+              </div>
+
+              <label className="flex items-center gap-3 px-4 py-3 bg-blue-50 rounded-xl cursor-pointer hover:bg-blue-100 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={formData.timeNegotiable}
+                  onChange={(e) => handleChange('timeNegotiable', e.target.checked)}
+                  className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm font-semibold text-blue-900">시간 협의가능</span>
+              </label>
+
+              {errors.departureTime && (
+                <p className="text-sm text-red-600 flex items-center gap-1">
+                  <span>⚠️</span> {errors.departureTime}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* 프리셋 목록 */}
         {showPresets && presets.length > 0 && (
           <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-4 shadow-lg animate-slideDown">
@@ -289,10 +346,19 @@ const CarpoolCreatePage = () => {
           </div>
         )}
 
+        {/* 필수 입력 섹션 구분선 */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-gradient-to-r from-transparent via-teal-300 to-transparent"></div>
+          <div className="px-4 py-2 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full text-white text-sm font-bold shadow-md">
+            필수 입력 정보
+          </div>
+          <div className="flex-1 h-px bg-gradient-to-r from-transparent via-teal-300 to-transparent"></div>
+        </div>
+
         {/* 타입 선택 카드 */}
         <div className="bg-white rounded-2xl shadow-lg p-5">
           <div className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-            <div className="w-1 h-5 bg-green-500 rounded-full" />
+            <div className="w-1 h-5 bg-teal-500 rounded-full" />
             타입 선택
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -300,7 +366,7 @@ const CarpoolCreatePage = () => {
               onClick={() => handleChange('type', 'offer')}
               className={`relative px-5 py-4 rounded-xl font-bold transition-all ${
                 formData.type === 'offer'
-                  ? 'bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg scale-105'
+                  ? 'bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg scale-105'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
@@ -332,7 +398,7 @@ const CarpoolCreatePage = () => {
         {/* 방향 카드 */}
         <div className="bg-white rounded-2xl shadow-lg p-5">
           <div className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-            <div className="w-1 h-5 bg-green-500 rounded-full" />
+            <div className="w-1 h-5 bg-teal-500 rounded-full" />
             방향 설정
           </div>
           <div className="flex items-center gap-3">
@@ -345,7 +411,7 @@ const CarpoolCreatePage = () => {
 
             <button
               onClick={toggleDirection}
-              className="p-4 bg-gradient-to-br from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 rounded-2xl text-white transition-all shadow-lg hover:shadow-xl active:scale-95 flex-shrink-0"
+              className="p-4 bg-gradient-to-br from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 rounded-2xl text-white transition-all shadow-lg hover:shadow-xl active:scale-95 flex-shrink-0"
             >
               <ArrowLeftRight className="w-6 h-6" />
             </button>
@@ -362,7 +428,7 @@ const CarpoolCreatePage = () => {
         {/* 출발지/목적지 카드 */}
         <div className="bg-white rounded-2xl shadow-lg p-5">
           <div className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-            <MapPin className="w-5 h-5 text-green-600" />
+            <MapPin className="w-5 h-5 text-teal-600" />
             {formData.direction === 'toResort' ? '출발지' : '목적지'}
           </div>
 
@@ -370,7 +436,7 @@ const CarpoolCreatePage = () => {
           {formData.departureLocation ? (
             <div className="mb-3">
               <div className={`px-5 py-4 rounded-xl border-2 bg-gradient-to-br ${
-                formData.departureRegion ? LOCATION_REGIONS[formData.departureRegion]?.color : 'from-green-500 to-emerald-600'
+                formData.departureRegion ? LOCATION_REGIONS[formData.departureRegion]?.color : 'from-teal-500 to-cyan-600'
               } text-white shadow-md`}>
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0 flex-1">
@@ -394,7 +460,7 @@ const CarpoolCreatePage = () => {
           ) : (
             <button
               onClick={() => setShowRegionSelector(!showRegionSelector)}
-              className="w-full px-5 py-4 bg-gradient-to-br from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 rounded-xl text-white font-bold shadow-md transition-all mb-3"
+              className="w-full px-5 py-4 bg-gradient-to-br from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 rounded-xl text-white font-bold shadow-md transition-all mb-3"
             >
               📍 지역 선택하기
             </button>
@@ -453,7 +519,7 @@ const CarpoolCreatePage = () => {
               value={formData.departureLocation}
               onChange={(e) => handleChange('departureLocation', e.target.value)}
               placeholder="또는 직접 입력"
-              className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all ${
+              className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all ${
                 errors.departureLocation ? 'border-red-500' : 'border-gray-200'
               }`}
             />
@@ -466,64 +532,10 @@ const CarpoolCreatePage = () => {
           )}
         </div>
 
-        {/* 날짜/시간 카드 */}
-        <div className="bg-white rounded-2xl shadow-lg p-5">
-          <div className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-green-600" />
-            날짜 & 시간
-          </div>
-          <div className="space-y-3">
-            <input
-              type="date"
-              value={formData.departureDate}
-              onChange={(e) => handleChange('departureDate', e.target.value)}
-              className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all ${
-                errors.departureDate ? 'border-red-500' : 'border-gray-200'
-              }`}
-            />
-            {errors.departureDate && (
-              <p className="text-sm text-red-600 flex items-center gap-1">
-                <span>⚠️</span> {errors.departureDate}
-              </p>
-            )}
-
-            <div className="relative">
-              <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
-              <input
-                type="time"
-                value={formData.departureTime}
-                onChange={(e) => handleChange('departureTime', e.target.value)}
-                disabled={formData.timeNegotiable}
-                className={`w-full pl-11 pr-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all ${
-                  formData.timeNegotiable ? 'bg-gray-100 cursor-not-allowed' : ''
-                } ${
-                  errors.departureTime ? 'border-red-500' : 'border-gray-200'
-                }`}
-              />
-            </div>
-
-            <label className="flex items-center gap-3 px-4 py-3 bg-blue-50 rounded-xl cursor-pointer hover:bg-blue-100 transition-colors">
-              <input
-                type="checkbox"
-                checked={formData.timeNegotiable}
-                onChange={(e) => handleChange('timeNegotiable', e.target.checked)}
-                className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span className="text-sm font-semibold text-blue-900">시간 협의가능</span>
-            </label>
-
-            {errors.departureTime && (
-              <p className="text-sm text-red-600 flex items-center gap-1">
-                <span>⚠️</span> {errors.departureTime}
-              </p>
-            )}
-          </div>
-        </div>
-
         {/* 비용 카드 */}
         <div className="bg-white rounded-2xl shadow-lg p-5">
           <div className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-            <DollarSign className="w-5 h-5 text-green-600" />
+            <DollarSign className="w-5 h-5 text-teal-600" />
             카풀비용
           </div>
           <div className="relative">
@@ -533,7 +545,7 @@ const CarpoolCreatePage = () => {
               value={formData.cost}
               onChange={(e) => handleChange('cost', e.target.value)}
               placeholder="15000"
-              className={`w-full pl-10 pr-4 py-4 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 text-lg font-bold transition-all ${
+              className={`w-full pl-10 pr-4 py-4 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-lg font-bold transition-all ${
                 errors.cost ? 'border-red-500' : 'border-gray-200'
               }`}
             />
@@ -552,9 +564,9 @@ const CarpoolCreatePage = () => {
               type="checkbox"
               checked={formData.hasEquipment}
               onChange={(e) => handleChange('hasEquipment', e.target.checked)}
-              className="w-6 h-6 rounded-lg border-gray-300 text-green-600 focus:ring-green-500"
+              className="w-6 h-6 rounded-lg border-gray-300 text-teal-600 focus:ring-teal-500"
             />
-            <Package className="w-5 h-5 text-green-600" />
+            <Package className="w-5 h-5 text-teal-600" />
             <span className="text-base font-bold text-gray-900">
               장비 가능
             </span>
@@ -569,7 +581,7 @@ const CarpoolCreatePage = () => {
                   value={formData.equipmentCost}
                   onChange={(e) => handleChange('equipmentCost', e.target.value)}
                   placeholder="5000"
-                  className={`w-full pl-10 pr-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all ${
+                  className={`w-full pl-10 pr-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all ${
                     errors.equipmentCost ? 'border-red-500' : 'border-gray-200'
                   }`}
                 />
@@ -621,7 +633,7 @@ const CarpoolCreatePage = () => {
             onChange={(e) => handleChange('memo', e.target.value)}
             placeholder="추가 정보를 입력하세요 (예: 중간 정차, 짐 개수 등)"
             rows={3}
-            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
           />
         </div>
 
