@@ -12,18 +12,7 @@ export default function BottomNav() {
   const [featuresConfig, setFeaturesConfig] = useState({});
   const [loading, setLoading] = useState(true);
 
-  // ⚠️ IMPORTANT: 모든 hooks를 먼저 호출해야 함 (early return 전에)
-  useEffect(() => {
-    if (selectedSpace) {
-      loadFeaturesConfig();
-    }
-  }, [selectedSpace]);
-
-  // 카풀 앱일 때는 BottomNav 숨김
-  if (currentApp === 'carpool') {
-    return null;
-  }
-
+  // 함수 정의 (useEffect에서 사용하기 전에 선언)
   const loadFeaturesConfig = async () => {
     try {
       setLoading(true);
@@ -40,6 +29,18 @@ export default function BottomNav() {
       setLoading(false);
     }
   };
+
+  // ⚠️ IMPORTANT: 모든 hooks를 먼저 호출해야 함 (early return 전에)
+  useEffect(() => {
+    if (selectedSpace) {
+      loadFeaturesConfig();
+    }
+  }, [selectedSpace]);
+
+  // 카풀 앱일 때는 BottomNav 숨김
+  if (currentApp === 'carpool') {
+    return null;
+  }
 
   const isActive = (path) => {
     if (path === '/') {
