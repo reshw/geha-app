@@ -355,12 +355,13 @@ async enrichWithReputation(posts) {
 - [x] UI 간결화 (아이콘 버튼)
 - [x] 테스트: 앱 전환 동작 확인
 
-### Phase 2: 카풀 데이터 레이어 (2-3일)
-- [ ] Firestore 컬렉션 설정
-- [ ] ResortService 개발
-- [ ] CarpoolService 개발
-- [ ] 보안 규칙 추가
-- [ ] 테스트: CRUD 동작 확인
+### Phase 2: 카풀 데이터 레이어 (2-3일) ✅ 완료
+- [x] Firestore 컬렉션 설계
+- [x] 초기 데이터 생성 스크립트
+- [x] ResortService 개발
+- [x] CarpoolService 개발
+- [x] 보안 규칙 추가
+- [ ] 테스트: CRUD 동작 확인 (Firestore 데이터 생성 후)
 
 ### Phase 3: 카풀 UI 기본 (3-4일)
 - [ ] ResortDropdown
