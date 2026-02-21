@@ -1,5 +1,6 @@
 // components/carpool/CarpoolCard.jsx
 import { Calendar, MapPin, DollarSign, Package, User, ThumbsUp } from 'lucide-react';
+import { LOCATION_REGIONS } from '../../config/locations';
 
 /**
  * 카풀 포스트 카드
@@ -98,6 +99,9 @@ const CarpoolCard = ({ post, onClick }) => {
         <div className="flex items-center gap-2 text-gray-700">
           <MapPin className="w-5 h-5 text-gray-500 flex-shrink-0" />
           <span className="font-medium">
+            {post.departureRegion && LOCATION_REGIONS[post.departureRegion] && (
+              <span className="mr-1">{LOCATION_REGIONS[post.departureRegion].emoji}</span>
+            )}
             {post.departureLocation} {getDirectionText()} {post.destination}
           </span>
         </div>

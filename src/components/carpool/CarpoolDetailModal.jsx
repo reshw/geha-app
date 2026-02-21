@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { X, Calendar, MapPin, DollarSign, Package, MessageSquare, User, ThumbsUp, AlertTriangle } from 'lucide-react';
 import Modal from '../common/Modal';
 import carpoolService from '../../services/carpoolService';
+import { LOCATION_REGIONS } from '../../config/locations';
 
 const CarpoolDetailModal = ({ isOpen, onClose, post, currentUserId, onUpdate }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -122,10 +123,18 @@ const CarpoolDetailModal = ({ isOpen, onClose, post, currentUserId, onUpdate }) 
             <div>
               <div className="text-sm text-gray-500 mb-1">경로</div>
               <div className="text-lg font-semibold text-gray-900">
+                {post.departureRegion && LOCATION_REGIONS[post.departureRegion] && (
+                  <span className="mr-1">{LOCATION_REGIONS[post.departureRegion].emoji}</span>
+                )}
                 {post.departureLocation} → {post.destination}
               </div>
               <div className="text-sm text-gray-600 mt-1">
                 {getDirectionText()}
+                {post.departureRegion && LOCATION_REGIONS[post.departureRegion] && (
+                  <span className="ml-2 px-2 py-0.5 bg-gray-100 rounded text-xs">
+                    {LOCATION_REGIONS[post.departureRegion].name}
+                  </span>
+                )}
               </div>
             </div>
           </div>

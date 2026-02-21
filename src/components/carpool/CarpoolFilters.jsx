@@ -1,6 +1,7 @@
 // components/carpool/CarpoolFilters.jsx
 import { useState } from 'react';
 import { Filter, X } from 'lucide-react';
+import { LOCATION_REGIONS, REGION_ORDER } from '../../config/locations';
 
 /**
  * 카풀 필터 바
@@ -25,6 +26,10 @@ const CarpoolFilters = ({ filters, onFilterChange }) => {
     onFilterChange({ ...filters, departureLocation: e.target.value || null });
   };
 
+  const handleRegionChange = (regionId) => {
+    onFilterChange({ ...filters, departureRegion: regionId === filters.departureRegion ? null : regionId });
+  };
+
   const handleEquipmentChange = (value) => {
     onFilterChange({ ...filters, hasEquipment: value === filters.hasEquipment ? null : value });
   };
@@ -34,11 +39,12 @@ const CarpoolFilters = ({ filters, onFilterChange }) => {
       type: null,
       date: null,
       departureLocation: null,
+      departureRegion: null,
       hasEquipment: null
     });
   };
 
-  const hasActiveFilters = filters.type || filters.date || filters.departureLocation || filters.hasEquipment !== null;
+  const hasActiveFilters = filters.type || filters.date || filters.departureLocation || filters.departureRegion || filters.hasEquipment !== null;
 
   return (
     <div className="px-4 py-3">
@@ -117,7 +123,32 @@ const CarpoolFilters = ({ filters, onFilterChange }) => {
             />
           </div>
 
-          {/* 출발지 필터 */}
+          {/* 권역 필터 */}
+          <div>
+            <label className="text-sm font-semibold text-gray-700 mb-2 block">
+              권역:
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {REGION_ORDER.slice(0, 7).map(regionId => {
+                const region = LOCATION_REGIONS[regionId];
+                return (
+                  <button
+                    key={regionId}
+                    onClick={() => handleRegionChange(regionId)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      filters.departureRegion === regionId
+                        ? `bg-gradient-to-br ${region.color} text-white`
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {region.emoji} {region.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 출발지 필터 (직접 입력) */}
           <div className="flex items-center gap-3">
             <label className="text-sm font-semibold text-gray-700 min-w-[60px]">
               출발지:

@@ -74,6 +74,7 @@ const CarpoolListPage = () => {
     type: null, // null | 'offer' | 'request'
     date: null,
     departureLocation: null,
+    departureRegion: null, // 권역 필터
     hasEquipment: null
   });
 
