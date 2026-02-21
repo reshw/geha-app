@@ -254,48 +254,47 @@ const CarpoolCreatePage = () => {
         </div>
       </div>
 
-      <div className="w-full max-w-3xl mx-auto px-4 py-6 space-y-6">
-        {/* 필수 입력: 날짜 & 시간 */}
-        <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-1">
-          <div className="bg-white rounded-xl shadow-lg p-5">
-            <div className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-teal-600" />
-              <span>날짜 & 시간</span>
-              <span className="ml-auto text-xs px-2 py-1 bg-red-100 text-red-700 rounded-full font-bold">필수</span>
+      <div className="w-full max-w-3xl mx-auto px-3 py-6 space-y-6">
+        {/* 필수 입력: 날짜 & 시간 (고정) */}
+        <div className="sticky top-[72px] z-30 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-1 shadow-lg">
+          <div className="bg-white rounded-lg p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-teal-600 flex-shrink-0" />
+                <span className="text-sm font-bold text-gray-700">날짜 & 시간</span>
+              </div>
+              <span className="text-xs px-2 py-0.5 bg-red-100 text-red-700 rounded-full font-bold flex-shrink-0">필수</span>
             </div>
-            <div className="space-y-3">
-              <div className="relative">
+
+            {/* 날짜 & 시간 그리드 */}
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              <div className="relative min-w-0">
                 <input
                   type="date"
                   value={formData.departureDate}
                   onChange={(e) => handleChange('departureDate', e.target.value)}
-                  className={`w-full px-4 py-3 pr-10 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all ${
+                  className={`w-full px-2 py-2 pr-7 border-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all ${
                     errors.departureDate ? 'border-red-500' : 'border-gray-200'
                   }`}
                 />
                 {formData.departureDate && (
                   <button
                     onClick={() => handleChange('departureDate', '')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded-full transition-colors"
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 hover:bg-gray-200 rounded-full transition-colors"
                   >
-                    <X className="w-4 h-4 text-gray-500" />
+                    <X className="w-3.5 h-3.5 text-gray-500" />
                   </button>
                 )}
               </div>
-              {errors.departureDate && (
-                <p className="text-sm text-red-600 flex items-center gap-1">
-                  <span>⚠️</span> {errors.departureDate}
-                </p>
-              )}
 
-              <div className="relative">
-                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+              <div className="relative min-w-0">
+                <Clock className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                 <input
                   type="time"
                   value={formData.departureTime}
                   onChange={(e) => handleChange('departureTime', e.target.value)}
                   disabled={formData.timeNegotiable}
-                  className={`w-full pl-11 pr-10 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all ${
+                  className={`w-full pl-8 pr-7 py-2 border-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all ${
                     formData.timeNegotiable ? 'bg-gray-100 cursor-not-allowed' : ''
                   } ${
                     errors.departureTime ? 'border-red-500' : 'border-gray-200'
@@ -304,29 +303,40 @@ const CarpoolCreatePage = () => {
                 {formData.departureTime && !formData.timeNegotiable && (
                   <button
                     onClick={() => handleChange('departureTime', '')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded-full transition-colors"
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 hover:bg-gray-200 rounded-full transition-colors"
                   >
-                    <X className="w-4 h-4 text-gray-500" />
+                    <X className="w-3.5 h-3.5 text-gray-500" />
                   </button>
                 )}
               </div>
-
-              <label className="flex items-center gap-3 px-4 py-3 bg-blue-50 rounded-xl cursor-pointer hover:bg-blue-100 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={formData.timeNegotiable}
-                  onChange={(e) => handleChange('timeNegotiable', e.target.checked)}
-                  className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-sm font-semibold text-blue-900">시간 협의가능</span>
-              </label>
-
-              {errors.departureTime && (
-                <p className="text-sm text-red-600 flex items-center gap-1">
-                  <span>⚠️</span> {errors.departureTime}
-                </p>
-              )}
             </div>
+
+            {/* 시간 협의가능 체크박스 */}
+            <label className="flex items-center gap-2 px-2 py-1.5 bg-blue-50 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors">
+              <input
+                type="checkbox"
+                checked={formData.timeNegotiable}
+                onChange={(e) => handleChange('timeNegotiable', e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 flex-shrink-0"
+              />
+              <span className="text-xs font-semibold text-blue-900">시간 협의가능</span>
+            </label>
+
+            {/* 에러 메시지 */}
+            {(errors.departureDate || errors.departureTime) && (
+              <div className="mt-2 space-y-1">
+                {errors.departureDate && (
+                  <p className="text-xs text-red-600 flex items-center gap-1">
+                    <span>⚠️</span> {errors.departureDate}
+                  </p>
+                )}
+                {errors.departureTime && (
+                  <p className="text-xs text-red-600 flex items-center gap-1">
+                    <span>⚠️</span> {errors.departureTime}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -374,7 +384,7 @@ const CarpoolCreatePage = () => {
         </div>
 
         {/* 타입 선택 카드 */}
-        <div className="bg-white rounded-2xl shadow-lg p-5">
+        <div className="bg-white rounded-2xl shadow-lg p-4">
           <div className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
             <div className="w-1 h-5 bg-teal-500 rounded-full" />
             타입 선택
@@ -414,7 +424,7 @@ const CarpoolCreatePage = () => {
         </div>
 
         {/* 방향 카드 */}
-        <div className="bg-white rounded-2xl shadow-lg p-5">
+        <div className="bg-white rounded-2xl shadow-lg p-4">
           <div className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
             <div className="w-1 h-5 bg-teal-500 rounded-full" />
             방향 설정
@@ -444,7 +454,7 @@ const CarpoolCreatePage = () => {
         </div>
 
         {/* 출발지/목적지 카드 */}
-        <div className="bg-white rounded-2xl shadow-lg p-5">
+        <div className="bg-white rounded-2xl shadow-lg p-4">
           <div className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
             <MapPin className="w-5 h-5 text-teal-600" />
             {formData.direction === 'toResort' ? '출발지' : '목적지'}
@@ -537,7 +547,7 @@ const CarpoolCreatePage = () => {
               value={formData.departureLocation}
               onChange={(e) => handleChange('departureLocation', e.target.value)}
               placeholder="또는 직접 입력"
-              className={`w-full px-4 py-3 pr-10 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all ${
+              className={`w-full px-3 py-2.5 pr-9 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all ${
                 errors.departureLocation ? 'border-red-500' : 'border-gray-200'
               }`}
             />
@@ -559,19 +569,19 @@ const CarpoolCreatePage = () => {
         </div>
 
         {/* 비용 카드 */}
-        <div className="bg-white rounded-2xl shadow-lg p-5">
+        <div className="bg-white rounded-2xl shadow-lg p-4">
           <div className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
             <DollarSign className="w-5 h-5 text-teal-600" />
             카풀비용
           </div>
           <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold pointer-events-none">₩</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold pointer-events-none">₩</span>
             <input
               type="number"
               value={formData.cost}
               onChange={(e) => handleChange('cost', e.target.value)}
               placeholder="15000"
-              className={`w-full pl-10 pr-10 py-4 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-lg font-bold transition-all ${
+              className={`w-full pl-9 pr-9 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-lg font-bold transition-all ${
                 errors.cost ? 'border-red-500' : 'border-gray-200'
               }`}
             />
@@ -592,7 +602,7 @@ const CarpoolCreatePage = () => {
         </div>
 
         {/* 장비 카드 */}
-        <div className="bg-white rounded-2xl shadow-lg p-5">
+        <div className="bg-white rounded-2xl shadow-lg p-4">
           <label className="flex items-center gap-3 cursor-pointer mb-4">
             <input
               type="checkbox"
@@ -609,13 +619,13 @@ const CarpoolCreatePage = () => {
           {formData.hasEquipment && (
             <div className="pl-9 animate-slideDown">
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold pointer-events-none">₩</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold pointer-events-none">₩</span>
                 <input
                   type="number"
                   value={formData.equipmentCost}
                   onChange={(e) => handleChange('equipmentCost', e.target.value)}
                   placeholder="5000"
-                  className={`w-full pl-10 pr-10 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all ${
+                  className={`w-full pl-9 pr-9 py-2.5 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all ${
                     errors.equipmentCost ? 'border-red-500' : 'border-gray-200'
                   }`}
                 />
@@ -638,7 +648,7 @@ const CarpoolCreatePage = () => {
         </div>
 
         {/* 오픈채팅방 링크 카드 */}
-        <div className="bg-white rounded-2xl shadow-lg p-5 border-2 border-yellow-200">
+        <div className="bg-white rounded-2xl shadow-lg p-4 border-2 border-yellow-200">
           <div className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
             <MessageSquare className="w-5 h-5 text-yellow-600" />
             오픈채팅방 링크 *
@@ -652,7 +662,7 @@ const CarpoolCreatePage = () => {
               value={formData.kakaoOpenChatLink}
               onChange={(e) => handleChange('kakaoOpenChatLink', e.target.value)}
               placeholder="https://open.kakao.com/o/xxxxxxxx"
-              className={`w-full px-4 py-3 pr-10 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 transition-all ${
+              className={`w-full px-3 py-2.5 pr-9 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 transition-all ${
                 errors.kakaoOpenChatLink ? 'border-red-500' : 'border-gray-200'
               }`}
             />
@@ -676,7 +686,7 @@ const CarpoolCreatePage = () => {
         </div>
 
         {/* 메모 카드 */}
-        <div className="bg-white rounded-2xl shadow-lg p-5">
+        <div className="bg-white rounded-2xl shadow-lg p-4">
           <div className="text-sm font-bold text-gray-700 mb-3">
             메모 (선택)
           </div>
@@ -686,7 +696,7 @@ const CarpoolCreatePage = () => {
               onChange={(e) => handleChange('memo', e.target.value)}
               placeholder="추가 정보를 입력하세요 (예: 중간 정차, 짐 개수 등)"
               rows={3}
-              className="w-full px-4 py-3 pr-10 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
+              className="w-full px-3 py-2.5 pr-9 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
             />
             {formData.memo && (
               <button
@@ -700,7 +710,7 @@ const CarpoolCreatePage = () => {
         </div>
 
         {/* 프리셋 저장 카드 */}
-        <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200 rounded-2xl shadow-lg p-5">
+        <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200 rounded-2xl shadow-lg p-4">
           <div className="flex items-center gap-2 text-amber-900 mb-3">
             <Save className="w-5 h-5 flex-shrink-0" />
             <span className="font-bold truncate">자주쓰는 카풀 저장</span>
@@ -713,7 +723,7 @@ const CarpoolCreatePage = () => {
                 value={presetName}
                 onChange={(e) => setPresetName(e.target.value)}
                 placeholder="프리셋 이름"
-                className="w-full px-4 py-3 pr-10 border-2 border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full px-3 py-2.5 pr-9 border-2 border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
               {presetName && (
                 <button
