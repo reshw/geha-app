@@ -87,12 +87,12 @@ const KakaoCallback = () => {
 
         // ✅ fullTag 있으면 정상 로그인 - 카카오 최신값으로 merge 업데이트
         await authService.updateUserProfile(userInfo.id, {
-          displayName: userInfo.displayName,     // 실명
+          realName: userInfo.realName || '',         // 카카오 실명 (참고용)
+          kakaoNickname: userInfo.kakaoNickname || '', // 카카오 닉네임 (레거시)
           profileImage: userInfo.profileImage,
-          birthyear: userInfo.birthyear || '',
-          gender: userInfo.gender || '',
-          phoneNumber: userInfo.phoneNumber || '',
           email: userInfo.email || ''
+          // 참고: displayName은 사용자 지정 별명이므로 재로그인 시 덮어쓰지 않음
+          // 참고: birthyear, gender, phoneNumber는 카카오에서 다시 받지 않으므로 업데이트 안 함
         });
 
         await login({ ...userInfo, fullTag: userData.fullTag });

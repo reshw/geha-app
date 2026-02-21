@@ -96,9 +96,8 @@ class AuthService {
     return {
       id: String(id),
       email: account?.email ?? '',
-      // ✅ displayName = 실명, nickname = 카카오닉네임
-      displayName: name || nickname || '사용자',  // 실명 우선
-      nickname,                                    // 카카오 닉네임 별도 보관
+      realName: name || '',                        // ✅ 카카오 실명 (참고용, 변경 불가)
+      kakaoNickname: nickname || '',               // 카카오 닉네임 (참고용)
       gender,
       birthyear,
       phoneNumber: phone_number,
@@ -129,7 +128,7 @@ class AuthService {
   }
 
   // ----- 3-2) 사용 가능한 discriminator 생성 -----
-  async generateDiscriminator(nickname) {
+  async generateDiscriminator(displayName) {
     const maxAttempts = 100; // 최대 100번 시도
     const usersRef = collection(db, 'users');
     const snapshot = await getDocs(usersRef);
@@ -138,7 +137,7 @@ class AuthService {
     const usedTags = new Set();
     snapshot.docs.forEach(doc => {
       const data = doc.data();
-      if (data.nickname === nickname && data.displayTag) {
+      if (data.displayName === displayName && data.displayTag) {
         usedTags.add(data.displayTag);
       }
     });
@@ -159,7 +158,7 @@ class AuthService {
       }
     }
 
-    throw new Error('사용 가능한 태그가 없습니다. (닉네임이 너무 많이 사용되었습니다)');
+    throw new Error('사용 가능한 태그가 없습니다. (별명이 너무 많이 사용되었습니다)');
   }
 
   // ----- 4) Firestore: 사용자 최초 등록 (확장된 필드 지원) -----
@@ -167,17 +166,18 @@ class AuthService {
     // ✅ userId를 반드시 string으로 통일
     const userId = String(userData.id);
 
-    // 닉네임과 discriminator로 fullTag 생성
-    const nickname = userData.nickname || 'User';
-    const displayTag = userData.displayTag || await this.generateDiscriminator(nickname);
-    const fullTag = `${nickname}#${displayTag}`;
+    // displayName과 discriminator로 fullTag 생성
+    const displayName = userData.displayName || 'User';
+    const displayTag = userData.displayTag || await this.generateDiscriminator(displayName);
+    const fullTag = `${displayName}#${displayTag}`;
 
     const userDoc = {
       id: userId,  // ✅ string으로 변환된 id 저장
-      nickname,                        // 사용자 지정 닉네임
+      displayName,                     // 사용자 지정 별명 (변경 가능!) - 메인!
       displayTag,                      // discriminator (#0001-#9999)
-      fullTag,                         // unique 식별자 (nickname#1234)
-      displayName: userData.displayName ?? '',  // 카카오 실명 (참고용)
+      fullTag,                         // unique 식별자 (displayName#1234)
+      realName: userData.realName ?? '',        // 카카오 실명 (참고용, 변경 불가)
+      nickname: userData.kakaoNickname ?? '',   // 카카오 닉네임 (레거시)
       email: userData.email ?? '',
       phoneNumber: userData.phoneNumber ?? '',
       profileImage: userData.profileImage ?? '',
@@ -206,10 +206,19 @@ class AuthService {
     const updates = {};
 
     if (profileData.displayName !== undefined) {
-      updates.displayName = profileData.displayName;  // 실명
+      updates.displayName = profileData.displayName;  // 사용자 지정 별명 (변경 가능)
     }
-    if (profileData.nickname !== undefined) {  // ✅ 카카오 닉네임 업데이트 추가
-      updates.nickname = profileData.nickname;
+    if (profileData.displayTag !== undefined) {
+      updates.displayTag = profileData.displayTag;  // discriminator
+    }
+    if (profileData.fullTag !== undefined) {
+      updates.fullTag = profileData.fullTag;  // displayName#1234
+    }
+    if (profileData.realName !== undefined) {
+      updates.realName = profileData.realName;  // 카카오 실명 (참고용)
+    }
+    if (profileData.nickname !== undefined) {
+      updates.nickname = profileData.nickname;  // 카카오 닉네임 (레거시)
     }
     if (profileData.profileImage !== undefined) {
       updates.profileImage = profileData.profileImage;

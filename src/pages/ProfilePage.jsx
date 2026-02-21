@@ -11,7 +11,7 @@ const ProfilePage = () => {
   const fileInputRef = useRef(null);
 
   const [formData, setFormData] = useState({
-    nickname: '',
+    displayName: '',
     profileImage: '',
     birthyear: '',
     gender: '',
@@ -19,7 +19,7 @@ const ProfilePage = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
-  const [nicknamePreview, setNicknamePreview] = useState('');
+  const [displayNamePreview, setDisplayNamePreview] = useState('');
   const [isChangingNickname, setIsChangingNickname] = useState(false);
 
   useEffect(() => {
@@ -30,7 +30,7 @@ const ProfilePage = () => {
 
     // 현재 사용자 정보로 초기화
     setFormData({
-      nickname: user.nickname || '',
+      displayName: user.displayName || '',
       profileImage: user.profileImage || '',
       birthyear: user.birthyear || '',
       gender: user.gender || '',
@@ -40,27 +40,27 @@ const ProfilePage = () => {
 
   // 닉네임 미리보기
   useEffect(() => {
-    if (isChangingNickname && formData.nickname.trim() && formData.nickname !== user?.nickname) {
+    if (isChangingNickname && formData.displayName.trim() && formData.displayName !== user?.displayName) {
       const randomTag = String(Math.floor(Math.random() * 9999) + 1).padStart(4, '0');
-      setNicknamePreview(`${formData.nickname}#${randomTag}`);
+      setDisplayNamePreview(`${formData.displayName}#${randomTag}`);
     } else {
-      setNicknamePreview('');
+      setDisplayNamePreview('');
     }
-  }, [formData.nickname, isChangingNickname, user?.nickname]);
+  }, [formData.displayName, isChangingNickname, user?.displayName]);
 
   const validateForm = () => {
     const newErrors = {};
 
     // 닉네임 검증 (변경하는 경우에만)
     if (isChangingNickname) {
-      if (!formData.nickname.trim()) {
-        newErrors.nickname = '닉네임을 입력해주세요';
-      } else if (formData.nickname.length < 2) {
-        newErrors.nickname = '닉네임은 2자 이상이어야 합니다';
-      } else if (formData.nickname.length > 12) {
-        newErrors.nickname = '닉네임은 12자 이하여야 합니다';
-      } else if (!/^[가-힣a-zA-Z0-9_]+$/.test(formData.nickname)) {
-        newErrors.nickname = '한글, 영문, 숫자, _ 만 사용 가능합니다';
+      if (!formData.displayName.trim()) {
+        newErrors.displayName = '닉네임을 입력해주세요';
+      } else if (formData.displayName.length < 2) {
+        newErrors.displayName = '닉네임은 2자 이상이어야 합니다';
+      } else if (formData.displayName.length > 12) {
+        newErrors.displayName = '닉네임은 12자 이하여야 합니다';
+      } else if (!/^[가-힣a-zA-Z0-9_]+$/.test(formData.displayName)) {
+        newErrors.displayName = '한글, 영문, 숫자, _ 만 사용 가능합니다';
       }
     }
 
@@ -136,11 +136,11 @@ const ProfilePage = () => {
       };
 
       // 닉네임 변경하는 경우
-      if (isChangingNickname && formData.nickname !== user.nickname) {
-        const displayTag = await authService.generateDiscriminator(formData.nickname);
-        const fullTag = `${formData.nickname}#${displayTag}`;
+      if (isChangingNickname && formData.displayName !== user.displayName) {
+        const displayTag = await authService.generateDiscriminator(formData.displayName);
+        const fullTag = `${formData.displayName}#${displayTag}`;
 
-        updateData.nickname = formData.nickname;
+        updateData.displayName = formData.displayName;
         updateData.displayTag = displayTag;
         updateData.fullTag = fullTag;
       }
@@ -246,20 +246,20 @@ const ProfilePage = () => {
                   <div className="relative mb-2">
                     <input
                       type="text"
-                      name="nickname"
-                      value={formData.nickname}
+                      name="displayName"
+                      value={formData.displayName}
                       onChange={handleChange}
                       placeholder="2-12자 (한글, 영문, 숫자, _)"
                       maxLength={12}
                       className={`w-full px-4 py-3 pr-10 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all ${
-                        errors.nickname ? 'border-red-500' : 'border-gray-300'
+                        errors.displayName ? 'border-red-500' : 'border-gray-300'
                       }`}
                     />
-                    {formData.nickname && (
+                    {formData.displayName && (
                       <button
                         type="button"
                         onClick={() => {
-                          setFormData(prev => ({ ...prev, nickname: user.nickname }));
+                          setFormData(prev => ({ ...prev, displayName: user.displayName }));
                           setIsChangingNickname(false);
                         }}
                         className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded-full transition-colors"
@@ -268,13 +268,13 @@ const ProfilePage = () => {
                       </button>
                     )}
                   </div>
-                  {nicknamePreview && !errors.nickname && (
+                  {displayNamePreview && !errors.displayName && (
                     <p className="text-sm text-teal-600 flex items-center gap-1">
-                      <span>✓</span> 예상 태그: <span className="font-mono font-bold">{nicknamePreview}</span>
+                      <span>✓</span> 예상 태그: <span className="font-mono font-bold">{displayNamePreview}</span>
                     </p>
                   )}
-                  {errors.nickname && (
-                    <p className="text-red-500 text-sm">{errors.nickname}</p>
+                  {errors.displayName && (
+                    <p className="text-red-500 text-sm">{errors.displayName}</p>
                   )}
                   <p className="text-xs text-gray-500 mt-2">
                     ⚠️ 닉네임 변경 시 새로운 태그(#1234)가 부여됩니다
@@ -282,7 +282,7 @@ const ProfilePage = () => {
                 </>
               ) : (
                 <div className="font-mono text-lg font-bold text-gray-900">
-                  {user.fullTag || `${user.nickname}#????`}
+                  {user.fullTag || `${user.displayName}#????`}
                 </div>
               )}
             </div>

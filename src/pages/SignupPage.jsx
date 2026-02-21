@@ -17,7 +17,7 @@ const SignupPage = () => {
   const isMigration = location.state?.isMigration || false; // 기존 사용자 마이그레이션 여부
 
   const [formData, setFormData] = useState({
-    nickname: '',
+    displayName: '',
     profileImage: '',
     birthyear: '',
     gender: '',
@@ -29,7 +29,7 @@ const SignupPage = () => {
     terms: false,
     privacy: false
   });
-  const [nicknamePreview, setNicknamePreview] = useState('');
+  const [displayNamePreview, setDisplayNamePreview] = useState('');
 
   useEffect(() => {
     // 카카오 정보 없이 직접 접근하면 로그인 페이지로
@@ -50,26 +50,26 @@ const SignupPage = () => {
 
   // 닉네임 미리보기 (discriminator 포함)
   useEffect(() => {
-    if (formData.nickname.trim()) {
+    if (formData.displayName.trim()) {
       const randomTag = String(Math.floor(Math.random() * 9999) + 1).padStart(4, '0');
-      setNicknamePreview(`${formData.nickname}#${randomTag}`);
+      setDisplayNamePreview(`${formData.displayName}#${randomTag}`);
     } else {
-      setNicknamePreview('');
+      setDisplayNamePreview('');
     }
-  }, [formData.nickname]);
+  }, [formData.displayName]);
 
   const validateForm = () => {
     const newErrors = {};
 
     // 닉네임 검증 (필수)
-    if (!formData.nickname.trim()) {
-      newErrors.nickname = '닉네임을 입력해주세요';
-    } else if (formData.nickname.length < 2) {
-      newErrors.nickname = '닉네임은 2자 이상이어야 합니다';
-    } else if (formData.nickname.length > 12) {
-      newErrors.nickname = '닉네임은 12자 이하여야 합니다';
-    } else if (!/^[가-힣a-zA-Z0-9_]+$/.test(formData.nickname)) {
-      newErrors.nickname = '한글, 영문, 숫자, _ 만 사용 가능합니다';
+    if (!formData.displayName.trim()) {
+      newErrors.displayName = '닉네임을 입력해주세요';
+    } else if (formData.displayName.length < 2) {
+      newErrors.displayName = '닉네임은 2자 이상이어야 합니다';
+    } else if (formData.displayName.length > 12) {
+      newErrors.displayName = '닉네임은 12자 이하여야 합니다';
+    } else if (!/^[가-힣a-zA-Z0-9_]+$/.test(formData.displayName)) {
+      newErrors.displayName = '한글, 영문, 숫자, _ 만 사용 가능합니다';
     }
 
     // 전화번호 검증 (선택)
@@ -165,9 +165,10 @@ const SignupPage = () => {
 
       const fullUserData = {
         id: kakaoUserInfo.id,
-        nickname: formData.nickname.trim(),
+        displayName: formData.displayName.trim(),  // 사용자 지정 별명 (메인!)
+        realName: kakaoUserInfo.realName || '',    // 카카오 실명 (참고용, 변경 불가)
+        kakaoNickname: kakaoUserInfo.kakaoNickname || '', // 카카오 닉네임 (레거시)
         profileImage: formData.profileImage || kakaoUserInfo.profileImage || '',
-        displayName: kakaoUserInfo.displayName || '', // 카카오 실명 (참고용)
         email: kakaoUserInfo.email || '',
         provider: 'kakao',
         // 선택 정보
@@ -263,23 +264,23 @@ const SignupPage = () => {
               <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
               <input
                 type="text"
-                name="nickname"
-                value={formData.nickname}
+                name="displayName"
+                value={formData.displayName}
                 onChange={handleChange}
                 placeholder="2-12자 (한글, 영문, 숫자, _)"
                 maxLength={12}
                 className={`w-full pl-10 pr-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all ${
-                  errors.nickname ? 'border-red-500' : 'border-gray-300'
+                  errors.displayName ? 'border-red-500' : 'border-gray-300'
                 }`}
               />
             </div>
-            {nicknamePreview && !errors.nickname && (
+            {displayNamePreview && !errors.displayName && (
               <p className="text-sm text-teal-600 mt-2 flex items-center gap-1">
-                <span>✓</span> 예상 태그: <span className="font-mono font-bold">{nicknamePreview}</span>
+                <span>✓</span> 예상 태그: <span className="font-mono font-bold">{displayNamePreview}</span>
               </p>
             )}
-            {errors.nickname && (
-              <p className="text-red-500 text-sm mt-1">{errors.nickname}</p>
+            {errors.displayName && (
+              <p className="text-red-500 text-sm mt-1">{errors.displayName}</p>
             )}
             <p className="text-xs text-gray-500 mt-1">
               태그(#1234)는 자동으로 생성됩니다. 같은 닉네임 사용 가능!
