@@ -652,6 +652,11 @@ class ReservationService {
         updatedBy: String(updateData.userId || 'unknown')
       };
 
+      // 메모가 전달된 경우 업데이트
+      if ('memo' in updateData) {
+        dataToUpdate.memo = updateData.memo || '';
+      }
+
       // 예약 문서 업데이트
       await setDoc(reserveRef, dataToUpdate, { merge: true });
 

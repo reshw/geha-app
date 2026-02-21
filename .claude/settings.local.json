@@ -42,7 +42,9 @@
       "Bash(python -m pip install:*)",
       "Bash(py:*)",
       "Bash(where:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(git pull:*)",
+      "Bash(git rebase:*)"
     ]
   }
 }

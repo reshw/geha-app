@@ -1,5 +1,5 @@
 // src/components/reservations/ReservationDetailModal.jsx
-import { X } from 'lucide-react';
+import { X, MessageSquare } from 'lucide-react';
 import Modal from '../common/Modal';
 import { formatDate } from '../../utils/dateUtils';
 
@@ -160,6 +160,14 @@ const ReservationDetailModal = ({
                   </div>
                 </div>
 
+                {/* 메모 */}
+                {reservation.memo && (
+                  <div className="flex items-start gap-1.5 mt-2 px-1 text-xs text-gray-500">
+                    <MessageSquare className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-gray-400" />
+                    <span className="break-all">{reservation.memo}</span>
+                  </div>
+                )}
+
                 {/* 안내 문구 */}
                 {isMine && (
                   <div className="text-xs text-gray-400 mt-2 text-center">
@@ -254,6 +262,14 @@ const ReservationDetailModal = ({
                           {index + 1}
                         </div>
                       </div>
+
+                      {/* 메모 */}
+                      {reservation.memo && (
+                        <div className="flex items-start gap-1.5 mt-2 px-1 text-xs text-gray-500">
+                          <MessageSquare className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-gray-400" />
+                          <span className="break-all">{reservation.memo}</span>
+                        </div>
+                      )}
 
                       {/* 안내 문구 */}
                       {isMine && (

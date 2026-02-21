@@ -19,6 +19,7 @@ const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReserva
   const [checkOut, setCheckOut] = useState(null);
   const [selectedHost, setSelectedHost] = useState(null);
   const [isDayTrip, setIsDayTrip] = useState(false);
+  const [memo, setMemo] = useState('');
 
   // 카카오 로그인 정보
   const userName = user?.displayName || user?.name || '사용자';
@@ -184,6 +185,7 @@ const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReserva
     hostId: selectedHost?.id || null,
     hostDisplayName: selectedHost?.displayName || null,
     spaceName: selectedSpace?.name,
+    memo: memo.trim(),
     // 계좌 정보 추가
     accountBank: selectedSpace?.accountBank,
     accountNumber: selectedSpace?.accountNumber,
@@ -195,6 +197,7 @@ const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReserva
   setCheckOut(null);
   setSelectedHost(null);
   setIsDayTrip(false);
+  setMemo('');
 };
 
   const handleClose = () => {
@@ -202,6 +205,7 @@ const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReserva
     setCheckOut(null);
     setSelectedHost(null);
     setIsDayTrip(false);
+    setMemo('');
     onClose();
   };
 
@@ -341,6 +345,24 @@ const ReservationModal = ({ isOpen, onClose, onConfirm, spaceId, existingReserva
                 selectedHost={selectedHost}
               />
             )}
+
+            {/* 메모 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                메모 <span className="text-gray-400 font-normal">(선택사항)</span>
+              </label>
+              <textarea
+                value={memo}
+                onChange={(e) => setMemo(e.target.value)}
+                placeholder="예: 늦은 도착 예정, 특별 요청사항 등"
+                rows={2}
+                maxLength={200}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              />
+              {memo.length > 0 && (
+                <p className="text-xs text-gray-400 text-right mt-1">{memo.length}/200</p>
+              )}
+            </div>
           </div>
         )}
 

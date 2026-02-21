@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, ChevronDown, Plus, Check, X, Settings2, Share2, GripVertical, User, LogOut, FileText, Shield, UserCog, UserMinus, Wallet, ShieldCheck, List, Calendar, Users, Mars, Venus, Trophy, Utensils } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Plus, Check, X, Settings2, Share2, GripVertical, User, LogOut, FileText, Shield, UserCog, UserMinus, Wallet, ShieldCheck, List, Calendar, Users, Mars, Venus, Trophy, Utensils, PackageOpen } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useReservations } from '../../hooks/useReservations';
 import { useMonthlyReservations } from '../../hooks/useMonthlyReservations';
@@ -19,9 +19,13 @@ import MonthlyCalendarView from './MonthlyCalendarView';
 import ReservationManageModal from './ReservationManageModal';
 import ReservationEditModal from './ReservationEditModal';
 import SimpleMealModal from './SimpleMealModal';
+import SeasonOutModal from './SeasonOutModal';
+import SeasonOutListView from './SeasonOutListView';
+import CleanupDayModal from './CleanupDayModal';
 import { formatDate, formatWeekDay, getWeekDates, isToday } from '../../utils/dateUtils';
 import { canManageSpace } from '../../utils/permissions';
 import { USER_TYPE_LABELS } from '../../utils/constants';
+import { useSeasonOut } from '../../hooks/useSeasonOut';
 
 // 토스트 알림 컴포넌트
 const Toast = ({ message, type = 'success', onClose }) => {
@@ -128,6 +132,20 @@ const WeeklyList = () => {
   const [mealsByDate, setMealsByDate] = useState({}); // 날짜별 식사 참여자 정보
   const [showMealModal, setShowMealModal] = useState(false);
   const [selectedDateForMeal, setSelectedDateForMeal] = useState(null);
+  const [showSeasonOutModal, setShowSeasonOutModal] = useState(false);
+  const [showCleanupDayModal, setShowCleanupDayModal] = useState(false);
+
+  // 시즌아웃 훅
+  const {
+    seasonOuts,
+    mySeasonOut,
+    cleanupDay,
+    season,
+    saveMySeasonOut,
+    removeMySeasonOut,
+    saveCleanupDay,
+    removeCleanupDay
+  } = useSeasonOut(selectedSpace?.id, user?.id);
 
   // 스페이스 로드는 MainLayout에서 처리 (중복 제거)
 
@@ -354,6 +372,19 @@ const WeeklyList = () => {
       {/* 리스트 뷰 */}
       {viewMode === 'list' && (
         <div className="max-w-2xl mx-auto p-4 pb-36">
+
+        {/* 시즌아웃 섹션 */}
+        <div className="mb-4">
+          <SeasonOutListView
+            seasonOuts={seasonOuts}
+            season={season}
+            cleanupDay={cleanupDay}
+            isManager={currentUserType === 'manager'}
+            onRegisterClick={() => setShowSeasonOutModal(true)}
+            onCleanupDayClick={() => setShowCleanupDayModal(true)}
+          />
+        </div>
+
         {weekDates.map((date, dateIndex) => {
           const dateStr = formatDate(date);
           const isCurrentDay = isToday(date);
@@ -913,6 +944,20 @@ const WeeklyList = () => {
         >
           <Calendar className="w-5 h-5" />
         </button>
+
+        {/* 시즌아웃 버튼 */}
+        <button
+          onClick={() => setShowSeasonOutModal(true)}
+          className={`w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105 active:scale-95 ${
+            mySeasonOut
+              ? 'bg-amber-400 text-white'
+              : 'bg-gradient-to-br from-amber-500 to-amber-600 text-white'
+          }`}
+          title={mySeasonOut ? `내 시즌아웃: ${mySeasonOut.date?.getMonth() + 1}/${mySeasonOut.date?.getDate()}` : '시즌아웃 등록'}
+          aria-label="시즌아웃 날짜 등록"
+        >
+          <PackageOpen className="w-5 h-5" />
+        </button>
       </div>
 
       {/* 플로팅 예약 추가 버튼 (오른쪽 하단, 여백 증가) */}
@@ -943,6 +988,29 @@ const WeeklyList = () => {
         spaceId={selectedSpace?.id}
         currentUser={user}
         profiles={profiles}
+      />
+
+      {/* 시즌아웃 모달 */}
+      <SeasonOutModal
+        isOpen={showSeasonOutModal}
+        onClose={() => setShowSeasonOutModal(false)}
+        mySeasonOut={mySeasonOut}
+        onSave={saveMySeasonOut}
+        onDelete={removeMySeasonOut}
+        userName={user?.displayName || user?.name || '사용자'}
+      />
+
+      {/* 대청소 날 결정 모달 (방장 전용) */}
+      <CleanupDayModal
+        isOpen={showCleanupDayModal}
+        onClose={() => setShowCleanupDayModal(false)}
+        cleanupDay={cleanupDay}
+        latestDate={seasonOuts.length > 0
+          ? seasonOuts.reduce((latest, s) => (s.date > latest ? s.date : latest), seasonOuts[0].date)
+          : null}
+        onSave={(data) => saveCleanupDay({ ...data, setBy: user?.id, setByName: user?.displayName || user?.name })}
+        onDelete={removeCleanupDay}
+        managerName={user?.displayName || user?.name || '방장'}
       />
     </div>
   );

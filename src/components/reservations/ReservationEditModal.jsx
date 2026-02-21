@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Calendar, AlertTriangle } from 'lucide-react';
+import { X, Calendar, AlertTriangle, MessageSquare } from 'lucide-react';
 import Modal from '../common/Modal';
 import { formatDate } from '../../utils/dateUtils';
 
@@ -18,6 +18,7 @@ const ReservationEditModal = ({
   const [checkInDate, setCheckInDate] = useState('');
   const [checkOutDate, setCheckOutDate] = useState('');
   const [isDayTrip, setIsDayTrip] = useState(false);
+  const [memo, setMemo] = useState('');
   const [showPastDateConfirm, setShowPastDateConfirm] = useState(false);
   const [pendingCheckInDate, setPendingCheckInDate] = useState('');
 
@@ -31,6 +32,7 @@ const ReservationEditModal = ({
       setCheckInDate(formatDate(checkIn));
       setCheckOutDate(formatDate(checkOut));
       setIsDayTrip(reservation.isDayTrip || reservation.nights === 0);
+      setMemo(reservation.memo || '');
     }
   }, [reservation, isOpen]);
 
@@ -139,7 +141,8 @@ const ReservationEditModal = ({
       checkIn,
       checkOut,
       nights,
-      isDayTrip
+      isDayTrip,
+      memo: memo.trim()
     });
   };
 
@@ -265,6 +268,26 @@ const ReservationEditModal = ({
                 </div>
               </div>
             </label>
+          </div>
+
+          {/* 메모 */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+              <MessageSquare className="w-4 h-4" />
+              메모 <span className="text-gray-400 font-normal text-xs">(선택사항)</span>
+            </label>
+            <textarea
+              value={memo}
+              onChange={(e) => setMemo(e.target.value)}
+              disabled={isEnded}
+              placeholder="예: 늦은 도착 예정, 특별 요청사항 등"
+              rows={2}
+              maxLength={200}
+              className="w-full px-4 py-2 border-2 border-gray-300 rounded-xl text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:border-blue-500 resize-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+            />
+            {memo.length > 0 && (
+              <p className="text-xs text-gray-400 text-right mt-1">{memo.length}/200</p>
+            )}
           </div>
 
           {/* 버튼 */}

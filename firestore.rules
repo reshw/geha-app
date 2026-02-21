@@ -130,6 +130,15 @@ service cloud.firestore {
         allow read: if isAuthenticated();
         allow write: if hasSpacePermission(spaceId, 'manager');
       }
+
+      // 시즌아웃 (seasonOuts)
+      // 문서 ID = userId (유저당 1개)
+      match /seasonOuts/{userId} {
+        // 읽기: 인증된 모든 사용자
+        allow read: if isAuthenticated();
+        // 쓰기/삭제: 본인 문서만
+        allow write, delete: if isUser(userId);
+      }
     }
   }
 }
