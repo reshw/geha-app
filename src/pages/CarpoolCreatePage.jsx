@@ -264,14 +264,24 @@ const CarpoolCreatePage = () => {
               <span className="ml-auto text-xs px-2 py-1 bg-red-100 text-red-700 rounded-full font-bold">필수</span>
             </div>
             <div className="space-y-3">
-              <input
-                type="date"
-                value={formData.departureDate}
-                onChange={(e) => handleChange('departureDate', e.target.value)}
-                className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all ${
-                  errors.departureDate ? 'border-red-500' : 'border-gray-200'
-                }`}
-              />
+              <div className="relative">
+                <input
+                  type="date"
+                  value={formData.departureDate}
+                  onChange={(e) => handleChange('departureDate', e.target.value)}
+                  className={`w-full px-4 py-3 pr-10 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all ${
+                    errors.departureDate ? 'border-red-500' : 'border-gray-200'
+                  }`}
+                />
+                {formData.departureDate && (
+                  <button
+                    onClick={() => handleChange('departureDate', '')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded-full transition-colors"
+                  >
+                    <X className="w-4 h-4 text-gray-500" />
+                  </button>
+                )}
+              </div>
               {errors.departureDate && (
                 <p className="text-sm text-red-600 flex items-center gap-1">
                   <span>⚠️</span> {errors.departureDate}
@@ -285,12 +295,20 @@ const CarpoolCreatePage = () => {
                   value={formData.departureTime}
                   onChange={(e) => handleChange('departureTime', e.target.value)}
                   disabled={formData.timeNegotiable}
-                  className={`w-full pl-11 pr-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all ${
+                  className={`w-full pl-11 pr-10 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all ${
                     formData.timeNegotiable ? 'bg-gray-100 cursor-not-allowed' : ''
                   } ${
                     errors.departureTime ? 'border-red-500' : 'border-gray-200'
                   }`}
                 />
+                {formData.departureTime && !formData.timeNegotiable && (
+                  <button
+                    onClick={() => handleChange('departureTime', '')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded-full transition-colors"
+                  >
+                    <X className="w-4 h-4 text-gray-500" />
+                  </button>
+                )}
               </div>
 
               <label className="flex items-center gap-3 px-4 py-3 bg-blue-50 rounded-xl cursor-pointer hover:bg-blue-100 transition-colors">
@@ -513,16 +531,24 @@ const CarpoolCreatePage = () => {
           )}
 
           {/* 직접 입력 */}
-          <div className="mt-3">
+          <div className="mt-3 relative">
             <input
               type="text"
               value={formData.departureLocation}
               onChange={(e) => handleChange('departureLocation', e.target.value)}
               placeholder="또는 직접 입력"
-              className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all ${
+              className={`w-full px-4 py-3 pr-10 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all ${
                 errors.departureLocation ? 'border-red-500' : 'border-gray-200'
               }`}
             />
+            {formData.departureLocation && (
+              <button
+                onClick={() => handleChange('departureLocation', '')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded-full transition-colors"
+              >
+                <X className="w-4 h-4 text-gray-500" />
+              </button>
+            )}
           </div>
 
           {errors.departureLocation && (
@@ -539,16 +565,24 @@ const CarpoolCreatePage = () => {
             카풀비용
           </div>
           <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">₩</span>
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold pointer-events-none">₩</span>
             <input
               type="number"
               value={formData.cost}
               onChange={(e) => handleChange('cost', e.target.value)}
               placeholder="15000"
-              className={`w-full pl-10 pr-4 py-4 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-lg font-bold transition-all ${
+              className={`w-full pl-10 pr-10 py-4 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-lg font-bold transition-all ${
                 errors.cost ? 'border-red-500' : 'border-gray-200'
               }`}
             />
+            {formData.cost && (
+              <button
+                onClick={() => handleChange('cost', '')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded-full transition-colors"
+              >
+                <X className="w-4 h-4 text-gray-500" />
+              </button>
+            )}
           </div>
           {errors.cost && (
             <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
@@ -575,16 +609,24 @@ const CarpoolCreatePage = () => {
           {formData.hasEquipment && (
             <div className="pl-9 animate-slideDown">
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">₩</span>
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold pointer-events-none">₩</span>
                 <input
                   type="number"
                   value={formData.equipmentCost}
                   onChange={(e) => handleChange('equipmentCost', e.target.value)}
                   placeholder="5000"
-                  className={`w-full pl-10 pr-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all ${
+                  className={`w-full pl-10 pr-10 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all ${
                     errors.equipmentCost ? 'border-red-500' : 'border-gray-200'
                   }`}
                 />
+                {formData.equipmentCost && (
+                  <button
+                    onClick={() => handleChange('equipmentCost', '')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded-full transition-colors"
+                  >
+                    <X className="w-4 h-4 text-gray-500" />
+                  </button>
+                )}
               </div>
               {errors.equipmentCost && (
                 <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
@@ -604,15 +646,25 @@ const CarpoolCreatePage = () => {
           <p className="text-xs text-gray-500 mb-3 break-keep">
             💬 카카오톡 오픈채팅방 링크를 입력하세요
           </p>
-          <input
-            type="text"
-            value={formData.kakaoOpenChatLink}
-            onChange={(e) => handleChange('kakaoOpenChatLink', e.target.value)}
-            placeholder="https://open.kakao.com/o/xxxxxxxx"
-            className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 transition-all truncate ${
-              errors.kakaoOpenChatLink ? 'border-red-500' : 'border-gray-200'
-            }`}
-          />
+          <div className="relative">
+            <input
+              type="text"
+              value={formData.kakaoOpenChatLink}
+              onChange={(e) => handleChange('kakaoOpenChatLink', e.target.value)}
+              placeholder="https://open.kakao.com/o/xxxxxxxx"
+              className={`w-full px-4 py-3 pr-10 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 transition-all ${
+                errors.kakaoOpenChatLink ? 'border-red-500' : 'border-gray-200'
+              }`}
+            />
+            {formData.kakaoOpenChatLink && (
+              <button
+                onClick={() => handleChange('kakaoOpenChatLink', '')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded-full transition-colors"
+              >
+                <X className="w-4 h-4 text-gray-500" />
+              </button>
+            )}
+          </div>
           {errors.kakaoOpenChatLink && (
             <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
               <span>⚠️</span> {errors.kakaoOpenChatLink}
@@ -628,36 +680,56 @@ const CarpoolCreatePage = () => {
           <div className="text-sm font-bold text-gray-700 mb-3">
             메모 (선택)
           </div>
-          <textarea
-            value={formData.memo}
-            onChange={(e) => handleChange('memo', e.target.value)}
-            placeholder="추가 정보를 입력하세요 (예: 중간 정차, 짐 개수 등)"
-            rows={3}
-            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
-          />
+          <div className="relative">
+            <textarea
+              value={formData.memo}
+              onChange={(e) => handleChange('memo', e.target.value)}
+              placeholder="추가 정보를 입력하세요 (예: 중간 정차, 짐 개수 등)"
+              rows={3}
+              className="w-full px-4 py-3 pr-10 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
+            />
+            {formData.memo && (
+              <button
+                onClick={() => handleChange('memo', '')}
+                className="absolute right-3 top-3 p-1 hover:bg-gray-200 rounded-full transition-colors"
+              >
+                <X className="w-4 h-4 text-gray-500" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* 프리셋 저장 카드 */}
         <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200 rounded-2xl shadow-lg p-5">
           <div className="flex items-center gap-2 text-amber-900 mb-3">
-            <Save className="w-5 h-5" />
-            <span className="font-bold">자주쓰는 카풀 저장</span>
-            <Sparkles className="w-4 h-4 ml-auto" />
+            <Save className="w-5 h-5 flex-shrink-0" />
+            <span className="font-bold truncate">자주쓰는 카풀 저장</span>
+            <Sparkles className="w-4 h-4 ml-auto flex-shrink-0" />
           </div>
           <div className="flex gap-2">
-            <input
-              type="text"
-              value={presetName}
-              onChange={(e) => setPresetName(e.target.value)}
-              placeholder="프리셋 이름 (예: 주말 강남출발)"
-              className="flex-1 px-4 py-3 border-2 border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
-            />
+            <div className="flex-1 relative min-w-0">
+              <input
+                type="text"
+                value={presetName}
+                onChange={(e) => setPresetName(e.target.value)}
+                placeholder="프리셋 이름"
+                className="w-full px-4 py-3 pr-10 border-2 border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
+              {presetName && (
+                <button
+                  onClick={() => setPresetName('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded-full transition-colors"
+                >
+                  <X className="w-4 h-4 text-gray-500" />
+                </button>
+              )}
+            </div>
             <button
               onClick={handleSavePreset}
-              className="px-5 py-3 bg-gradient-to-br from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 rounded-xl font-bold text-white transition-all shadow-md hover:shadow-lg active:scale-95 flex items-center gap-2"
+              className="px-4 py-3 bg-gradient-to-br from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 rounded-xl font-bold text-white transition-all shadow-md hover:shadow-lg active:scale-95 flex items-center gap-1 flex-shrink-0"
             >
-              <Save className="w-5 h-5" />
-              저장
+              <Save className="w-4 h-4" />
+              <span className="hidden sm:inline">저장</span>
             </button>
           </div>
         </div>
@@ -675,7 +747,7 @@ const CarpoolCreatePage = () => {
           <button
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="flex-2 px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 rounded-xl font-bold text-white transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 flex items-center justify-center gap-2"
+            className="flex-2 px-8 py-4 bg-gradient-to-r from-teal-600 to-cyan-700 hover:from-teal-700 hover:to-cyan-800 rounded-xl font-bold text-white transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 flex items-center justify-center gap-2"
           >
             {isSubmitting ? (
               <>
