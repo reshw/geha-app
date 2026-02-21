@@ -1,7 +1,7 @@
 // pages/CarpoolCreatePage.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Car, MapPin, Calendar, Clock, DollarSign, Package, ArrowLeftRight, Save, FolderOpen, Trash2, ChevronLeft } from 'lucide-react';
+import { X, Car, MapPin, Calendar, Clock, DollarSign, Package, ArrowLeftRight, Save, FolderOpen, Trash2, ChevronLeft, Sparkles } from 'lucide-react';
 import carpoolPresetService from '../services/carpoolPresetService';
 import carpoolService from '../services/carpoolService';
 import { useAuth } from '../hooks/useAuth';
@@ -16,9 +16,9 @@ const CarpoolCreatePage = () => {
     type: 'offer',
     departureDate: '',
     departureTime: '',
-    timeNegotiable: false, // 시간 협의가능
+    timeNegotiable: false,
     departureLocation: '',
-    direction: 'toResort', // toResort | fromResort
+    direction: 'toResort',
     cost: '',
     hasEquipment: false,
     equipmentCost: '',
@@ -31,10 +31,8 @@ const CarpoolCreatePage = () => {
   const [presetName, setPresetName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 출발지 프리셋 (4개)
   const popularLocations = ['강남', '잠실', '홍대', '수원'];
 
-  // 프리셋 로드
   useEffect(() => {
     if (user?.id) {
       loadPresets();
@@ -57,7 +55,6 @@ const CarpoolCreatePage = () => {
     }
   };
 
-  // 방향 전환
   const toggleDirection = () => {
     setFormData(prev => ({
       ...prev,
@@ -79,7 +76,6 @@ const CarpoolCreatePage = () => {
       }
     }
 
-    // 시간은 협의가능이 체크되지 않았을 때만 필수
     if (!formData.timeNegotiable && !formData.departureTime) {
       newErrors.departureTime = '시간을 선택하거나 협의가능을 체크해주세요';
     }
@@ -122,7 +118,7 @@ const CarpoolCreatePage = () => {
 
       await carpoolService.createCarpoolPost(submitData);
       alert('카풀이 등록되었습니다');
-      navigate(-1); // 이전 페이지로
+      navigate(-1);
     } catch (error) {
       console.error('카풀 등록 실패:', error);
       alert('카풀 등록에 실패했습니다');
@@ -131,7 +127,6 @@ const CarpoolCreatePage = () => {
     }
   };
 
-  // 프리셋 저장
   const handleSavePreset = async () => {
     if (!presetName.trim()) {
       alert('프리셋 이름을 입력하세요');
@@ -151,7 +146,6 @@ const CarpoolCreatePage = () => {
     }
   };
 
-  // 프리셋 불러오기
   const handleLoadPreset = async (preset) => {
     setFormData({
       type: preset.type,
@@ -170,7 +164,6 @@ const CarpoolCreatePage = () => {
     setShowPresets(false);
   };
 
-  // 프리셋 삭제
   const handleDeletePreset = async (presetId) => {
     if (!window.confirm('이 프리셋을 삭제하시겠습니까?')) return;
 
@@ -182,7 +175,6 @@ const CarpoolCreatePage = () => {
     }
   };
 
-  // 방향 레이블
   const getLocationLabel = () => {
     if (formData.direction === 'toResort') {
       return { left: formData.departureLocation || '출발지', right: selectedResort?.name || '스키장' };
@@ -194,14 +186,14 @@ const CarpoolCreatePage = () => {
   const locationLabel = getLocationLabel();
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-8">
+    <div className="min-h-screen bg-gradient-to-b from-green-50 to-white pb-24">
       {/* 헤더 */}
-      <div className="sticky top-0 z-10 bg-gradient-to-br from-green-600 to-green-700 shadow-lg">
-        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+      <div className="sticky top-0 z-10 bg-gradient-to-br from-green-600 via-green-600 to-emerald-700 shadow-xl">
+        <div className="max-w-3xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between mb-3">
             <button
               onClick={() => navigate(-1)}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+              className="p-2 hover:bg-white/20 rounded-xl transition-all active:scale-95"
             >
               <ChevronLeft className="w-6 h-6 text-white" />
             </button>
@@ -209,31 +201,45 @@ const CarpoolCreatePage = () => {
               <Car className="w-6 h-6" />
               카풀 등록
             </h1>
+            <div className="w-10" />
           </div>
-          <button
-            onClick={() => setShowPresets(!showPresets)}
-            className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
-          >
-            <FolderOpen className="w-5 h-5 text-white" />
-            <span className="text-sm font-semibold text-white">자주쓰는거 불러오기</span>
-          </button>
+
+          {/* 프리셋 불러오기 버튼 */}
+          {presets.length > 0 && (
+            <button
+              onClick={() => setShowPresets(!showPresets)}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl transition-all backdrop-blur-sm border border-white/20"
+            >
+              <FolderOpen className="w-5 h-5 text-white" />
+              <span className="text-sm font-bold text-white">자주쓰는거 불러오기</span>
+              <span className="ml-auto px-2 py-0.5 bg-white/20 rounded-full text-xs text-white">
+                {presets.length}개
+              </span>
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-4 py-6">
+      <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
         {/* 프리셋 목록 */}
         {showPresets && presets.length > 0 && (
-          <div className="mb-6 bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
-            <div className="text-sm font-bold text-blue-900 mb-3">저장된 프리셋</div>
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-4 shadow-lg animate-slideDown">
+            <div className="flex items-center gap-2 text-blue-900 mb-3">
+              <Sparkles className="w-5 h-5" />
+              <span className="font-bold">저장된 프리셋</span>
+            </div>
             <div className="space-y-2">
               {presets.map(preset => (
-                <div key={preset.id} className="flex items-center gap-2 bg-white rounded-lg p-3 shadow-sm">
+                <div key={preset.id} className="flex items-center gap-2 bg-white rounded-xl p-3 shadow-md hover:shadow-lg transition-all">
                   <button
                     onClick={() => handleLoadPreset(preset)}
-                    className="flex-1 text-left hover:bg-gray-50 px-2 py-1 rounded transition-colors"
+                    className="flex-1 text-left hover:bg-blue-50 px-3 py-2 rounded-lg transition-colors"
                   >
-                    <div className="font-semibold text-gray-900">{preset.name}</div>
-                    <div className="text-xs text-gray-500">
+                    <div className="font-bold text-gray-900 flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full ${preset.type === 'offer' ? 'bg-green-500' : 'bg-blue-500'}`} />
+                      {preset.name}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
                       {preset.departureLocation} · {preset.cost?.toLocaleString()}원
                     </div>
                   </button>
@@ -249,255 +255,295 @@ const CarpoolCreatePage = () => {
           </div>
         )}
 
-        {/* 폼 */}
-        <div className="bg-white rounded-xl shadow-md p-6 space-y-6">
-          {/* 타입 선택 */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              타입 *
-            </label>
-            <div className="flex gap-3">
-              <button
-                onClick={() => handleChange('type', 'offer')}
-                className={`flex-1 px-4 py-3 rounded-xl font-semibold transition-all ${
-                  formData.type === 'offer'
-                    ? 'bg-green-600 text-white shadow-md'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                제공
-              </button>
-              <button
-                onClick={() => handleChange('type', 'request')}
-                className={`flex-1 px-4 py-3 rounded-xl font-semibold transition-all ${
-                  formData.type === 'request'
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                요청
-              </button>
-            </div>
+        {/* 타입 선택 카드 */}
+        <div className="bg-white rounded-2xl shadow-lg p-5">
+          <div className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+            <div className="w-1 h-5 bg-green-500 rounded-full" />
+            타입 선택
           </div>
-
-          {/* 방향 (좌우 전환) */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-3">
-              방향 *
-            </label>
-            <div className="flex items-center gap-3">
-              <div className="flex-1 px-4 py-3 bg-gray-100 rounded-xl text-center">
-                <div className="text-xs text-gray-500 mb-1">
-                  {formData.direction === 'toResort' ? '출발' : '도착'}
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => handleChange('type', 'offer')}
+              className={`relative px-5 py-4 rounded-xl font-bold transition-all ${
+                formData.type === 'offer'
+                  ? 'bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg scale-105'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {formData.type === 'offer' && (
+                <div className="absolute -top-1 -right-1 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center">
+                  <span className="text-xs">✓</span>
                 </div>
-                <div className="font-bold text-gray-900">{locationLabel.left}</div>
-              </div>
-
-              <button
-                onClick={toggleDirection}
-                className="p-3 bg-green-600 hover:bg-green-700 rounded-full text-white transition-all shadow-md"
-                title="방향 전환"
-              >
-                <ArrowLeftRight className="w-5 h-5" />
-              </button>
-
-              <div className="flex-1 px-4 py-3 bg-gray-100 rounded-xl text-center">
-                <div className="text-xs text-gray-500 mb-1">
-                  {formData.direction === 'toResort' ? '도착' : '출발'}
+              )}
+              제공
+            </button>
+            <button
+              onClick={() => handleChange('type', 'request')}
+              className={`relative px-5 py-4 rounded-xl font-bold transition-all ${
+                formData.type === 'request'
+                  ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg scale-105'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {formData.type === 'request' && (
+                <div className="absolute -top-1 -right-1 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center">
+                  <span className="text-xs">✓</span>
                 </div>
-                <div className="font-bold text-gray-900">{locationLabel.right}</div>
+              )}
+              요청
+            </button>
+          </div>
+        </div>
+
+        {/* 방향 카드 */}
+        <div className="bg-white rounded-2xl shadow-lg p-5">
+          <div className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+            <div className="w-1 h-5 bg-green-500 rounded-full" />
+            방향 설정
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex-1 px-4 py-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border-2 border-gray-200">
+              <div className="text-xs text-gray-500 mb-1 font-semibold">
+                {formData.direction === 'toResort' ? '🚗 출발' : '🏁 도착'}
               </div>
+              <div className="font-bold text-gray-900 text-lg">{locationLabel.left}</div>
             </div>
-          </div>
 
-          {/* 출발지/목적지 입력 */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1">
-              <MapPin className="w-4 h-4" />
-              {formData.direction === 'toResort' ? '출발지' : '목적지'} *
-            </label>
-            <div className="flex flex-wrap gap-2 mb-2">
-              {popularLocations.map((location) => (
-                <button
-                  key={location}
-                  onClick={() => handleChange('departureLocation', location)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-semibold transition-all ${
-                    formData.departureLocation === location
-                      ? 'bg-green-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {location}
-                </button>
-              ))}
-            </div>
-            <input
-              type="text"
-              value={formData.departureLocation}
-              onChange={(e) => handleChange('departureLocation', e.target.value)}
-              placeholder="직접 입력"
-              className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                errors.departureLocation ? 'border-red-500' : 'border-gray-300'
-              }`}
-            />
-            {errors.departureLocation && (
-              <p className="mt-1 text-sm text-red-600">{errors.departureLocation}</p>
-            )}
-          </div>
+            <button
+              onClick={toggleDirection}
+              className="p-4 bg-gradient-to-br from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 rounded-2xl text-white transition-all shadow-lg hover:shadow-xl active:scale-95"
+            >
+              <ArrowLeftRight className="w-6 h-6" />
+            </button>
 
-          {/* 날짜 */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1">
-              <Calendar className="w-4 h-4" />
-              날짜 *
-            </label>
-            <input
-              type="date"
-              value={formData.departureDate}
-              onChange={(e) => handleChange('departureDate', e.target.value)}
-              className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                errors.departureDate ? 'border-red-500' : 'border-gray-300'
-              }`}
-            />
-            {errors.departureDate && (
-              <p className="mt-1 text-sm text-red-600">{errors.departureDate}</p>
-            )}
-          </div>
-
-          {/* 시간 */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1">
-              <Clock className="w-4 h-4" />
-              시간 {!formData.timeNegotiable && '*'}
-            </label>
-            <input
-              type="time"
-              value={formData.departureTime}
-              onChange={(e) => handleChange('departureTime', e.target.value)}
-              disabled={formData.timeNegotiable}
-              className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                formData.timeNegotiable ? 'bg-gray-100 cursor-not-allowed' : ''
-              } ${
-                errors.departureTime ? 'border-red-500' : 'border-gray-300'
-              }`}
-            />
-            <label className="flex items-center gap-2 mt-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.timeNegotiable}
-                onChange={(e) => handleChange('timeNegotiable', e.target.checked)}
-                className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
-              />
-              <span className="text-sm text-gray-700">협의가능</span>
-            </label>
-            {errors.departureTime && (
-              <p className="mt-1 text-sm text-red-600">{errors.departureTime}</p>
-            )}
-          </div>
-
-          {/* 카풀비용 */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1">
-              <DollarSign className="w-4 h-4" />
-              카풀비용 *
-            </label>
-            <input
-              type="number"
-              value={formData.cost}
-              onChange={(e) => handleChange('cost', e.target.value)}
-              placeholder="예: 15000"
-              className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                errors.cost ? 'border-red-500' : 'border-gray-300'
-              }`}
-            />
-            {errors.cost && (
-              <p className="mt-1 text-sm text-red-600">{errors.cost}</p>
-            )}
-          </div>
-
-          {/* 장비 */}
-          <div>
-            <label className="flex items-center gap-2 cursor-pointer mb-3">
-              <input
-                type="checkbox"
-                checked={formData.hasEquipment}
-                onChange={(e) => handleChange('hasEquipment', e.target.checked)}
-                className="w-5 h-5 rounded border-gray-300 text-green-600 focus:ring-green-500"
-              />
-              <Package className="w-5 h-5 text-gray-600" />
-              <span className="text-sm font-semibold text-gray-700">
-                장비 가능
-              </span>
-            </label>
-            {formData.hasEquipment && (
-              <input
-                type="number"
-                value={formData.equipmentCost}
-                onChange={(e) => handleChange('equipmentCost', e.target.value)}
-                placeholder="장비 요금 (예: 5000)"
-                className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                  errors.equipmentCost ? 'border-red-500' : 'border-gray-300'
-                }`}
-              />
-            )}
-            {errors.equipmentCost && (
-              <p className="mt-1 text-sm text-red-600">{errors.equipmentCost}</p>
-            )}
-          </div>
-
-          {/* 메모 */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              메모 (선택)
-            </label>
-            <textarea
-              value={formData.memo}
-              onChange={(e) => handleChange('memo', e.target.value)}
-              placeholder="추가 정보를 입력하세요"
-              rows={3}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
-            />
-          </div>
-
-          {/* 프리셋 저장 */}
-          <div className="pt-4 border-t-2 border-green-100">
-            <label className="block text-base font-bold text-green-700 mb-3 flex items-center gap-2">
-              <Save className="w-5 h-5" />
-              자주쓰는 카풀 저장 (선택)
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={presetName}
-                onChange={(e) => setPresetName(e.target.value)}
-                placeholder="프리셋 이름 (예: 주말 강남출발)"
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-              />
-              <button
-                onClick={handleSavePreset}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-semibold text-white transition-all flex items-center gap-2 shadow-md"
-              >
-                <Save className="w-4 h-4" />
-                저장
-              </button>
+            <div className="flex-1 px-4 py-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border-2 border-gray-200">
+              <div className="text-xs text-gray-500 mb-1 font-semibold">
+                {formData.direction === 'toResort' ? '🏁 도착' : '🚗 출발'}
+              </div>
+              <div className="font-bold text-gray-900 text-lg">{locationLabel.right}</div>
             </div>
           </div>
         </div>
 
-        {/* 하단 버튼 */}
-        <div className="mt-6 flex gap-3">
+        {/* 출발지/목적지 카드 */}
+        <div className="bg-white rounded-2xl shadow-lg p-5">
+          <div className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+            <MapPin className="w-5 h-5 text-green-600" />
+            {formData.direction === 'toResort' ? '출발지' : '목적지'}
+          </div>
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            {popularLocations.map((location) => (
+              <button
+                key={location}
+                onClick={() => handleChange('departureLocation', location)}
+                className={`px-4 py-3 rounded-xl font-semibold transition-all ${
+                  formData.departureLocation === location
+                    ? 'bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-md'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {location}
+              </button>
+            ))}
+          </div>
+          <input
+            type="text"
+            value={formData.departureLocation}
+            onChange={(e) => handleChange('departureLocation', e.target.value)}
+            placeholder="또는 직접 입력"
+            className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all ${
+              errors.departureLocation ? 'border-red-500' : 'border-gray-200'
+            }`}
+          />
+          {errors.departureLocation && (
+            <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+              <span>⚠️</span> {errors.departureLocation}
+            </p>
+          )}
+        </div>
+
+        {/* 날짜/시간 카드 */}
+        <div className="bg-white rounded-2xl shadow-lg p-5">
+          <div className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-green-600" />
+            날짜 & 시간
+          </div>
+          <div className="space-y-3">
+            <input
+              type="date"
+              value={formData.departureDate}
+              onChange={(e) => handleChange('departureDate', e.target.value)}
+              className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all ${
+                errors.departureDate ? 'border-red-500' : 'border-gray-200'
+              }`}
+            />
+            {errors.departureDate && (
+              <p className="text-sm text-red-600 flex items-center gap-1">
+                <span>⚠️</span> {errors.departureDate}
+              </p>
+            )}
+
+            <div className="relative">
+              <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+              <input
+                type="time"
+                value={formData.departureTime}
+                onChange={(e) => handleChange('departureTime', e.target.value)}
+                disabled={formData.timeNegotiable}
+                className={`w-full pl-11 pr-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all ${
+                  formData.timeNegotiable ? 'bg-gray-100 cursor-not-allowed' : ''
+                } ${
+                  errors.departureTime ? 'border-red-500' : 'border-gray-200'
+                }`}
+              />
+            </div>
+
+            <label className="flex items-center gap-3 px-4 py-3 bg-blue-50 rounded-xl cursor-pointer hover:bg-blue-100 transition-colors">
+              <input
+                type="checkbox"
+                checked={formData.timeNegotiable}
+                onChange={(e) => handleChange('timeNegotiable', e.target.checked)}
+                className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-sm font-semibold text-blue-900">시간 협의가능</span>
+            </label>
+
+            {errors.departureTime && (
+              <p className="text-sm text-red-600 flex items-center gap-1">
+                <span>⚠️</span> {errors.departureTime}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* 비용 카드 */}
+        <div className="bg-white rounded-2xl shadow-lg p-5">
+          <div className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+            <DollarSign className="w-5 h-5 text-green-600" />
+            카풀비용
+          </div>
+          <div className="relative">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">₩</span>
+            <input
+              type="number"
+              value={formData.cost}
+              onChange={(e) => handleChange('cost', e.target.value)}
+              placeholder="15000"
+              className={`w-full pl-10 pr-4 py-4 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 text-lg font-bold transition-all ${
+                errors.cost ? 'border-red-500' : 'border-gray-200'
+              }`}
+            />
+          </div>
+          {errors.cost && (
+            <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+              <span>⚠️</span> {errors.cost}
+            </p>
+          )}
+        </div>
+
+        {/* 장비 카드 */}
+        <div className="bg-white rounded-2xl shadow-lg p-5">
+          <label className="flex items-center gap-3 cursor-pointer mb-4">
+            <input
+              type="checkbox"
+              checked={formData.hasEquipment}
+              onChange={(e) => handleChange('hasEquipment', e.target.checked)}
+              className="w-6 h-6 rounded-lg border-gray-300 text-green-600 focus:ring-green-500"
+            />
+            <Package className="w-5 h-5 text-green-600" />
+            <span className="text-base font-bold text-gray-900">
+              장비 가능
+            </span>
+          </label>
+
+          {formData.hasEquipment && (
+            <div className="pl-9 animate-slideDown">
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">₩</span>
+                <input
+                  type="number"
+                  value={formData.equipmentCost}
+                  onChange={(e) => handleChange('equipmentCost', e.target.value)}
+                  placeholder="5000"
+                  className={`w-full pl-10 pr-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all ${
+                    errors.equipmentCost ? 'border-red-500' : 'border-gray-200'
+                  }`}
+                />
+              </div>
+              {errors.equipmentCost && (
+                <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                  <span>⚠️</span> {errors.equipmentCost}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* 메모 카드 */}
+        <div className="bg-white rounded-2xl shadow-lg p-5">
+          <div className="text-sm font-bold text-gray-700 mb-3">
+            메모 (선택)
+          </div>
+          <textarea
+            value={formData.memo}
+            onChange={(e) => handleChange('memo', e.target.value)}
+            placeholder="추가 정보를 입력하세요 (예: 중간 정차, 짐 개수 등)"
+            rows={3}
+            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+          />
+        </div>
+
+        {/* 프리셋 저장 카드 */}
+        <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200 rounded-2xl shadow-lg p-5">
+          <div className="flex items-center gap-2 text-amber-900 mb-3">
+            <Save className="w-5 h-5" />
+            <span className="font-bold">자주쓰는 카풀 저장</span>
+            <Sparkles className="w-4 h-4 ml-auto" />
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={presetName}
+              onChange={(e) => setPresetName(e.target.value)}
+              placeholder="프리셋 이름 (예: 주말 강남출발)"
+              className="flex-1 px-4 py-3 border-2 border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
+            />
+            <button
+              onClick={handleSavePreset}
+              className="px-5 py-3 bg-gradient-to-br from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 rounded-xl font-bold text-white transition-all shadow-md hover:shadow-lg active:scale-95 flex items-center gap-2"
+            >
+              <Save className="w-5 h-5" />
+              저장
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* 하단 고정 버튼 */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-2xl p-4 z-20">
+        <div className="max-w-3xl mx-auto flex gap-3">
           <button
             onClick={() => navigate(-1)}
-            className="flex-1 px-4 py-4 bg-gray-100 hover:bg-gray-200 rounded-xl font-semibold text-gray-700 transition-colors"
+            className="flex-1 px-6 py-4 bg-gray-100 hover:bg-gray-200 rounded-xl font-bold text-gray-700 transition-all active:scale-95"
           >
             취소
           </button>
           <button
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="flex-1 px-4 py-4 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 rounded-xl font-semibold text-white transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-2 px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 rounded-xl font-bold text-white transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 flex items-center justify-center gap-2"
           >
-            {isSubmitting ? '등록 중...' : '등록하기'}
+            {isSubmitting ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                등록 중...
+              </>
+            ) : (
+              <>
+                <Car className="w-5 h-5" />
+                등록하기
+              </>
+            )}
           </button>
         </div>
       </div>
