@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import MainLayout from './components/common/MainLayout';
-import WeeklyList from './components/reservations/WeeklyList';
+import HomePage from './pages/HomePage';
 import PraisePage from './pages/PraisePage';
 import KakaoCallback from './components/auth/KakaoCallback';
 import SignupPage from './pages/SignupPage';
@@ -55,7 +55,7 @@ function App() {
           <Routes>
           {/* 하단 네비게이션이 있는 메인 페이지들 */}
           <Route element={<MainLayout />}>
-            <Route path="/" element={<WeeklyList />} />
+            <Route path="/" element={<HomePage />} />
             <Route path="/settlement" element={<SettlementPage />} />
             <Route path="/praise" element={<PraisePage />} />
             <Route path="/expenses" element={<ExpenseListPage />} />

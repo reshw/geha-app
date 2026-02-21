@@ -1,13 +1,15 @@
 // components/common/GlobalHeader.jsx
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { UserCog, FileText, LogOut, ShieldCheck, TestTube, Mountain, ChevronDown } from 'lucide-react';
+import { UserCog, FileText, LogOut, ShieldCheck, TestTube } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import useStore from '../../store/useStore';
 import spaceService from '../../services/spaceService';
+import resortService from '../../services/resortService';
 import tierService from '../../services/tierService';
 import AppSwitcher from './AppSwitcher';
 import SpaceDropdown from '../space/SpaceDropdown';
+import ResortDropdown from '../carpool/ResortDropdown';
 import CreateSpaceModal from '../space/CreateSpaceModal';
 import UserTypeBadge from './UserTypeBadge';
 
@@ -26,7 +28,10 @@ const GlobalHeader = () => {
     updateSpaceOrder,
     removeSpace,
     resorts,
-    selectedResort
+    selectedResort,
+    setResorts,
+    setSelectedResort,
+    updateResortOrder
   } = useStore();
 
   const [showCreateSpaceModal, setShowCreateSpaceModal] = useState(false);
@@ -68,6 +73,34 @@ const GlobalHeader = () => {
   // 스페이스 생성 신청
   const handleCreateSpace = () => {
     setShowCreateSpaceModal(true);
+  };
+
+  // 스키장 선택
+  const handleSelectResort = async (resort) => {
+    setSelectedResort(resort);
+    // 마지막 방문 업데이트
+    if (resort?.id) {
+      try {
+        await resortService.updateLastVisited(user?.id, resort.id);
+      } catch (error) {
+        console.error('⚠️ 스키장 방문 기록 실패:', error);
+      }
+    }
+  };
+
+  // 스키장 순서 변경
+  const handleResortReorder = async (updatedResorts) => {
+    try {
+      await resortService.updateResortOrder(user.id, updatedResorts);
+      updateResortOrder(updatedResorts);
+    } catch (error) {
+      console.error('❌ 스키장 순서 변경 실패:', error);
+    }
+  };
+
+  // 스키장 추가 (추후 구현)
+  const handleAddResort = () => {
+    alert('스키장 추가 기능은 준비 중입니다.');
   };
 
   // 스페이스 생성 제출
@@ -144,15 +177,16 @@ const GlobalHeader = () => {
                 </div>
               )}
 
-              {currentApp === 'carpool' && (
-                <button
-                  className="flex items-center gap-1 px-2 py-2 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-all"
-                  title={`스키장: ${selectedResort?.name || '로딩 중...'}`}
-                  disabled
-                >
-                  <Mountain className="w-5 h-5 text-white" />
-                  <ChevronDown className="w-3.5 h-3.5 text-white/70" />
-                </button>
+              {currentApp === 'carpool' && resorts && resorts.length > 0 && (
+                <div className="flex-1 max-w-xs">
+                  <ResortDropdown
+                    resorts={resorts}
+                    selectedResort={selectedResort}
+                    onSelect={handleSelectResort}
+                    onReorder={handleResortReorder}
+                    onAddResort={handleAddResort}
+                  />
+                </div>
               )}
             </div>
 
