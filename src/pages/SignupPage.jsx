@@ -1,6 +1,7 @@
 // src/pages/SignupPage.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { Camera, User, Hash } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import authService from '../services/authService';
 
@@ -8,15 +9,15 @@ const SignupPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
+  const fileInputRef = useRef(null);
 
   // 카카오에서 받아온 기본 정보
   const kakaoUserInfo = location.state?.kakaoUserInfo;
   const from = location.state?.from || '/';
 
-  console.log('📝 SignupPage - location.state:', location.state);
-  console.log('📝 SignupPage - kakaoUserInfo:', kakaoUserInfo);
-
   const [formData, setFormData] = useState({
+    nickname: '',
+    profileImage: '',
     birthyear: '',
     gender: '',
     phoneNumber: ''
@@ -25,75 +26,69 @@ const SignupPage = () => {
   const [errors, setErrors] = useState({});
   const [agreements, setAgreements] = useState({
     terms: false,
-    privacy: false,
-    personalInfo: false
+    privacy: false
   });
+  const [nicknamePreview, setNicknamePreview] = useState('');
 
   useEffect(() => {
     // 카카오 정보 없이 직접 접근하면 로그인 페이지로
     if (!kakaoUserInfo) {
-      console.log('❌ kakaoUserInfo 없음 - 로그인 페이지로 리다이렉트');
       navigate('/', { replace: true });
     }
   }, [kakaoUserInfo, navigate]);
 
-  const formatPhoneNumber = (value) => {
-    const numbers = value.replace(/[^0-9]/g, '');
-    if (numbers.length <= 3) return numbers;
-    if (numbers.length <= 7) return `${numbers.slice(0, 3)}-${numbers.slice(3)}`;
-    return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7, 11)}`;
-  };
-
-  // ✅ 카카오 값이 있으면 초기 세팅(있을 때만)
+  // 카카오 기본 정보 세팅
   useEffect(() => {
     if (!kakaoUserInfo) return;
 
-    // phone normalize: "+82 10-1234-5678" -> "01012345678"
-    const normalizePhone = (raw) => {
-      if (!raw) return '';
-      const digits = raw.replace(/[^0-9]/g, '');
-      if (digits.startsWith('82')) return '0' + digits.slice(2);
-      return digits;
-    };
-
     setFormData(prev => ({
       ...prev,
-      birthyear: kakaoUserInfo.birthyear || prev.birthyear,
-      gender: kakaoUserInfo.gender || prev.gender,
-      phoneNumber: kakaoUserInfo.phoneNumber
-        ? formatPhoneNumber(normalizePhone(kakaoUserInfo.phoneNumber))
-        : prev.phoneNumber
+      profileImage: kakaoUserInfo.profileImage || ''
     }));
   }, [kakaoUserInfo]);
+
+  // 닉네임 미리보기 (discriminator 포함)
+  useEffect(() => {
+    if (formData.nickname.trim()) {
+      const randomTag = String(Math.floor(Math.random() * 9999) + 1).padStart(4, '0');
+      setNicknamePreview(`${formData.nickname}#${randomTag}`);
+    } else {
+      setNicknamePreview('');
+    }
+  }, [formData.nickname]);
 
   const validateForm = () => {
     const newErrors = {};
 
-    // 출생년도 검증 (없으면 직접 입력 필수)
-    if (!formData.birthyear) {
-      newErrors.birthyear = '출생년도를 입력해주세요';
-    } else if (!/^\d{4}$/.test(formData.birthyear)) {
-      newErrors.birthyear = '4자리 숫자로 입력해주세요';
-    } else {
-      const year = parseInt(formData.birthyear);
-      const currentYear = new Date().getFullYear();
-      if (year < 1900 || year > currentYear) {
-        newErrors.birthyear = '올바른 출생년도를 입력해주세요';
-      }
+    // 닉네임 검증 (필수)
+    if (!formData.nickname.trim()) {
+      newErrors.nickname = '닉네임을 입력해주세요';
+    } else if (formData.nickname.length < 2) {
+      newErrors.nickname = '닉네임은 2자 이상이어야 합니다';
+    } else if (formData.nickname.length > 12) {
+      newErrors.nickname = '닉네임은 12자 이하여야 합니다';
+    } else if (!/^[가-힣a-zA-Z0-9_]+$/.test(formData.nickname)) {
+      newErrors.nickname = '한글, 영문, 숫자, _ 만 사용 가능합니다';
     }
 
-    // 성별 검증 (없으면 직접 입력 필수)
-    if (!formData.gender) {
-      newErrors.gender = '성별을 선택해주세요';
-    }
-
-    // 전화번호 검증 (없으면 직접 입력 필수)
-    if (!formData.phoneNumber) {
-      newErrors.phoneNumber = '전화번호를 입력해주세요';
-    } else {
+    // 전화번호 검증 (선택)
+    if (formData.phoneNumber && formData.phoneNumber.trim()) {
       const phoneClean = formData.phoneNumber.replace(/[^0-9]/g, '');
       if (!/^01[0-9]{8,9}$/.test(phoneClean)) {
         newErrors.phoneNumber = '올바른 휴대폰 번호를 입력해주세요';
+      }
+    }
+
+    // 출생년도 검증 (선택)
+    if (formData.birthyear && formData.birthyear.trim()) {
+      if (!/^\d{4}$/.test(formData.birthyear)) {
+        newErrors.birthyear = '4자리 숫자로 입력해주세요';
+      } else {
+        const year = parseInt(formData.birthyear);
+        const currentYear = new Date().getFullYear();
+        if (year < 1900 || year > currentYear) {
+          newErrors.birthyear = '올바른 출생년도를 입력해주세요';
+        }
       }
     }
 
@@ -103,9 +98,6 @@ const SignupPage = () => {
     }
     if (!agreements.privacy) {
       newErrors.agreements = '개인정보 처리방침에 동의해주세요';
-    }
-    if (!agreements.personalInfo) {
-      newErrors.agreements = '개인정보 수집·이용에 동의해주세요';
     }
 
     setErrors(newErrors);
@@ -120,12 +112,27 @@ const SignupPage = () => {
     }
   };
 
-  const handlePhoneChange = (e) => {
-    const formatted = formatPhoneNumber(e.target.value);
-    setFormData(prev => ({ ...prev, phoneNumber: formatted }));
-    if (errors.phoneNumber) {
-      setErrors(prev => ({ ...prev, phoneNumber: '' }));
+  const handleImageUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // 이미지 파일만 허용
+    if (!file.type.startsWith('image/')) {
+      alert('이미지 파일만 업로드 가능합니다');
+      return;
     }
+
+    // 5MB 제한
+    if (file.size > 5 * 1024 * 1024) {
+      alert('이미지 크기는 5MB 이하여야 합니다');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setFormData(prev => ({ ...prev, profileImage: reader.result }));
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleAgreementChange = (key) => {
@@ -138,8 +145,7 @@ const SignupPage = () => {
   const handleAllAgreements = (checked) => {
     setAgreements({
       terms: checked,
-      privacy: checked,
-      personalInfo: checked
+      privacy: checked
     });
     if (checked && errors.agreements) {
       setErrors(prev => ({ ...prev, agreements: '' }));
@@ -154,23 +160,27 @@ const SignupPage = () => {
     setIsSubmitting(true);
 
     try {
-      const phoneClean = formData.phoneNumber.replace(/[^0-9]/g, '');
+      const phoneClean = formData.phoneNumber ? formData.phoneNumber.replace(/[^0-9]/g, '') : '';
 
       const fullUserData = {
         id: kakaoUserInfo.id,
-        displayName: kakaoUserInfo.displayName,
-        email: kakaoUserInfo.email,
-        profileImage: kakaoUserInfo.profileImage,
+        nickname: formData.nickname.trim(),
+        profileImage: formData.profileImage || kakaoUserInfo.profileImage || '',
+        displayName: kakaoUserInfo.displayName || '', // 카카오 실명 (참고용)
+        email: kakaoUserInfo.email || '',
         provider: 'kakao',
-        birthyear: formData.birthyear,
-        gender: formData.gender,
+        // 선택 정보
+        birthyear: formData.birthyear || '',
+        gender: formData.gender || '',
         phoneNumber: phoneClean
       };
 
-      await authService.registerUser(fullUserData);
-      await login(kakaoUserInfo);
+      const result = await authService.registerUser(fullUserData);
 
-      console.log('✅ 회원가입 완료, 이동할 경로:', from);
+      // fullTag 포함하여 로그인
+      await login({ ...kakaoUserInfo, ...result });
+
+      console.log('✅ 회원가입 완료:', result.fullTag);
       navigate(from, { replace: true });
     } catch (error) {
       console.error('회원가입 실패:', error);
@@ -184,83 +194,94 @@ const SignupPage = () => {
     return null;
   }
 
-  const allAgreed = agreements.terms && agreements.privacy && agreements.personalInfo;
-
-  // ✅ 카카오에서 값이 있는지 여부
-  const hasKakaoBirthyear = !!kakaoUserInfo.birthyear;
-  const hasKakaoGender = !!kakaoUserInfo.gender;
-  const hasKakaoPhone = !!kakaoUserInfo.phoneNumber;
+  const allAgreed = agreements.terms && agreements.privacy;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 to-cyan-100 p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8">
         {/* 헤더 */}
         <div className="text-center mb-8">
-          {kakaoUserInfo.profileImage && (
-            <img
-              src={kakaoUserInfo.profileImage}
-              alt="프로필"
-              className="w-24 h-24 rounded-full mx-auto mb-4 ring-4 ring-blue-100"
-            />
-          )}
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">회원가입</h1>
-          <p className="text-gray-600">
-            {kakaoUserInfo.displayName}님, 환영합니다!
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">프로필 설정</h1>
+          <p className="text-gray-600">닉네임과 프로필을 설정해주세요</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* 카카오 계정 정보 (자동 입력) */}
-          <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">카카오 계정 정보</h3>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">이름</span>
-                <span className="font-medium text-gray-900">{kakaoUserInfo.displayName}</span>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">카카오 이메일</span>
-                <span className="font-medium text-gray-900">{kakaoUserInfo.email || '미제공'}</span>
-              </div>
-
-              {/* ✅ 전화번호를 같은 위계로 이동 */}
-              <div className="flex justify-between items-center gap-3">
-                <span className="text-gray-600">전화번호</span>
-                {hasKakaoPhone ? (
-                  <span className="font-medium text-gray-900">{formData.phoneNumber || '미제공'}</span>
-                ) : (
-                  <input
-                    type="tel"
-                    name="phoneNumber"
-                    value={formData.phoneNumber}
-                    onChange={handlePhoneChange}
-                    placeholder="010-1234-5678"
-                    maxLength={13}
-                    className={`w-40 px-2 py-1 border rounded-md text-right bg-white focus:outline-none focus:ring-2
-                      ${errors.phoneNumber
-                        ? 'border-red-300 focus:ring-red-200'
-                        : 'border-gray-300 focus:ring-blue-200'}`}
+          {/* 프로필 사진 */}
+          <div className="flex flex-col items-center">
+            <div className="relative">
+              <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-200 ring-4 ring-teal-100">
+                {formData.profileImage ? (
+                  <img
+                    src={formData.profileImage}
+                    alt="프로필"
+                    className="w-full h-full object-cover"
                   />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gray-300">
+                    <User className="w-12 h-12 text-gray-500" />
+                  </div>
                 )}
               </div>
-
-              {errors.phoneNumber && !hasKakaoPhone && (
-                <p className="text-red-500 text-sm mt-1">{errors.phoneNumber}</p>
-              )}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute bottom-0 right-0 p-2 bg-teal-600 rounded-full text-white hover:bg-teal-700 transition-colors shadow-lg"
+              >
+                <Camera className="w-4 h-4" />
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="hidden"
+              />
             </div>
+            <p className="text-xs text-gray-500 mt-2">클릭하여 프로필 사진 변경</p>
           </div>
 
-          {/* 추가 정보 입력 */}
+          {/* 닉네임 입력 */}
           <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              닉네임 <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+              <input
+                type="text"
+                name="nickname"
+                value={formData.nickname}
+                onChange={handleChange}
+                placeholder="2-12자 (한글, 영문, 숫자, _)"
+                maxLength={12}
+                className={`w-full pl-10 pr-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all ${
+                  errors.nickname ? 'border-red-500' : 'border-gray-300'
+                }`}
+              />
+            </div>
+            {nicknamePreview && !errors.nickname && (
+              <p className="text-sm text-teal-600 mt-2 flex items-center gap-1">
+                <span>✓</span> 예상 태그: <span className="font-mono font-bold">{nicknamePreview}</span>
+              </p>
+            )}
+            {errors.nickname && (
+              <p className="text-red-500 text-sm mt-1">{errors.nickname}</p>
+            )}
+            <p className="text-xs text-gray-500 mt-1">
+              태그(#1234)는 자동으로 생성됩니다. 같은 닉네임 사용 가능!
+            </p>
+          </div>
+
+          {/* 선택 정보 */}
+          <div className="border-t pt-6">
             <h3 className="text-sm font-semibold text-gray-700 mb-4">
-              추가 정보 입력 <span className="text-red-500">*</span>
+              추가 정보 (선택)
             </h3>
 
             {/* 출생년도 */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                출생년도 <span className="text-red-500">*</span>
+                출생년도
               </label>
               <input
                 type="text"
@@ -269,13 +290,9 @@ const SignupPage = () => {
                 onChange={handleChange}
                 placeholder="예: 1990"
                 maxLength={4}
-                readOnly={hasKakaoBirthyear}
-                disabled={hasKakaoBirthyear}
-                className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 
-                  ${errors.birthyear
-                    ? 'border-red-300 focus:ring-red-200'
-                    : 'border-gray-300 focus:ring-blue-200'}
-                  ${hasKakaoBirthyear ? 'bg-gray-100' : ''}`}
+                className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                  errors.birthyear ? 'border-red-500' : 'border-gray-300'
+                }`}
               />
               {errors.birthyear && (
                 <p className="text-red-500 text-sm mt-1">{errors.birthyear}</p>
@@ -285,16 +302,14 @@ const SignupPage = () => {
             {/* 성별 */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                성별 <span className="text-red-500">*</span>
+                성별
               </label>
-
-              {/* ✅ 카카오에 값 있으면 잠금(선택 불가) */}
-              <div className={`flex gap-3 ${hasKakaoGender ? 'pointer-events-none' : ''}`}>
-                <label className={`flex-1 flex items-center justify-center py-3 px-4 border-2 rounded-xl transition-all ${
+              <div className="flex gap-3">
+                <label className={`flex-1 flex items-center justify-center py-3 px-4 border-2 rounded-xl cursor-pointer transition-all ${
                   formData.gender === 'male'
-                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                    ? 'border-teal-500 bg-teal-50 text-teal-700'
                     : 'border-gray-300 hover:border-gray-400'
-                } ${hasKakaoGender ? 'cursor-default' : 'cursor-pointer'}`}>
+                }`}>
                   <input
                     type="radio"
                     name="gender"
@@ -302,16 +317,15 @@ const SignupPage = () => {
                     checked={formData.gender === 'male'}
                     onChange={handleChange}
                     className="sr-only"
-                    disabled={hasKakaoGender}
                   />
                   <span className="font-medium">남성</span>
                 </label>
 
-                <label className={`flex-1 flex items-center justify-center py-3 px-4 border-2 rounded-xl transition-all ${
+                <label className={`flex-1 flex items-center justify-center py-3 px-4 border-2 rounded-xl cursor-pointer transition-all ${
                   formData.gender === 'female'
-                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                    ? 'border-teal-500 bg-teal-50 text-teal-700'
                     : 'border-gray-300 hover:border-gray-400'
-                } ${hasKakaoGender ? 'cursor-default' : 'cursor-pointer'}`}>
+                }`}>
                   <input
                     type="radio"
                     name="gender"
@@ -319,14 +333,30 @@ const SignupPage = () => {
                     checked={formData.gender === 'female'}
                     onChange={handleChange}
                     className="sr-only"
-                    disabled={hasKakaoGender}
                   />
                   <span className="font-medium">여성</span>
                 </label>
               </div>
+            </div>
 
-              {errors.gender && (
-                <p className="text-red-500 text-sm mt-1">{errors.gender}</p>
+            {/* 전화번호 */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                전화번호
+              </label>
+              <input
+                type="tel"
+                name="phoneNumber"
+                value={formData.phoneNumber}
+                onChange={handleChange}
+                placeholder="010-1234-5678"
+                maxLength={13}
+                className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                  errors.phoneNumber ? 'border-red-500' : 'border-gray-300'
+                }`}
+              />
+              {errors.phoneNumber && (
+                <p className="text-red-500 text-sm mt-1">{errors.phoneNumber}</p>
               )}
             </div>
           </div>
@@ -343,7 +373,7 @@ const SignupPage = () => {
                 type="checkbox"
                 checked={allAgreed}
                 onChange={(e) => handleAllAgreements(e.target.checked)}
-                className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                className="w-5 h-5 text-teal-600 rounded focus:ring-2 focus:ring-teal-500"
               />
               <span className="ml-3 font-semibold text-gray-900">전체 동의</span>
             </label>
@@ -356,7 +386,7 @@ const SignupPage = () => {
                     type="checkbox"
                     checked={agreements.terms}
                     onChange={() => handleAgreementChange('terms')}
-                    className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                    className="w-4 h-4 text-teal-600 rounded focus:ring-2 focus:ring-teal-500"
                   />
                 </div>
                 <div className="ml-3 flex-1">
@@ -365,7 +395,7 @@ const SignupPage = () => {
                     href="/terms"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs text-blue-600 hover:underline ml-2"
+                    className="text-xs text-teal-600 hover:underline ml-2"
                   >
                     보기
                   </a>
@@ -378,7 +408,7 @@ const SignupPage = () => {
                     type="checkbox"
                     checked={agreements.privacy}
                     onChange={() => handleAgreementChange('privacy')}
-                    className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                    className="w-4 h-4 text-teal-600 rounded focus:ring-2 focus:ring-teal-500"
                   />
                 </div>
                 <div className="ml-3 flex-1">
@@ -387,29 +417,10 @@ const SignupPage = () => {
                     href="/privacy"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs text-blue-600 hover:underline ml-2"
+                    className="text-xs text-teal-600 hover:underline ml-2"
                   >
                     보기
                   </a>
-                </div>
-              </label>
-
-              <label className="flex items-start cursor-pointer group">
-                <div className="flex items-center h-5">
-                  <input
-                    type="checkbox"
-                    checked={agreements.personalInfo}
-                    onChange={() => handleAgreementChange('personalInfo')}
-                    className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div className="ml-3 flex-1">
-                  <span className="text-sm text-gray-700">[필수] 개인정보 수집·이용 동의</span>
-                  <div className="text-xs text-gray-500 mt-1">
-                    • 수집항목: 이름, 성별, 출생년도, 카카오계정(전화번호)<br/>
-                    • 이용목적: 회원 식별, 서비스 제공<br/>
-                    • 보유기간: 회원 탈퇴 시까지
-                  </div>
                 </div>
               </label>
             </div>
@@ -423,26 +434,22 @@ const SignupPage = () => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className={`w-full py-4 rounded-xl font-semibold text-lg transition-all
-              ${isSubmitting
+            className={`w-full py-4 rounded-xl font-semibold text-lg transition-all ${
+              isSubmitting
                 ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl'}`}
+                : 'bg-gradient-to-r from-teal-600 to-cyan-700 hover:from-teal-700 hover:to-cyan-800 text-white shadow-lg hover:shadow-xl'
+            }`}
           >
             {isSubmitting ? (
               <span className="flex items-center justify-center gap-2">
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                가입 처리 중...
+                처리 중...
               </span>
             ) : (
-              '가입 완료'
+              '시작하기'
             )}
           </button>
         </form>
-
-        {/* 안내 문구 */}
-        <p className="text-xs text-gray-500 text-center mt-6">
-          가입하시면 서비스 이용약관 및 개인정보 처리방침에 동의하게 됩니다.
-        </p>
       </div>
     </div>
   );

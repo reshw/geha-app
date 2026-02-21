@@ -115,15 +115,69 @@ class AuthService {
     return snap.exists();
   }
 
+  // ----- 3-1) 닉네임#태그 중복 체크 -----
+  async checkFullTagExists(fullTag) {
+    const usersRef = collection(db, 'users');
+    const snapshot = await getDocs(usersRef);
+
+    for (const doc of snapshot.docs) {
+      if (doc.data().fullTag === fullTag) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // ----- 3-2) 사용 가능한 discriminator 생성 -----
+  async generateDiscriminator(nickname) {
+    const maxAttempts = 100; // 최대 100번 시도
+    const usersRef = collection(db, 'users');
+    const snapshot = await getDocs(usersRef);
+
+    // 이미 사용 중인 태그 수집
+    const usedTags = new Set();
+    snapshot.docs.forEach(doc => {
+      const data = doc.data();
+      if (data.nickname === nickname && data.displayTag) {
+        usedTags.add(data.displayTag);
+      }
+    });
+
+    // 0001-9999 범위에서 사용 가능한 태그 찾기
+    for (let i = 0; i < maxAttempts; i++) {
+      const tag = String(Math.floor(Math.random() * 9999) + 1).padStart(4, '0');
+      if (!usedTags.has(tag)) {
+        return tag;
+      }
+    }
+
+    // 랜덤으로 못 찾으면 순차 검색
+    for (let i = 1; i <= 9999; i++) {
+      const tag = String(i).padStart(4, '0');
+      if (!usedTags.has(tag)) {
+        return tag;
+      }
+    }
+
+    throw new Error('사용 가능한 태그가 없습니다. (닉네임이 너무 많이 사용되었습니다)');
+  }
+
   // ----- 4) Firestore: 사용자 최초 등록 (확장된 필드 지원) -----
   async registerUser(userData) {
     // ✅ userId를 반드시 string으로 통일
     const userId = String(userData.id);
 
+    // 닉네임과 discriminator로 fullTag 생성
+    const nickname = userData.nickname || 'User';
+    const displayTag = userData.displayTag || await this.generateDiscriminator(nickname);
+    const fullTag = `${nickname}#${displayTag}`;
+
     const userDoc = {
       id: userId,  // ✅ string으로 변환된 id 저장
-      displayName: userData.displayName ?? '',  // 실명
-      nickname: userData.nickname ?? '',         // ✅ 카카오 닉네임 추가
+      nickname,                        // 사용자 지정 닉네임
+      displayTag,                      // discriminator (#0001-#9999)
+      fullTag,                         // unique 식별자 (nickname#1234)
+      displayName: userData.displayName ?? '',  // 카카오 실명 (참고용)
       email: userData.email ?? '',
       phoneNumber: userData.phoneNumber ?? '',
       profileImage: userData.profileImage ?? '',
@@ -140,6 +194,8 @@ class AuthService {
     }
 
     await setDoc(doc(db, 'users', userId), userDoc, { merge: true });
+
+    return { ...userDoc, fullTag }; // fullTag 반환
   }
 
   // ----- 4-1) Firestore: 사용자 프로필 정보 업데이트 (재로그인 시) -----
