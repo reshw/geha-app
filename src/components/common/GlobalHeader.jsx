@@ -1,7 +1,7 @@
 // components/common/GlobalHeader.jsx
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { UserCog, FileText, LogOut, ShieldCheck, TestTube } from 'lucide-react';
+import { UserCog, FileText, LogOut, ShieldCheck, TestTube, Mountain, ChevronDown } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import useStore from '../../store/useStore';
 import spaceService from '../../services/spaceService';
@@ -145,11 +145,14 @@ const GlobalHeader = () => {
               )}
 
               {currentApp === 'carpool' && (
-                <div className="flex-1 max-w-xs">
-                  <div className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm">
-                    스키장: {selectedResort?.name || '로딩 중...'}
-                  </div>
-                </div>
+                <button
+                  className="flex items-center gap-1 px-2 py-2 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-all"
+                  title={`스키장: ${selectedResort?.name || '로딩 중...'}`}
+                  disabled
+                >
+                  <Mountain className="w-5 h-5 text-white" />
+                  <ChevronDown className="w-3.5 h-3.5 text-white/70" />
+                </button>
               )}
             </div>
 

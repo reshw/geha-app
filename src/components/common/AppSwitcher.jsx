@@ -43,16 +43,15 @@ const AppSwitcher = ({ currentApp, onSwitch }) => {
 
   return (
     <div ref={dropdownRef} className="relative">
-      {/* 현재 앱 표시 버튼 */}
+      {/* 현재 앱 아이콘 버튼 (간결한 디자인) */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-2 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-all"
-        style={{ minWidth: '120px' }}
+        className="flex items-center gap-1 px-2 py-2 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-all"
+        title={`현재 앱: ${currentAppData.name}`}
       >
         <CurrentIcon className="w-5 h-5 text-white" />
-        <span className="font-semibold text-white text-sm">{currentAppData.name}</span>
         <ChevronDown
-          className="w-4 h-4 text-white/70 ml-auto transition-transform"
+          className="w-3.5 h-3.5 text-white/70 transition-transform"
           style={{
             transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)'
           }}
