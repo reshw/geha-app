@@ -1,7 +1,7 @@
 // pages/CarpoolCreatePage.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Car, MapPin, Calendar, Clock, DollarSign, Package, ArrowLeftRight, Save, FolderOpen, Trash2, ChevronLeft, Sparkles } from 'lucide-react';
+import { X, Car, MapPin, Calendar, Clock, DollarSign, Package, ArrowLeftRight, Save, FolderOpen, Trash2, ChevronLeft, Sparkles, MessageSquare } from 'lucide-react';
 import carpoolPresetService from '../services/carpoolPresetService';
 import carpoolService from '../services/carpoolService';
 import { useAuth } from '../hooks/useAuth';
@@ -24,6 +24,7 @@ const CarpoolCreatePage = () => {
     cost: '',
     hasEquipment: false,
     equipmentCost: '',
+    kakaoOpenChatLink: '', // 오픈채팅방 링크
     memo: ''
   });
 
@@ -116,6 +117,10 @@ const CarpoolCreatePage = () => {
       newErrors.equipmentCost = '장비 요금을 입력해주세요';
     }
 
+    if (!formData.kakaoOpenChatLink.trim()) {
+      newErrors.kakaoOpenChatLink = '오픈채팅방 링크를 입력해주세요';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -131,7 +136,7 @@ const CarpoolCreatePage = () => {
         departureTime: formData.timeNegotiable ? '협의가능' : formData.departureTime,
         cost: parseInt(formData.cost, 10),
         equipmentCost: formData.hasEquipment ? parseInt(formData.equipmentCost, 10) : 0,
-        kakaoId: user?.kakaoId || user?.id || 'unknown',
+        kakaoId: formData.kakaoOpenChatLink, // 오픈채팅방 링크
         destination: selectedResort?.name || '스키장',
         resortId: selectedResort?.id,
         resortName: selectedResort?.name,
@@ -185,6 +190,7 @@ const CarpoolCreatePage = () => {
       cost: preset.cost.toString(),
       hasEquipment: preset.hasEquipment,
       equipmentCost: preset.equipmentCost?.toString() || '',
+      kakaoOpenChatLink: preset.kakaoOpenChatLink || '',
       memo: preset.memo
     });
 
@@ -575,6 +581,34 @@ const CarpoolCreatePage = () => {
               )}
             </div>
           )}
+        </div>
+
+        {/* 오픈채팅방 링크 카드 */}
+        <div className="bg-white rounded-2xl shadow-lg p-5 border-2 border-yellow-200">
+          <div className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+            <MessageSquare className="w-5 h-5 text-yellow-600" />
+            오픈채팅방 링크 *
+          </div>
+          <p className="text-xs text-gray-500 mb-3">
+            💬 카카오톡 오픈채팅방 링크를 입력하세요
+          </p>
+          <input
+            type="text"
+            value={formData.kakaoOpenChatLink}
+            onChange={(e) => handleChange('kakaoOpenChatLink', e.target.value)}
+            placeholder="https://open.kakao.com/o/xxxxxxxx"
+            className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 transition-all ${
+              errors.kakaoOpenChatLink ? 'border-red-500' : 'border-gray-200'
+            }`}
+          />
+          {errors.kakaoOpenChatLink && (
+            <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+              <span>⚠️</span> {errors.kakaoOpenChatLink}
+            </p>
+          )}
+          <p className="mt-2 text-xs text-gray-500">
+            ℹ️ 오픈채팅방 링크는 카카오톡 앱에서 [⋯] → [공유] → [링크 복사]로 확인할 수 있습니다
+          </p>
         </div>
 
         {/* 메모 카드 */}
