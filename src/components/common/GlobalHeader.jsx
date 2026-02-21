@@ -1,7 +1,7 @@
 // components/common/GlobalHeader.jsx
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { UserCog, FileText, LogOut, ShieldCheck, TestTube } from 'lucide-react';
+import { User, FileText, LogOut, ShieldCheck, TestTube } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import useStore from '../../store/useStore';
 import spaceService from '../../services/spaceService';
@@ -242,12 +242,12 @@ const GlobalHeader = () => {
                           <button
                             onClick={() => {
                               setShowProfileMenu(false);
-                              alert('개인정보 수정 기능은 준비 중입니다.');
+                              navigate('/profile');
                             }}
-                            className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors text-gray-700 flex items-center gap-3"
+                            className="w-full px-4 py-3 text-left hover:bg-teal-50 transition-colors text-gray-700 flex items-center gap-3 group"
                           >
-                            <UserCog className="w-5 h-5 text-gray-500" />
-                            <span className="font-medium">개인정보 수정</span>
+                            <User className="w-5 h-5 text-gray-500 group-hover:text-teal-600 transition-colors" />
+                            <span className="font-medium group-hover:text-teal-600 transition-colors">내 프로필</span>
                           </button>
 
                           <button

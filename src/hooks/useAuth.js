@@ -27,6 +27,12 @@ export const useAuth = () => {
     localStorage.removeItem('userData');
     logout();
   };
-  
-  return { user, isLoggedIn, login, logout: handleLogout };
+
+  const updateUser = (updatedData) => {
+    const newUserData = { ...user, ...updatedData };
+    localStorage.setItem('userData', JSON.stringify(newUserData));
+    setUser(newUserData);
+  };
+
+  return { user, isLoggedIn, login, logout: handleLogout, updateUser };
 };
