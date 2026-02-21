@@ -88,6 +88,9 @@ const CarpoolCard = ({ post, onClick }) => {
           <Calendar className="w-5 h-5 text-gray-500 flex-shrink-0" />
           <span className="font-semibold">
             {formatDateTime(post.departureDate, post.departureTime)}
+            {post.departureTime === '협의가능' && (
+              <span className="ml-1 text-xs text-blue-600">(협의가능)</span>
+            )}
           </span>
         </div>
 

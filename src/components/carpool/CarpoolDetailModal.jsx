@@ -108,6 +108,9 @@ const CarpoolDetailModal = ({ isOpen, onClose, post, currentUserId, onUpdate }) 
               <div className="text-lg font-bold text-gray-900">
                 {formatDateTime(post.departureDate, post.departureTime)}
               </div>
+              {post.departureTime === '협의가능' && (
+                <div className="text-sm text-blue-600 mt-1">시간 협의가능</div>
+              )}
             </div>
           </div>
 

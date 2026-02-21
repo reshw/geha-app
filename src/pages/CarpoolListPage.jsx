@@ -1,12 +1,12 @@
 // pages/CarpoolListPage.jsx
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Check, X } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import useStore from '../store/useStore';
 import carpoolService from '../services/carpoolService';
 import CarpoolCard from '../components/carpool/CarpoolCard';
 import CarpoolFilters from '../components/carpool/CarpoolFilters';
-import CarpoolCreateModal from '../components/carpool/CarpoolCreateModal';
 import CarpoolDetailModal from '../components/carpool/CarpoolDetailModal';
 
 // 토스트 알림 컴포넌트
@@ -64,6 +64,7 @@ const NoResortNotice = () => (
 );
 
 const CarpoolListPage = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { selectedResort } = useStore();
 
@@ -76,7 +77,6 @@ const CarpoolListPage = () => {
     hasEquipment: null
   });
 
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedPost, setSelectedPost] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -103,40 +103,37 @@ const CarpoolListPage = () => {
     loadPosts();
   }, [selectedResort, filters]);
 
+  // 페이지 돌아왔을 때 목록 새로고침
+  useEffect(() => {
+    const handleFocus = () => {
+      refreshPosts();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [selectedResort, filters]);
+
   // 필터 변경
   const handleFilterChange = (newFilters) => {
     setFilters(newFilters);
-  };
-
-  // 카풀 생성
-  const handleCreatePost = async (postData) => {
-    try {
-      await carpoolService.createCarpoolPost({
-        ...postData,
-        resortId: selectedResort.id,
-        resortName: selectedResort.name,
-        userId: user.id,
-        userName: user.displayName,
-        userProfileImage: user.profileImage || ''
-      });
-
-      setToast({ message: '카풀이 등록되었습니다', type: 'success' });
-      setShowCreateModal(false);
-
-      // 목록 새로고침
-      const data = await carpoolService.getCarpoolPosts(selectedResort.id, filters);
-      setPosts(data);
-      setFilteredPosts(data);
-    } catch (error) {
-      console.error('❌ 카풀 생성 실패:', error);
-      setToast({ message: '카풀 등록에 실패했습니다', type: 'error' });
-    }
   };
 
   // 카풀 상세보기
   const handleCardClick = (post) => {
     setSelectedPost(post);
     setShowDetailModal(true);
+  };
+
+  // 목록 새로고침
+  const refreshPosts = async () => {
+    if (!selectedResort?.id) return;
+    try {
+      const data = await carpoolService.getCarpoolPosts(selectedResort.id, filters);
+      setPosts(data);
+      setFilteredPosts(data);
+    } catch (error) {
+      console.error('❌ 카풀 목록 로드 실패:', error);
+    }
   };
 
   // 스키장이 없으면 안내 표시
@@ -182,29 +179,19 @@ const CarpoolListPage = () => {
         </div>
 
         {/* 플로팅 카풀 등록 버튼 */}
-        {!showCreateModal && (
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="fixed z-40 px-5 py-4 bg-gradient-to-br from-green-600 to-green-700 rounded-full shadow-lg flex items-center gap-2 text-white hover:shadow-xl transition-all hover:scale-105 active:scale-95 min-h-[48px]"
-            style={{
-              bottom: 'calc(6.5rem + env(safe-area-inset-bottom))',
-              right: 'max(24px, env(safe-area-inset-right))'
-            }}
-            aria-label="카풀 등록"
-          >
-            <Plus className="w-5 h-5" />
-            <span className="font-semibold">카풀 등록</span>
-          </button>
-        )}
+        <button
+          onClick={() => navigate('/carpool/create')}
+          className="fixed z-40 px-5 py-4 bg-gradient-to-br from-green-600 to-green-700 rounded-full shadow-lg flex items-center gap-2 text-white hover:shadow-xl transition-all hover:scale-105 active:scale-95 min-h-[48px]"
+          style={{
+            bottom: 'max(24px, env(safe-area-inset-bottom))',
+            right: 'max(24px, env(safe-area-inset-right))'
+          }}
+          aria-label="카풀 등록"
+        >
+          <Plus className="w-5 h-5" />
+          <span className="font-semibold">카풀 등록</span>
+        </button>
       </div>
-
-      {/* 카풀 생성 모달 */}
-      <CarpoolCreateModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onSubmit={handleCreatePost}
-        resortName={selectedResort?.name}
-      />
 
       {/* 카풀 상세 모달 */}
       {selectedPost && (
@@ -216,12 +203,7 @@ const CarpoolListPage = () => {
           }}
           post={selectedPost}
           currentUserId={user?.id}
-          onUpdate={async () => {
-            // 목록 새로고침
-            const data = await carpoolService.getCarpoolPosts(selectedResort.id, filters);
-            setPosts(data);
-            setFilteredPosts(data);
-          }}
+          onUpdate={refreshPosts}
         />
       )}
 

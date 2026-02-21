@@ -60,6 +60,7 @@ class CarpoolPresetService {
         type: presetData.type,
         direction: presetData.direction,
         departureLocation: presetData.departureLocation,
+        timeNegotiable: presetData.timeNegotiable || false,
         cost: presetData.cost,
         hasEquipment: presetData.hasEquipment || false,
         equipmentCost: presetData.equipmentCost || 0,
