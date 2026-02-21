@@ -13,14 +13,15 @@ export default function MainLayout() {
   const { currentApp, setSpaces, setSelectedSpace, setResorts, setSelectedResort } = useStore();
   const hasInitializedSpaces = useRef(false);
   const hasInitializedResorts = useRef(false);
+  const userId = user?.id;
 
   // 스페이스 로드 (geha 앱용, 한 번만)
   useEffect(() => {
     const loadSpaces = async () => {
-      if (!user?.id || hasInitializedSpaces.current) return;
+      if (!userId || hasInitializedSpaces.current) return;
 
       try {
-        const spaces = await spaceService.getUserSpaces(user.id); // lightweight=true (기본값)
+        const spaces = await spaceService.getUserSpaces(userId); // lightweight=true (기본값)
         setSpaces(spaces);
 
         // 스페이스가 있으면 마지막 선택 또는 첫 번째 선택
@@ -38,16 +39,17 @@ export default function MainLayout() {
     };
 
     loadSpaces();
-  }, [user, setSpaces, setSelectedSpace]);
+  }, [userId, setSpaces, setSelectedSpace]); // userId만 의존성에 추가
 
   // 스키장 로드 (carpool 앱용, 한 번만)
   useEffect(() => {
     const loadResorts = async () => {
-      if (!user?.id || currentApp !== 'carpool' || hasInitializedResorts.current) return;
+      console.log('🔍 [MainLayout] loadResorts 호출:', { userId, currentApp, hasInitialized: hasInitializedResorts.current });
+      if (!userId || currentApp !== 'carpool' || hasInitializedResorts.current) return;
 
       try {
         // initUserResorts는 스키장이 없으면 자동 추가
-        const resorts = await resortService.initUserResorts(user.id);
+        const resorts = await resortService.initUserResorts(userId);
         setResorts(resorts);
 
         // 스키장이 있으면 마지막 선택 또는 첫 번째 선택
@@ -66,7 +68,7 @@ export default function MainLayout() {
     };
 
     loadResorts();
-  }, [user, currentApp, setResorts, setSelectedResort]);
+  }, [userId, currentApp, setResorts, setSelectedResort]); // userId, currentApp만 의존성에 추가
 
   return (
     <div className="min-h-screen bg-gray-50">

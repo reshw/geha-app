@@ -39,6 +39,18 @@ const GlobalHeader = () => {
   const [toast, setToast] = useState(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
+  // 디버깅: 카풀 앱 상태 확인
+  useEffect(() => {
+    if (currentApp === 'carpool') {
+      console.log('🔍 [GlobalHeader] 카풀 앱 상태:', {
+        currentApp,
+        resorts,
+        selectedResort,
+        resortsLength: resorts?.length
+      });
+    }
+  }, [currentApp, resorts, selectedResort]);
+
   // 스페이스 로드는 WeeklyList에서만 처리 (중복 제거)
 
   // 스페이스 선택 시 tierConfig 자동 로드
