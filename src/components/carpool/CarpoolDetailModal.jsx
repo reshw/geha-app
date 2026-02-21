@@ -27,7 +27,7 @@ const CarpoolDetailModal = ({ isOpen, onClose, post, currentUserId, onUpdate }) 
   const getDirectionText = () => {
     if (post.direction === 'toResort') return '스키장 가는 길';
     if (post.direction === 'fromResort') return '스키장 오는 길';
-    return '왕복';
+    return '스키장 가는 길'; // 기본값
   };
 
   // 상태 텍스트 및 색상
@@ -133,12 +133,17 @@ const CarpoolDetailModal = ({ isOpen, onClose, post, currentUserId, onUpdate }) 
               <DollarSign className="w-5 h-5 text-yellow-600" />
             </div>
             <div>
-              <div className="text-sm text-gray-500 mb-1">비용</div>
+              <div className="text-sm text-gray-500 mb-1">카풀비용</div>
               <div className="text-2xl font-bold text-green-600">
                 {post.cost?.toLocaleString()}원
               </div>
-              {post.direction === 'roundTrip' && (
-                <div className="text-sm text-gray-500 mt-1">(왕복 포함)</div>
+              {post.hasEquipment && post.equipmentCost > 0 && (
+                <div className="text-sm text-gray-700 mt-2">
+                  <span className="font-semibold">장비 요금:</span>{' '}
+                  <span className="text-green-600 font-bold">
+                    +{post.equipmentCost?.toLocaleString()}원
+                  </span>
+                </div>
               )}
             </div>
           </div>
@@ -153,9 +158,9 @@ const CarpoolDetailModal = ({ isOpen, onClose, post, currentUserId, onUpdate }) 
                 <div className="text-sm text-gray-500 mb-1">장비</div>
                 <div className="text-base font-semibold text-gray-900">
                   장비 가능
-                  {post.equipmentDetails && (
-                    <span className="text-gray-600 font-normal ml-2">
-                      ({post.equipmentDetails})
+                  {post.equipmentCost > 0 && (
+                    <span className="text-green-600 font-bold ml-2">
+                      +{post.equipmentCost?.toLocaleString()}원
                     </span>
                   )}
                 </div>

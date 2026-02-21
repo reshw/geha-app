@@ -116,10 +116,10 @@ class CarpoolService {
         departureTime: postData.departureTime,
         departureLocation: postData.departureLocation,
         destination: postData.destination,
-        direction: postData.direction || 'toResort',
+        direction: postData.direction || 'toResort', // toResort | fromResort (왕복 제거)
         cost: postData.cost || 0,
         hasEquipment: postData.hasEquipment || false,
-        equipmentDetails: postData.equipmentDetails || '',
+        equipmentCost: postData.equipmentCost || 0,
         kakaoId: postData.kakaoId,
         memo: postData.memo || '',
         status: 'recruiting',
