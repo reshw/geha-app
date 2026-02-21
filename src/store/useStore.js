@@ -152,6 +152,83 @@ const useStore = create((set, get) => ({
   clearTierConfigs: () => {
     set({ tierConfigs: {} });
   },
+
+  // 🔀 앱 전환 시스템 (슈퍼앱)
+  currentApp: localStorage.getItem('lastSelectedApp') || 'geha', // 'geha' | 'carpool'
+
+  // 앱 전환
+  setCurrentApp: (appId) => {
+    localStorage.setItem('lastSelectedApp', appId);
+    set({ currentApp: appId });
+  },
+
+  // 🏔️ 카풀 앱 - 스키장 관리
+  resorts: [], // 사용자의 스키장 목록
+  selectedResort: null,
+
+  // 스키장 목록 설정
+  setResorts: (resorts) => {
+    set({ resorts });
+
+    // 스키장이 있고 selectedResort가 없으면 자동 선택
+    const { selectedResort } = get();
+    if (resorts.length > 0 && !selectedResort) {
+      // localStorage에서 마지막 선택 스키장 복원 시도
+      const lastSelectedId = localStorage.getItem('lastSelectedResortId');
+      const lastResort = resorts.find(r => r.id === lastSelectedId);
+
+      // 마지막 선택 스키장이 있으면 복원, 없으면 order 0 또는 첫 번째 스키장 선택
+      const resortToSelect = lastResort || resorts.find(r => r.order === 0) || resorts[0];
+      get().setSelectedResort(resortToSelect);
+    }
+  },
+
+  // 선택된 스키장 변경
+  setSelectedResort: (resort) => {
+    // localStorage에 마지막 선택 스키장 ID 저장
+    if (resort?.id) {
+      localStorage.setItem('lastSelectedResortId', resort.id);
+    } else {
+      localStorage.removeItem('lastSelectedResortId');
+    }
+    set({ selectedResort: resort });
+  },
+
+  // 스키장 순서 업데이트
+  updateResortOrder: (updatedResorts) => {
+    set({ resorts: updatedResorts });
+
+    // 선택된 스키장 정보도 업데이트
+    const { selectedResort } = get();
+    if (selectedResort) {
+      const updatedSelectedResort = updatedResorts.find(r => r.id === selectedResort.id);
+      if (updatedSelectedResort) {
+        set({ selectedResort: updatedSelectedResort });
+      }
+    }
+  },
+
+  // 스키장 추가
+  addResort: (resort) => {
+    const { resorts } = get();
+    set({ resorts: [...resorts, resort] });
+  },
+
+  // 스키장 제거
+  removeResort: (resortId) => {
+    const { resorts, selectedResort } = get();
+    const updatedResorts = resorts.filter(r => r.id !== resortId);
+    set({ resorts: updatedResorts });
+
+    // 제거된 스키장이 선택된 스키장이었다면 다른 스키장 선택
+    if (selectedResort?.id === resortId) {
+      if (updatedResorts.length > 0) {
+        get().setSelectedResort(updatedResorts[0]);
+      } else {
+        get().setSelectedResort(null);
+      }
+    }
+  },
 }));
 
 export default useStore;
