@@ -997,7 +997,7 @@ const WeeklyList = () => {
         mySeasonOut={mySeasonOut}
         onSave={saveMySeasonOut}
         onDelete={removeMySeasonOut}
-        userName={user?.displayName || user?.name || '사용자'}
+        userName={user?.displayName || '사용자'}
       />
 
       {/* 대청소 날 결정 모달 (방장 전용) */}
@@ -1008,9 +1008,9 @@ const WeeklyList = () => {
         latestDate={seasonOuts.length > 0
           ? seasonOuts.reduce((latest, s) => (s.date > latest ? s.date : latest), seasonOuts[0].date)
           : null}
-        onSave={(data) => saveCleanupDay({ ...data, setBy: user?.id, setByName: user?.displayName || user?.name })}
+        onSave={(data) => saveCleanupDay({ ...data, setBy: user?.id, setByName: user?.displayName || '방장' })}
         onDelete={removeCleanupDay}
-        managerName={user?.displayName || user?.name || '방장'}
+        managerName={user?.displayName || '방장'}
       />
     </div>
   );
