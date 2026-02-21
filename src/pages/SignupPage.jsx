@@ -14,6 +14,7 @@ const SignupPage = () => {
   // 카카오에서 받아온 기본 정보
   const kakaoUserInfo = location.state?.kakaoUserInfo;
   const from = location.state?.from || '/';
+  const isMigration = location.state?.isMigration || false; // 기존 사용자 마이그레이션 여부
 
   const [formData, setFormData] = useState({
     nickname: '',
@@ -201,8 +202,21 @@ const SignupPage = () => {
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8">
         {/* 헤더 */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">프로필 설정</h1>
-          <p className="text-gray-600">닉네임과 프로필을 설정해주세요</p>
+          {isMigration ? (
+            <>
+              <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-full flex items-center justify-center">
+                <Hash className="w-8 h-8 text-white" />
+              </div>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">닉네임 설정</h1>
+              <p className="text-gray-600">새로운 닉네임 시스템으로 업그레이드!</p>
+              <p className="text-sm text-gray-500 mt-1">닉네임#태그 방식으로 변경되었습니다</p>
+            </>
+          ) : (
+            <>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">프로필 설정</h1>
+              <p className="text-gray-600">닉네임과 프로필을 설정해주세요</p>
+            </>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">

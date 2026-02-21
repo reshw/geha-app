@@ -59,10 +59,35 @@ const KakaoCallback = () => {
 
         console.log('👤 기존 사용자 - 로그인 처리');
 
-        // ✅ 기존 유저도 카카오 최신값(모든 필드 포함)으로 merge 업데이트
+        // ✅ 기존 유저 데이터 조회
+        const userData = await authService.getUserData(userInfo.id);
+
+        // ✅ fullTag 없으면 → 닉네임 설정 페이지로 (기존 사용자 마이그레이션)
+        if (!userData.fullTag) {
+          console.log('🔄 기존 사용자 마이그레이션 필요 - 닉네임 설정 페이지로');
+          if (code) sessionStorage.setItem(`kakao_code_used_${code}`, '1');
+
+          navigate('/signup', {
+            replace: true,
+            state: {
+              kakaoUserInfo: {
+                ...userInfo,
+                // 기존 프로필 정보 유지
+                profileImage: userData.profileImage || userInfo.profileImage,
+                birthyear: userData.birthyear || userInfo.birthyear,
+                gender: userData.gender || userInfo.gender,
+                phoneNumber: userData.phoneNumber || userInfo.phoneNumber
+              },
+              from,
+              isMigration: true  // 마이그레이션 플래그
+            }
+          });
+          return;
+        }
+
+        // ✅ fullTag 있으면 정상 로그인 - 카카오 최신값으로 merge 업데이트
         await authService.updateUserProfile(userInfo.id, {
           displayName: userInfo.displayName,     // 실명
-          nickname: userInfo.nickname || '',      // ✅ 카카오 닉네임
           profileImage: userInfo.profileImage,
           birthyear: userInfo.birthyear || '',
           gender: userInfo.gender || '',
@@ -70,7 +95,7 @@ const KakaoCallback = () => {
           email: userInfo.email || ''
         });
 
-        await login(userInfo);
+        await login({ ...userInfo, fullTag: userData.fullTag });
 
         if (code) sessionStorage.setItem(`kakao_code_used_${code}`, '1');
         navigate(from, { replace: true });
