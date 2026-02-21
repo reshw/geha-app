@@ -363,13 +363,17 @@ async enrichWithReputation(posts) {
 - [x] 보안 규칙 추가
 - [x] 초기 스키장 데이터 생성 (node 스크립트 실행)
 
-### Phase 3: 카풀 UI 기본 (3-4일)
-- [ ] ResortDropdown
-- [ ] CarpoolListPage
-- [ ] CarpoolCard
-- [ ] CarpoolCreateModal
-- [ ] 라우팅 통합
-- [ ] 테스트: 등록/조회 확인
+### Phase 3: 카풀 UI 기본 (3-4일) ✅ 완료
+- [x] ResortDropdown
+- [x] MainLayout 스키장 초기화 로직
+- [x] CarpoolListPage (필터 + 리스트 + 플로팅 버튼)
+- [x] CarpoolCard (휘닉스파크 스타일)
+- [x] CarpoolFilters (타입/날짜/출발지/장비)
+- [x] CarpoolCreateModal (폼 검증)
+- [x] CarpoolDetailModal (상세보기 + 취소)
+- [x] HomePage 조건부 렌더링
+- [x] 라우팅 통합
+- [x] 테스트: 등록/조회 확인
 
 ### Phase 4: 필터링 + 상세 (2-3일)
 - [ ] CarpoolFilters
