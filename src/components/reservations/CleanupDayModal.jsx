@@ -35,7 +35,9 @@ const CleanupDayModal = ({ isOpen, onClose, cleanupDay, latestDate, onSave, onDe
       await onSave({ date: new Date(date), note, setBy: null, setByName: managerName });
       onClose();
     } catch (err) {
-      alert('저장 실패: ' + err.message);
+      console.error('대청소 날 저장 실패:', err);
+      const errorMsg = err?.message || String(err) || '알 수 없는 오류';
+      alert('저장 실패: ' + errorMsg);
     } finally {
       setSaving(false);
     }
@@ -48,7 +50,9 @@ const CleanupDayModal = ({ isOpen, onClose, cleanupDay, latestDate, onSave, onDe
       await onDelete();
       onClose();
     } catch (err) {
-      alert('삭제 실패: ' + err.message);
+      console.error('대청소 날 삭제 실패:', err);
+      const errorMsg = err?.message || String(err) || '알 수 없는 오류';
+      alert('삭제 실패: ' + errorMsg);
     } finally {
       setDeleting(false);
     }

@@ -41,7 +41,9 @@ const SeasonOutModal = ({ isOpen, onClose, mySeasonOut, onSave, onDelete, userNa
       await onSave({ name: userName, date: new Date(date), note });
       onClose();
     } catch (err) {
-      alert('저장에 실패했습니다: ' + err.message);
+      console.error('시즌아웃 저장 실패:', err);
+      const errorMsg = err?.message || String(err) || '알 수 없는 오류';
+      alert('저장에 실패했습니다: ' + errorMsg);
     } finally {
       setSaving(false);
     }
@@ -54,7 +56,9 @@ const SeasonOutModal = ({ isOpen, onClose, mySeasonOut, onSave, onDelete, userNa
       await onDelete();
       onClose();
     } catch (err) {
-      alert('삭제에 실패했습니다: ' + err.message);
+      console.error('시즌아웃 삭제 실패:', err);
+      const errorMsg = err?.message || String(err) || '알 수 없는 오류';
+      alert('삭제에 실패했습니다: ' + errorMsg);
     } finally {
       setDeleting(false);
     }
