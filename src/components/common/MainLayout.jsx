@@ -61,7 +61,7 @@ export default function MainLayout() {
         }
 
         hasInitializedResorts.current = true;
-        console.log('✅ 스키장 초기화 완료:', resorts.length, '개');
+        console.log('✅ 스키장 초기화 완료:', resorts.length, '개', resorts);
       } catch (error) {
         console.error('❌ 스키장 로드 실패:', error);
       }

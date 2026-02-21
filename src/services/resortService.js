@@ -60,6 +60,7 @@ class ResortService {
   /**
    * 사용자의 스키장 목록 조회
    * (users/{userId}/resortAccess 서브컬렉션)
+   * carpool_resorts의 전체 정보와 병합하여 반환
    */
   async getUserResorts(userId) {
     try {
@@ -68,15 +69,28 @@ class ResortService {
       const resortAccessRef = collection(db, `users/${userId}/resortAccess`);
       const snapshot = await getDocs(resortAccessRef);
 
-      const resorts = [];
+      const resortAccessList = [];
       snapshot.forEach(doc => {
-        resorts.push({ id: doc.id, ...doc.data() });
+        resortAccessList.push({ id: doc.id, ...doc.data() });
       });
 
-      // order 기준으로 정렬
-      resorts.sort((a, b) => (a.order || 0) - (b.order || 0));
+      // carpool_resorts에서 전체 스키장 정보 가져와서 병합
+      const enrichedResorts = await Promise.all(
+        resortAccessList.map(async (access) => {
+          const resortData = await this.getResortById(access.resortId || access.id);
+          return {
+            ...resortData, // carpool_resorts의 전체 정보 (name, distance, etc.)
+            ...access, // resortAccess의 정보 (order, lastVisited, etc.)
+            id: access.id // resortId를 id로 유지
+          };
+        })
+      );
 
-      return resorts;
+      // order 기준으로 정렬
+      enrichedResorts.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+      console.log('✅ [ResortService] getUserResorts 결과:', enrichedResorts);
+      return enrichedResorts;
     } catch (error) {
       console.error(`❌ [ResortService] getUserResorts(${userId}) 실패:`, error);
       return [];
@@ -114,7 +128,18 @@ class ResortService {
       });
 
       console.log(`✅ [ResortService] 스키장 추가 완료: ${userId} -> ${resort.name}`);
-      return { id: resortId, ...resort, order: nextOrder };
+
+      // getUserResorts와 동일한 형식으로 반환
+      return {
+        ...resort, // carpool_resorts의 전체 정보
+        id: resortId,
+        resortId,
+        resortName: resort.name,
+        order: nextOrder,
+        lastVisited: Timestamp.now(),
+        favorited: false,
+        status: 'active'
+      };
     } catch (error) {
       console.error('❌ [ResortService] addResortToUser 실패:', error);
       throw error;
