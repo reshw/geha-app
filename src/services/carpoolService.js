@@ -85,7 +85,12 @@ class CarpoolService {
       });
     }
 
-    // 출발지 필터
+    // 권역 필터
+    if (filters.departureRegion) {
+      filtered = filtered.filter(p => p.departureRegion === filters.departureRegion);
+    }
+
+    // 출발지 필터 (직접 입력)
     if (filters.departureLocation) {
       filtered = filtered.filter(p =>
         p.departureLocation?.includes(filters.departureLocation)
@@ -115,6 +120,7 @@ class CarpoolService {
         departureDate: Timestamp.fromDate(postData.departureDate),
         departureTime: postData.departureTime,
         departureLocation: postData.departureLocation,
+        departureRegion: postData.departureRegion || '', // 권역 정보
         destination: postData.destination,
         direction: postData.direction || 'toResort', // toResort | fromResort (왕복 제거)
         cost: postData.cost || 0,

@@ -6,6 +6,7 @@ import carpoolPresetService from '../services/carpoolPresetService';
 import carpoolService from '../services/carpoolService';
 import { useAuth } from '../hooks/useAuth';
 import useStore from '../store/useStore';
+import { LOCATION_REGIONS, REGION_ORDER, POPULAR_LOCATIONS, getRegionByLocation } from '../config/locations';
 
 const CarpoolCreatePage = () => {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ const CarpoolCreatePage = () => {
     departureTime: '',
     timeNegotiable: false,
     departureLocation: '',
+    departureRegion: '', // 권역 정보
     direction: 'toResort',
     cost: '',
     hasEquipment: false,
@@ -30,8 +32,7 @@ const CarpoolCreatePage = () => {
   const [showPresets, setShowPresets] = useState(false);
   const [presetName, setPresetName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const popularLocations = ['강남', '잠실', '홍대', '수원'];
+  const [showRegionSelector, setShowRegionSelector] = useState(false);
 
   useEffect(() => {
     if (user?.id) {
@@ -49,9 +50,32 @@ const CarpoolCreatePage = () => {
   };
 
   const handleChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    const updates = { [field]: value };
+
+    // 장소 선택 시 권역 자동 설정
+    if (field === 'departureLocation') {
+      const region = getRegionByLocation(value);
+      if (region) {
+        updates.departureRegion = region.id;
+      }
+    }
+
+    setFormData(prev => ({ ...prev, ...updates }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: null }));
+    }
+  };
+
+  // 장소 선택 (권역 버튼에서)
+  const handleLocationSelect = (location, regionId) => {
+    setFormData(prev => ({
+      ...prev,
+      departureLocation: location,
+      departureRegion: regionId
+    }));
+    setShowRegionSelector(false);
+    if (errors.departureLocation) {
+      setErrors(prev => ({ ...prev, departureLocation: null }));
     }
   };
 
@@ -147,12 +171,16 @@ const CarpoolCreatePage = () => {
   };
 
   const handleLoadPreset = async (preset) => {
+    // 권역 정보 복원 (저장되어 있으면 사용, 없으면 장소로부터 추론)
+    const region = preset.departureRegion || getRegionByLocation(preset.departureLocation)?.id || '';
+
     setFormData({
       type: preset.type,
       departureDate: '',
       departureTime: '',
       timeNegotiable: preset.timeNegotiable || false,
       departureLocation: preset.departureLocation,
+      departureRegion: region,
       direction: preset.direction,
       cost: preset.cost.toString(),
       hasEquipment: preset.hasEquipment,
@@ -331,30 +359,100 @@ const CarpoolCreatePage = () => {
             <MapPin className="w-5 h-5 text-green-600" />
             {formData.direction === 'toResort' ? '출발지' : '목적지'}
           </div>
-          <div className="grid grid-cols-2 gap-2 mb-3">
-            {popularLocations.map((location) => (
-              <button
-                key={location}
-                onClick={() => handleChange('departureLocation', location)}
-                className={`px-4 py-3 rounded-xl font-semibold transition-all ${
-                  formData.departureLocation === location
-                    ? 'bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-md'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {location}
-              </button>
-            ))}
+
+          {/* 선택된 장소 표시 또는 선택 버튼 */}
+          {formData.departureLocation ? (
+            <div className="mb-3">
+              <div className={`px-5 py-4 rounded-xl border-2 bg-gradient-to-br ${
+                formData.departureRegion ? LOCATION_REGIONS[formData.departureRegion]?.color : 'from-green-500 to-emerald-600'
+              } text-white shadow-md`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-xs opacity-80 mb-1">
+                      {formData.departureRegion && LOCATION_REGIONS[formData.departureRegion]?.emoji}{' '}
+                      {formData.departureRegion && LOCATION_REGIONS[formData.departureRegion]?.name}
+                    </div>
+                    <div className="text-lg font-bold">{formData.departureLocation}</div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setFormData(prev => ({ ...prev, departureLocation: '', departureRegion: '' }));
+                    }}
+                    className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowRegionSelector(!showRegionSelector)}
+              className="w-full px-5 py-4 bg-gradient-to-br from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 rounded-xl text-white font-bold shadow-md transition-all mb-3"
+            >
+              📍 지역 선택하기
+            </button>
+          )}
+
+          {/* 인기 장소 (빠른 선택) */}
+          {!formData.departureLocation && (
+            <div className="mb-3">
+              <div className="text-xs text-gray-500 mb-2 font-semibold">⚡ 인기 장소</div>
+              <div className="flex flex-wrap gap-2">
+                {POPULAR_LOCATIONS.map((location) => (
+                  <button
+                    key={location}
+                    onClick={() => handleLocationSelect(location, getRegionByLocation(location)?.id)}
+                    className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-semibold text-gray-700 transition-all"
+                  >
+                    {location}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 권역 선택 패널 */}
+          {showRegionSelector && (
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {REGION_ORDER.map(regionId => {
+                const region = LOCATION_REGIONS[regionId];
+                return (
+                  <div key={regionId} className={`${region.bgColor} ${region.borderColor} border-2 rounded-xl p-3`}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xl">{region.emoji}</span>
+                      <span className="font-bold text-gray-900">{region.name}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {region.locations.map(location => (
+                        <button
+                          key={location}
+                          onClick={() => handleLocationSelect(location, regionId)}
+                          className={`px-3 py-2 rounded-lg font-semibold transition-all bg-white hover:shadow-md`}
+                        >
+                          {location}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* 직접 입력 */}
+          <div className="mt-3">
+            <input
+              type="text"
+              value={formData.departureLocation}
+              onChange={(e) => handleChange('departureLocation', e.target.value)}
+              placeholder="또는 직접 입력"
+              className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all ${
+                errors.departureLocation ? 'border-red-500' : 'border-gray-200'
+              }`}
+            />
           </div>
-          <input
-            type="text"
-            value={formData.departureLocation}
-            onChange={(e) => handleChange('departureLocation', e.target.value)}
-            placeholder="또는 직접 입력"
-            className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all ${
-              errors.departureLocation ? 'border-red-500' : 'border-gray-200'
-            }`}
-          />
+
           {errors.departureLocation && (
             <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
               <span>⚠️</span> {errors.departureLocation}
