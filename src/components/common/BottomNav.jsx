@@ -1,5 +1,5 @@
 // components/common/BottomNav.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { MoreHorizontal } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import useStore from '../../store/useStore';
@@ -12,8 +12,10 @@ export default function BottomNav() {
   const [featuresConfig, setFeaturesConfig] = useState({});
   const [loading, setLoading] = useState(true);
 
-  // 함수 정의 (useEffect에서 사용하기 전에 선언)
-  const loadFeaturesConfig = async () => {
+  // 함수 정의 (useCallback으로 메모이제이션)
+  const loadFeaturesConfig = useCallback(async () => {
+    if (!selectedSpace) return;
+
     try {
       setLoading(true);
       const spaceId = selectedSpace.id || selectedSpace.spaceId;
@@ -28,14 +30,12 @@ export default function BottomNav() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedSpace]);
 
   // ⚠️ IMPORTANT: 모든 hooks를 먼저 호출해야 함 (early return 전에)
   useEffect(() => {
-    if (selectedSpace) {
-      loadFeaturesConfig();
-    }
-  }, [selectedSpace]);
+    loadFeaturesConfig();
+  }, [loadFeaturesConfig]);
 
   // 카풀 앱일 때는 BottomNav 숨김
   if (currentApp === 'carpool') {
