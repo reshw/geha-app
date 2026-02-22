@@ -66,10 +66,11 @@ const GlobalHeader = () => {
           spaceSettingsService.getSpaceSettings(spaceId),
         ]);
         setTierConfig(spaceId, tierConfig);
-        // spaces/{spaceId}의 currency를 Zustand에 병합
-        if (spaceSettings?.currency) {
-          setSelectedSpace({ ...space, currency: spaceSettings.currency });
-        }
+        // spaces/{spaceId}의 설정값을 Zustand에 병합
+        const updates = {};
+        if (spaceSettings?.currency) updates.currency = spaceSettings.currency;
+        updates.seasonOutEnabled = spaceSettings?.seasonOutEnabled ?? true;
+        setSelectedSpace({ ...space, ...updates });
       } catch (error) {
         console.error('⚠️ 스페이스 설정 로드 실패:', error);
       }

@@ -20,6 +20,8 @@ export default function SpaceSettingsPage() {
   const [originalFinancePermission, setOriginalFinancePermission] = useState('vice_manager_up');
   const [currency, setCurrency] = useState('KRW');
   const [originalCurrency, setOriginalCurrency] = useState('KRW');
+  const [seasonOutEnabled, setSeasonOutEnabled] = useState(true);
+  const [originalSeasonOutEnabled, setOriginalSeasonOutEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -54,8 +56,9 @@ export default function SpaceSettingsPage() {
     const praisePermissionChanged = praiseStatsPermission !== originalPraiseStatsPermission;
     const financePermissionChanged = financePermission !== originalFinancePermission;
     const currencyChanged = currency !== originalCurrency;
-    setHasChanges(nameChanged || praisePermissionChanged || financePermissionChanged || currencyChanged);
-  }, [spaceName, originalName, praiseStatsPermission, originalPraiseStatsPermission, financePermission, originalFinancePermission, currency, originalCurrency]);
+    const seasonOutChanged = seasonOutEnabled !== originalSeasonOutEnabled;
+    setHasChanges(nameChanged || praisePermissionChanged || financePermissionChanged || currencyChanged || seasonOutChanged);
+  }, [spaceName, originalName, praiseStatsPermission, originalPraiseStatsPermission, financePermission, originalFinancePermission, currency, originalCurrency, seasonOutEnabled, originalSeasonOutEnabled]);
 
   const loadSettings = async () => {
     try {
@@ -71,6 +74,10 @@ export default function SpaceSettingsPage() {
       const currentCurrency = settings.currency || 'KRW';
       setCurrency(currentCurrency);
       setOriginalCurrency(currentCurrency);
+
+      const currentSeasonOutEnabled = settings.seasonOutEnabled ?? true;
+      setSeasonOutEnabled(currentSeasonOutEnabled);
+      setOriginalSeasonOutEnabled(currentSeasonOutEnabled);
 
       // 칭찬 통계 권한 설정
       const praisePermission = await spaceSettingsService.getPraiseStatsPermission(spaceId);
@@ -118,6 +125,7 @@ export default function SpaceSettingsPage() {
     const praisePermissionChanged = praiseStatsPermission !== originalPraiseStatsPermission;
     const financePermissionChanged = financePermission !== originalFinancePermission;
     const currencyChanged = currency !== originalCurrency;
+    const seasonOutChanged = seasonOutEnabled !== originalSeasonOutEnabled;
 
     let confirmMessage = '';
     const changes = [];
@@ -125,6 +133,7 @@ export default function SpaceSettingsPage() {
     if (praisePermissionChanged) changes.push('칭찬 통계 권한 변경');
     if (financePermissionChanged) changes.push('재정 관리 권한 변경');
     if (currencyChanged) changes.push(`정산 통화 변경: ${currency === 'JPY' ? '엔화 (¥)' : '원화 (₩)'}`);
+    if (seasonOutChanged) changes.push(`시즌아웃 기능: ${seasonOutEnabled ? '활성화' : '비활성화'}`);
 
     if (changes.length > 0) {
       confirmMessage = `다음 설정을 변경하시겠습니까?\n\n${changes.map(c => `- ${c}`).join('\n')}\n\n모든 멤버에게 변경사항이 즉시 반영됩니다.`;
@@ -179,6 +188,13 @@ export default function SpaceSettingsPage() {
         await spaceSettingsService.updateCurrency(spaceId, currency, user.id);
         setOriginalCurrency(currency);
         setSelectedSpace({ ...selectedSpace, currency });
+      }
+
+      // 시즌아웃 기능 변경
+      if (seasonOutChanged) {
+        await spaceSettingsService.updateSeasonOutEnabled(spaceId, seasonOutEnabled, user.id);
+        setOriginalSeasonOutEnabled(seasonOutEnabled);
+        setSelectedSpace({ ...selectedSpace, seasonOutEnabled });
       }
 
       alert('설정이 저장되었습니다.');
@@ -346,6 +362,32 @@ export default function SpaceSettingsPage() {
               <p className="mt-2 text-xs text-slate-400">
                 정산 페이지의 금액 단위로 사용됩니다
               </p>
+            </div>
+
+            {/* 시즌아웃 기능 */}
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="block text-sm font-medium text-slate-300">
+                  시즌아웃 날짜 기능
+                </label>
+                <p className="text-xs text-slate-400 mt-1">
+                  멤버들이 시즌아웃 날짜를 등록할 수 있는 기능
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSeasonOutEnabled(!seasonOutEnabled)}
+                disabled={saving}
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none disabled:opacity-50 ${
+                  seasonOutEnabled ? 'bg-blue-600' : 'bg-slate-600'
+                }`}
+              >
+                <span
+                  className={`inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    seasonOutEnabled ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
             </div>
           </div>
         </div>

@@ -705,6 +705,24 @@ const spaceSettingsService = {
   },
 
   /**
+   * 시즌아웃 기능 활성화/비활성화
+   */
+  async updateSeasonOutEnabled(spaceId, enabled, userId) {
+    try {
+      const spaceRef = doc(db, 'spaces', spaceId);
+      await updateDoc(spaceRef, {
+        seasonOutEnabled: enabled,
+        updatedAt: new Date(),
+        updatedBy: userId
+      });
+      return { success: true };
+    } catch (error) {
+      console.error('❌ 시즌아웃 설정 업데이트 실패:', error);
+      throw error;
+    }
+  },
+
+  /**
    * 기능 설정 업데이트
    */
   async updateFeaturesConfig(spaceId, featuresConfig, userId, userName) {
