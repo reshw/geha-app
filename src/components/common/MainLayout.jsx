@@ -5,12 +5,14 @@ import { useAuth } from '../../hooks/useAuth';
 import useStore from '../../store/useStore';
 import spaceService from '../../services/spaceService';
 import resortService from '../../services/resortService';
+import spaceSettingsService from '../../services/spaceSettingsService';
+import tierService from '../../services/tierService';
 import BottomNav from './BottomNav';
 import GlobalHeader from './GlobalHeader';
 
 export default function MainLayout() {
   const { user } = useAuth();
-  const { currentApp, setSpaces, setSelectedSpace, setResorts, setSelectedResort } = useStore();
+  const { currentApp, setSpaces, setSelectedSpace, setResorts, setSelectedResort, setTierConfig } = useStore();
   const hasInitializedSpaces = useRef(false);
   const hasInitializedResorts = useRef(false);
   const userId = user?.id;
@@ -30,6 +32,24 @@ export default function MainLayout() {
           const lastSpace = spaces.find(s => s.id === lastSelectedId);
           const spaceToSelect = lastSpace || spaces.find(s => s.order === 0) || spaces[0];
           setSelectedSpace(spaceToSelect);
+
+          // 초기 로드 시에도 spaceSettings(currency, seasonOutEnabled 등) 불러오기
+          const spaceId = spaceToSelect.id || spaceToSelect.spaceId;
+          if (spaceId) {
+            try {
+              const [tierConfig, spaceSettings] = await Promise.all([
+                tierService.getTierConfig(spaceId),
+                spaceSettingsService.getSpaceSettings(spaceId),
+              ]);
+              setTierConfig(spaceId, tierConfig);
+              const updates = {};
+              if (spaceSettings?.currency) updates.currency = spaceSettings.currency;
+              updates.seasonOutEnabled = spaceSettings?.seasonOutEnabled ?? true;
+              setSelectedSpace({ ...spaceToSelect, ...updates });
+            } catch (e) {
+              console.error('⚠️ 초기 스페이스 설정 로드 실패:', e);
+            }
+          }
         }
 
         hasInitializedSpaces.current = true;
