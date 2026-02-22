@@ -49,9 +49,9 @@ const JoinSpacePage = () => {
 
       if (spaceStatus.exists) {
         if (spaceStatus.status === 'active') {
-          // 이미 활성 상태로 가입된 방
-          alert('이미 가입된 방입니다');
-          navigate('/', { replace: true });
+          // 이미 활성 상태로 가입된 방 → 해당 스페이스로 바로 이동
+          localStorage.setItem('lastSelectedSpaceId', space.id);
+          window.location.href = '/';
           return;
         } else if (spaceStatus.status === 'left') {
           // 이전에 나간 방 - 재가입 확인
@@ -96,7 +96,9 @@ const JoinSpacePage = () => {
         });
 
         if (result.alreadyJoined) {
-          alert('이미 가입된 방입니다');
+          localStorage.setItem('lastSelectedSpaceId', spaceInfo.id);
+          window.location.href = '/';
+          return;
         } else {
           alert(`${spaceInfo.name}에 가입되었습니다!`);
         }
