@@ -53,11 +53,6 @@ export default function FeaturesManagePage() {
   };
 
   const handleToggleFeature = (featureId) => {
-    if (AVAILABLE_FEATURES[featureId].isDefault) {
-      alert('일정은 기본 기능으로 비활성화할 수 없습니다.');
-      return;
-    }
-
     const isCurrentlyEnabled = features[featureId]?.enabled;
 
     setFeatures(prev => ({

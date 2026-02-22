@@ -26,8 +26,9 @@ import { getCurrencyUnit } from '../utils/currency';
 const SettlementSubmitPage = () => {
   const navigate = useNavigate();
   const { user, isLoggedIn } = useAuth();
-  const { selectedSpace } = useStore();
+  const { selectedSpace, getTierConfig } = useStore();
   const currency = selectedSpace?.currency || 'KRW';
+  const tierConfig = selectedSpace ? getTierConfig(selectedSpace.id) : null;
   const [searchParams] = useSearchParams();
 
   // 수정 모드 판단
@@ -306,14 +307,23 @@ const SettlementSubmitPage = () => {
     updateItem(itemId, 'splitAmong', item.splitAmong.filter(id => String(id) !== userIdString));
   };
 
-  // 주주 전체 분담자 추가 (프리셋: guest 제외)
-  const addShareholdersToSplit = (itemId) => {
-    const shareholderIds = members
-      .filter(m => ['shareholder', 'manager', 'vice-manager'].includes(m.userType))
+  // 특정 등급 멤버 전체 분담자 추가
+  const addTierMembersToSplit = (itemId, tierKey) => {
+    const tierToUserType = {
+      'master': 'manager',
+      'vice-master': 'vice-manager',
+      'c2': 'shareholder',
+      'c1': 'guest',
+      'c3': 'c3',
+      'c4': 'c4'
+    };
+    const targetUserType = tierToUserType[tierKey];
+    const tierMemberIds = members
+      .filter(m => m.userType === targetUserType)
       .map(m => String(m.userId));
     const item = items.find(i => i.id === itemId);
     const currentIds = item.splitAmong.map(id => String(id));
-    const merged = [...new Set([...currentIds, ...shareholderIds])];
+    const merged = [...new Set([...currentIds, ...tierMemberIds])];
     updateItem(itemId, 'splitAmong', merged);
   };
 
@@ -725,14 +735,29 @@ const SettlementSubmitPage = () => {
                       분담자 선택
                     </label>
 
-                    {/* 프리셋 버튼 */}
-                    <button
-                      type="button"
-                      onClick={() => addShareholdersToSplit(item.id)}
-                      className="mb-2 text-xs text-gray-500 border border-gray-300 rounded-full px-3 py-1 hover:bg-gray-50 active:bg-gray-100"
-                    >
-                      + 주주 전체 추가
-                    </button>
+                    {/* 등급별 프리셋 버튼 */}
+                    <div className="mb-2 flex flex-wrap gap-1">
+                      {tierConfig?.enabledTiers?.length > 0 ? (
+                        tierConfig.enabledTiers.map(tierKey => (
+                          <button
+                            key={tierKey}
+                            type="button"
+                            onClick={() => addTierMembersToSplit(item.id, tierKey)}
+                            className="text-xs text-gray-500 border border-gray-300 rounded-full px-3 py-1 hover:bg-gray-50 active:bg-gray-100"
+                          >
+                            + {tierConfig.tierNames?.[tierKey] || tierKey} 추가
+                          </button>
+                        ))
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => addTierMembersToSplit(item.id, 'c2')}
+                          className="text-xs text-gray-500 border border-gray-300 rounded-full px-3 py-1 hover:bg-gray-50 active:bg-gray-100"
+                        >
+                          + 주주 전체 추가
+                        </button>
+                      )}
+                    </div>
 
                     {/* 선택된 멤버들 표시 */}
                     {item.splitAmong.length > 0 && (

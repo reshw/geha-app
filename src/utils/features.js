@@ -8,7 +8,7 @@ export const AVAILABLE_FEATURES = {
     icon: Calendar,
     path: '/',
     description: '예약 및 일정 관리',
-    isDefault: true, // 기본 기능, 비활성화 불가
+    isDefault: false,
     color: 'blue'
   },
   settlement: {
@@ -64,7 +64,7 @@ export const DEFAULT_FEATURES_CONFIG = {
     enabled: true,
     order: 1,
     showInBottomNav: true,
-    isDefault: true
+    isDefault: false
   },
   settlement: {
     enabled: false,
