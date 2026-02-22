@@ -686,6 +686,25 @@ const spaceSettingsService = {
   },
 
   /**
+   * 정산 통화 설정 업데이트
+   * @param {string} currency - 'KRW' | 'JPY'
+   */
+  async updateCurrency(spaceId, currency, userId) {
+    try {
+      const spaceRef = doc(db, 'spaces', spaceId);
+      await updateDoc(spaceRef, {
+        currency,
+        updatedAt: new Date(),
+        updatedBy: userId
+      });
+      return { success: true };
+    } catch (error) {
+      console.error('❌ 통화 설정 업데이트 실패:', error);
+      throw error;
+    }
+  },
+
+  /**
    * 기능 설정 업데이트
    */
   async updateFeaturesConfig(spaceId, featuresConfig, userId, userName) {

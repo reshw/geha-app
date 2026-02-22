@@ -21,11 +21,13 @@ import useStore from '../store/useStore';
 import settlementService from '../services/settlementService';
 import authService from '../services/authService';
 import LoginOverlay from '../components/auth/LoginOverlay';
+import { getCurrencyUnit } from '../utils/currency';
 
 const SettlementSubmitPage = () => {
   const navigate = useNavigate();
   const { user, isLoggedIn } = useAuth();
   const { selectedSpace } = useStore();
+  const currency = selectedSpace?.currency || 'KRW';
   const [searchParams] = useSearchParams();
 
   // 수정 모드 판단
@@ -663,7 +665,7 @@ const SettlementSubmitPage = () => {
                   {!item.expanded && item.itemName && (
                     <span className="text-sm text-gray-600">
                       • {item.itemName}
-                      {item.amount && ` • ${formatCurrency(parseInt(item.amount))}원`}
+                      {item.amount && ` • ${formatCurrency(parseInt(item.amount))}${getCurrencyUnit(currency)}`}
                     </span>
                   )}
                   {item.expanded ? (
@@ -713,7 +715,7 @@ const SettlementSubmitPage = () => {
                         placeholder="0"
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">원</span>
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">{getCurrencyUnit(currency)}</span>
                     </div>
                   </div>
 
@@ -844,7 +846,7 @@ const SettlementSubmitPage = () => {
                     {item.amount && item.splitAmong.length > 0 && (
                       <div className="mt-2 p-2 bg-blue-50 rounded-lg text-center">
                         <p className="text-sm text-blue-800">
-                          <span className="font-bold">1인당 {formatCurrency(Math.floor(parseInt(item.amount) / item.splitAmong.length))}원</span>
+                          <span className="font-bold">1인당 {formatCurrency(Math.floor(parseInt(item.amount) / item.splitAmong.length))}{getCurrencyUnit(currency)}</span>
                           <span className="text-xs ml-1">({item.splitAmong.length}명 분담)</span>
                         </p>
                       </div>
@@ -869,7 +871,7 @@ const SettlementSubmitPage = () => {
         <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-4 text-white shadow-lg">
           <div className="flex items-center justify-between">
             <span className="font-medium">총 금액</span>
-            <span className="text-2xl font-bold">{formatCurrency(getTotalAmount())}원</span>
+            <span className="text-2xl font-bold">{formatCurrency(getTotalAmount())}{getCurrencyUnit(currency)}</span>
           </div>
         </div>
       </div>

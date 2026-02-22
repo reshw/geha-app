@@ -2,12 +2,13 @@
 import { useMemo, useRef, useState } from 'react';
 import { Download, Image as ImageIcon } from 'lucide-react';
 import html2canvas from 'html2canvas';
+import { formatCurrency, getCurrencyUnit } from '../../utils/currency';
 
 const SettlementTableView = ({
   receipts,
   participants,
   userProfiles,
-  formatCurrency,
+  currency = 'KRW',
   formatDate,
   weekId,
   settlement
@@ -87,7 +88,7 @@ const SettlementTableView = ({
     csvContent = '\uFEFF';
 
     // 헤더 행
-    const headers = ['날짜', '내용', '지출', '금액', '분담자', '인원'];
+    const headers = ['날짜', '내용', '지출', `금액(${getCurrencyUnit(currency)})`, '분담자', '인원'];
     participantList.forEach(p => headers.push(p.displayName));
     csvContent += headers.join(',') + '\n';
 
@@ -329,7 +330,7 @@ const SettlementTableView = ({
 
                     {/* 금액 */}
                     <td className="border border-gray-300 px-3 py-2 text-right">
-                      {formatCurrency(item.amount)}
+                      {formatCurrency(item.amount, currency)}
                     </td>
 
                     {/* 분담자 (영수증별 첫 항목에만 표시) */}
@@ -361,7 +362,7 @@ const SettlementTableView = ({
                             isSplitter ? 'bg-yellow-50' : ''
                           }`}
                         >
-                          {isSplitter ? formatCurrency(item.perPerson) : '-'}
+                          {isSplitter ? formatCurrency(item.perPerson, currency) : '-'}
                         </td>
                       );
                     })}
@@ -381,7 +382,7 @@ const SettlementTableView = ({
               지출 합계
             </td>
             <td className="border border-gray-300 px-3 py-2 text-right">
-              {formatCurrency(receipts.reduce((sum, r) => sum + r.totalAmount, 0))}
+              {formatCurrency(receipts.reduce((sum, r) => sum + r.totalAmount, 0), currency)}
             </td>
             <td colSpan="2" className="border border-gray-300"></td>
             {participantList.map(participant => (
@@ -389,7 +390,7 @@ const SettlementTableView = ({
                 key={participant.userId}
                 className="border border-gray-300 px-3 py-2 text-right bg-yellow-100"
               >
-                {formatCurrency(participantOwedAmounts[participant.userId] || 0)}
+                {formatCurrency(participantOwedAmounts[participant.userId] || 0, currency)}
               </td>
             ))}
           </tr>
@@ -404,7 +405,7 @@ const SettlementTableView = ({
                 key={participant.userId}
                 className="border border-gray-300 px-3 py-2 text-right font-semibold"
               >
-                {formatCurrency(participantPaidAmounts[participant.userId] || 0)}
+                {formatCurrency(participantPaidAmounts[participant.userId] || 0, currency)}
               </td>
             ))}
           </tr>
@@ -436,7 +437,7 @@ const SettlementTableView = ({
                   {balance !== 0 ? (
                     <div className="flex flex-col items-end gap-0.5">
                       <span className={(isPaymentConfirmed && needsPayment) || (isTransferCompleted && needsReceive) ? 'line-through' : ''}>
-                        {needsReceive ? '+' : ''}{formatCurrency(amount)}
+                        {needsReceive ? '+' : ''}{formatCurrency(amount, currency)}
                       </span>
                       {isPaymentConfirmed && needsPayment && (
                         <span className="text-xs text-green-600 font-semibold">

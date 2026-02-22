@@ -11,11 +11,13 @@ import ReceiptDetailModal from '../components/settlement/ReceiptDetailModal';
 import ParticipantDetailModal from '../components/settlement/ParticipantDetailModal';
 import SettlementTableView from '../components/settlement/SettlementTableView';
 import { canManageSpace } from '../utils/permissions';
+import { formatCurrency, getCurrencyUnit } from '../utils/currency';
 
 const SettlementPage = () => {
   const navigate = useNavigate();
   const { user, isLoggedIn } = useAuth();
   const { selectedSpace } = useStore();
+  const currency = selectedSpace?.currency || 'KRW';
 
   // 현재 보고 있는 주차의 시작일
   const [selectedWeekStart, setSelectedWeekStart] = useState(() => {
@@ -180,10 +182,6 @@ const SettlementPage = () => {
     } catch (error) {
       console.error('정산 목록 로드 실패:', error);
     }
-  };
-
-  const formatCurrency = (amount) => {
-    return amount.toLocaleString('ko-KR') + '원';
   };
 
   const formatDate = (date) => {
@@ -506,7 +504,7 @@ const SettlementPage = () => {
                                 </div>
                                 <div className="text-xs text-gray-500 mt-0.5">
                                   {s.allSettled ? '✓ 정산종결' : s.status === 'settled' ? '접수마감' : '진행중'}
-                                  {s.totalAmount > 0 && ` · ${formatCurrency(s.totalAmount)}`}
+                                  {s.totalAmount > 0 && ` · ${formatCurrency(s.totalAmount, currency)}`}
                                 </div>
                               </div>
                               {s.weekStart.getTime() === selectedWeekStart.getTime() && (
@@ -668,7 +666,7 @@ const SettlementPage = () => {
                         <span className={`text-2xl font-bold ${
                           myBalance?.transferCompleted ? 'text-gray-300 line-through' : 'text-green-300'
                         }`}>
-                          +{formatCurrency(myBalance.balance)}
+                          +{formatCurrency(myBalance.balance, currency)}
                         </span>
                       </div>
                     </>
@@ -680,14 +678,14 @@ const SettlementPage = () => {
                         <span className={`text-2xl font-bold ${
                           myBalance?.paymentConfirmed ? 'text-gray-300 line-through' : 'text-orange-300'
                         }`}>
-                          {formatCurrency(myBalance.balance)}
+                          {formatCurrency(myBalance.balance, currency)}
                         </span>
                       </div>
                     </>
                   ) : (
                     <div>
                       <p className="text-xs opacity-75">정산 결과</p>
-                      <span className="text-2xl font-bold">0원</span>
+                      <span className="text-2xl font-bold">0{getCurrencyUnit(currency)}</span>
                     </div>
                   )}
                 </div>
@@ -695,11 +693,11 @@ const SettlementPage = () => {
                 <div className="flex gap-3 text-xs">
                   <div className="text-right">
                     <p className="opacity-70 mb-0.5">낸 금액</p>
-                    <p className="font-semibold">{formatCurrency(myBalance?.totalPaid || 0)}</p>
+                    <p className="font-semibold">{formatCurrency(myBalance?.totalPaid || 0, currency)}</p>
                   </div>
                   <div className="text-right">
                     <p className="opacity-70 mb-0.5">부담액</p>
-                    <p className="font-semibold">{formatCurrency(myBalance?.totalOwed || 0)}</p>
+                    <p className="font-semibold">{formatCurrency(myBalance?.totalOwed || 0, currency)}</p>
                   </div>
                 </div>
               </div>
@@ -813,10 +811,10 @@ const SettlementPage = () => {
                                       <div className="flex flex-col items-end gap-0.5 ml-2">
                                         <div className="flex items-baseline gap-1">
                                           <span className="font-bold text-blue-600">
-                                            {formatCurrency(item.perPerson || 0)}
+                                            {formatCurrency(item.perPerson || 0, currency)}
                                           </span>
                                           <span className="text-xs text-gray-500">
-                                            / {formatCurrency(item.amount || 0)}
+                                            / {formatCurrency(item.amount || 0, currency)}
                                           </span>
                                         </div>
                                         <span className="text-xs text-gray-500">
@@ -842,7 +840,7 @@ const SettlementPage = () => {
                                       </span>
                                       {isPayer && (
                                         <span className="text-lg font-bold text-green-600">
-                                          {formatCurrency(receipt.totalAmount)}
+                                          {formatCurrency(receipt.totalAmount, currency)}
                                         </span>
                                       )}
                                     </div>
@@ -850,7 +848,7 @@ const SettlementPage = () => {
                                       <div className="flex items-center gap-2">
                                         <span className="text-xs text-gray-600">내 분담액</span>
                                         <span className="text-lg font-bold text-blue-600">
-                                          {formatCurrency(myShare)}
+                                          {formatCurrency(myShare, currency)}
                                         </span>
                                       </div>
                                     )}
@@ -939,9 +937,9 @@ const SettlementPage = () => {
                                   )}
                                 </p>
                                 <div className="flex items-center gap-2 text-xs text-gray-500">
-                                  <span>낸 {formatCurrency(participant.totalPaid)}</span>
+                                  <span>낸 {formatCurrency(participant.totalPaid, currency)}</span>
                                   <span>·</span>
-                                  <span>부담 {formatCurrency(participant.totalOwed)}</span>
+                                  <span>부담 {formatCurrency(participant.totalOwed, currency)}</span>
                                 </div>
                               </div>
 
@@ -978,7 +976,7 @@ const SettlementPage = () => {
                                         : 'text-green-600'
                                       : 'text-gray-600'
                                   }`}>
-                                    {participant.balance > 0 ? '+' : ''}{formatCurrency(participant.balance)}
+                                    {participant.balance > 0 ? '+' : ''}{formatCurrency(participant.balance, currency)}
                                   </div>
                                   {((isPaymentConfirmed && needsPayment) || (isTransferCompleted && needsReceive)) && (
                                     <span className="text-xs font-semibold text-green-600 flex items-center gap-0.5">
@@ -997,7 +995,7 @@ const SettlementPage = () => {
                               {participant.balance === 0 && (
                                 <div className="px-4 py-2 rounded-lg bg-gray-50">
                                   <div className="font-bold text-lg text-gray-600">
-                                    0원
+                                    0{getCurrencyUnit(currency)}
                                   </div>
                                 </div>
                               )}
@@ -1077,10 +1075,10 @@ const SettlementPage = () => {
                                     <>
                                       <div className="flex items-baseline gap-1">
                                         <span className="font-bold text-blue-600">
-                                          {formatCurrency(item.perPerson || 0)}
+                                          {formatCurrency(item.perPerson || 0, currency)}
                                         </span>
                                         <span className="text-xs text-gray-500">
-                                          / {formatCurrency(item.amount || 0)}
+                                          / {formatCurrency(item.amount || 0, currency)}
                                         </span>
                                       </div>
                                       <span className="text-xs text-gray-500">
@@ -1090,7 +1088,7 @@ const SettlementPage = () => {
                                   ) : (
                                     <>
                                       <span className="text-gray-600">
-                                        {formatCurrency(item.amount || 0)}
+                                        {formatCurrency(item.amount || 0, currency)}
                                       </span>
                                       <span className="text-xs text-gray-500">
                                         {item.splitAmong?.length || 0}명 분담
@@ -1118,7 +1116,7 @@ const SettlementPage = () => {
                               </span>
                               {isPayer && (
                                 <span className="text-lg font-bold text-green-600">
-                                  {formatCurrency(receipt.totalAmount)}
+                                  {formatCurrency(receipt.totalAmount, currency)}
                                 </span>
                               )}
                             </div>
@@ -1126,7 +1124,7 @@ const SettlementPage = () => {
                               <div className="flex items-center gap-2">
                                 <span className="text-xs text-gray-600">내 분담액</span>
                                 <span className="text-lg font-bold text-blue-600">
-                                  {formatCurrency(myShare)}
+                                  {formatCurrency(myShare, currency)}
                                 </span>
                               </div>
                             )}
@@ -1169,7 +1167,7 @@ const SettlementPage = () => {
                         <span className={`text-2xl font-bold ${
                           myBalance?.transferCompleted ? 'text-gray-300 line-through' : 'text-green-300'
                         }`}>
-                          +{formatCurrency(myBalance.balance)}
+                          +{formatCurrency(myBalance.balance, currency)}
                         </span>
                       </>
                     ) : myBalance?.balance < 0 ? (
@@ -1178,17 +1176,17 @@ const SettlementPage = () => {
                         <span className={`text-2xl font-bold ${
                           myBalance?.paymentConfirmed ? 'text-gray-300 line-through' : 'text-orange-300'
                         }`}>
-                          {formatCurrency(myBalance.balance)}
+                          {formatCurrency(myBalance.balance, currency)}
                         </span>
                       </>
                     ) : (
-                      <span className="text-2xl font-bold">0원</span>
+                      <span className="text-2xl font-bold">0{getCurrencyUnit(currency)}</span>
                     )}
                   </div>
                 </div>
                 <div className="text-right text-sm opacity-90">
-                  <p>낸 금액: {formatCurrency(myBalance?.totalPaid || 0)}</p>
-                  <p>부담액: {formatCurrency(myBalance?.totalOwed || 0)}</p>
+                  <p>낸 금액: {formatCurrency(myBalance?.totalPaid || 0, currency)}</p>
+                  <p>부담액: {formatCurrency(myBalance?.totalOwed || 0, currency)}</p>
                 </div>
               </div>
             </div>
@@ -1198,7 +1196,7 @@ const SettlementPage = () => {
               receipts={receipts}
               participants={settlement?.participants || {}}
               userProfiles={userProfiles}
-              formatCurrency={formatCurrency}
+              currency={currency}
               formatDate={formatDate}
               weekId={settlement?.weekId}
               settlement={settlement}
@@ -1232,6 +1230,7 @@ const SettlementPage = () => {
         canEdit={selectedReceipt?.submittedBy === user?.id}
         members={members}
         userProfiles={userProfiles}
+        currency={currency}
       />
 
       {/* 참여자 상세 모달 */}
@@ -1248,6 +1247,7 @@ const SettlementPage = () => {
         userProfiles={userProfiles}
         members={members}
         currentUser={user}
+        currency={currency}
       />
     </div>
   );

@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { X, Receipt, TrendingUp, TrendingDown } from 'lucide-react';
 import ReceiptDetailModal from './ReceiptDetailModal';
+import { formatCurrency, getCurrencyUnit } from '../../utils/currency';
 
 const ParticipantDetailModal = ({
   participant,
@@ -11,15 +12,12 @@ const ParticipantDetailModal = ({
   receipts,
   userProfiles,
   members,
-  currentUser
+  currentUser,
+  currency = 'KRW'
 }) => {
   const [selectedReceipt, setSelectedReceipt] = useState(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   if (!isOpen || !participant || !userId) return null;
-
-  const formatCurrency = (amount) => {
-    return amount?.toLocaleString('ko-KR') + '원' || '0원';
-  };
 
   const formatDateTime = (date) => {
     if (!date) return '';
@@ -112,18 +110,18 @@ const ParticipantDetailModal = ({
                     <>
                       <TrendingUp className="w-8 h-8 text-green-300" />
                       <span className="text-4xl font-bold text-green-300">
-                        +{formatCurrency(participant.balance)}
+                        +{formatCurrency(participant.balance, currency)}
                       </span>
                     </>
                   ) : participant.balance < 0 ? (
                     <>
                       <TrendingDown className="w-8 h-8 text-red-300" />
                       <span className="text-4xl font-bold text-red-300">
-                        {formatCurrency(participant.balance)}
+                        {formatCurrency(participant.balance, currency)}
                       </span>
                     </>
                   ) : (
-                    <span className="text-4xl font-bold">0원</span>
+                    <span className="text-4xl font-bold">0{getCurrencyUnit(currency)}</span>
                   )}
                 </div>
                 <p className="text-xs opacity-75 mt-3">
@@ -139,11 +137,11 @@ const ParticipantDetailModal = ({
               <div className="flex justify-around pt-4 border-t border-white/20 text-xs">
                 <div className="text-center">
                   <p className="opacity-70 mb-1">낸 금액</p>
-                  <p className="font-semibold">{formatCurrency(participant.totalPaid || 0)}</p>
+                  <p className="font-semibold">{formatCurrency(participant.totalPaid || 0, currency)}</p>
                 </div>
                 <div className="text-center">
                   <p className="opacity-70 mb-1">부담액</p>
-                  <p className="font-semibold">{formatCurrency(participant.totalOwed || 0)}</p>
+                  <p className="font-semibold">{formatCurrency(participant.totalOwed || 0, currency)}</p>
                 </div>
               </div>
             </div>
@@ -208,10 +206,10 @@ const ParticipantDetailModal = ({
                                     <>
                                       <div className="flex items-baseline gap-1">
                                         <span className="font-bold text-blue-600">
-                                          {formatCurrency(item.perPerson || 0)}
+                                          {formatCurrency(item.perPerson || 0, currency)}
                                         </span>
                                         <span className="text-xs text-gray-500">
-                                          / {formatCurrency(item.amount || 0)}
+                                          / {formatCurrency(item.amount || 0, currency)}
                                         </span>
                                       </div>
                                       <span className="text-xs text-gray-500">
@@ -221,7 +219,7 @@ const ParticipantDetailModal = ({
                                   ) : (
                                     <>
                                       <span className="text-gray-600">
-                                        {formatCurrency(item.amount || 0)}
+                                        {formatCurrency(item.amount || 0, currency)}
                                       </span>
                                       <span className="text-xs text-gray-500">
                                         {item.splitAmong?.length || 0}명 분담
@@ -249,7 +247,7 @@ const ParticipantDetailModal = ({
                               </span>
                               {isPayer && (
                                 <span className="text-lg font-bold text-green-600">
-                                  {formatCurrency(receipt.totalAmount)}
+                                  {formatCurrency(receipt.totalAmount, currency)}
                                 </span>
                               )}
                             </div>
@@ -257,7 +255,7 @@ const ParticipantDetailModal = ({
                               <div className="flex items-center gap-2">
                                 <span className="text-xs text-gray-600">분담액</span>
                                 <span className="text-lg font-bold text-blue-600">
-                                  {formatCurrency(myShare)}
+                                  {formatCurrency(myShare, currency)}
                                 </span>
                               </div>
                             )}
@@ -296,6 +294,7 @@ const ParticipantDetailModal = ({
         canEdit={false} // 참여자 상세 모달에서는 수정/삭제 버튼 숨김
         members={members}
         userProfiles={userProfiles}
+        currency={currency}
       />
     </>
   );

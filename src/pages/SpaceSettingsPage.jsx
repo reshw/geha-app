@@ -18,6 +18,8 @@ export default function SpaceSettingsPage() {
   const [originalPraiseStatsPermission, setOriginalPraiseStatsPermission] = useState('manager_only');
   const [financePermission, setFinancePermission] = useState('vice_manager_up');
   const [originalFinancePermission, setOriginalFinancePermission] = useState('vice_manager_up');
+  const [currency, setCurrency] = useState('KRW');
+  const [originalCurrency, setOriginalCurrency] = useState('KRW');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -51,8 +53,9 @@ export default function SpaceSettingsPage() {
     const nameChanged = spaceName !== originalName && spaceName.trim() !== '';
     const praisePermissionChanged = praiseStatsPermission !== originalPraiseStatsPermission;
     const financePermissionChanged = financePermission !== originalFinancePermission;
-    setHasChanges(nameChanged || praisePermissionChanged || financePermissionChanged);
-  }, [spaceName, originalName, praiseStatsPermission, originalPraiseStatsPermission, financePermission, originalFinancePermission]);
+    const currencyChanged = currency !== originalCurrency;
+    setHasChanges(nameChanged || praisePermissionChanged || financePermissionChanged || currencyChanged);
+  }, [spaceName, originalName, praiseStatsPermission, originalPraiseStatsPermission, financePermission, originalFinancePermission, currency, originalCurrency]);
 
   const loadSettings = async () => {
     try {
@@ -64,6 +67,10 @@ export default function SpaceSettingsPage() {
       const currentName = settings.name || selectedSpace.spaceName || '';
       setSpaceName(currentName);
       setOriginalName(currentName);
+
+      const currentCurrency = settings.currency || 'KRW';
+      setCurrency(currentCurrency);
+      setOriginalCurrency(currentCurrency);
 
       // 칭찬 통계 권한 설정
       const praisePermission = await spaceSettingsService.getPraiseStatsPermission(spaceId);
@@ -110,12 +117,14 @@ export default function SpaceSettingsPage() {
     const nameChanged = spaceName !== originalName;
     const praisePermissionChanged = praiseStatsPermission !== originalPraiseStatsPermission;
     const financePermissionChanged = financePermission !== originalFinancePermission;
+    const currencyChanged = currency !== originalCurrency;
 
     let confirmMessage = '';
     const changes = [];
     if (nameChanged) changes.push(`스페이스 이름: "${trimmedName}"`);
     if (praisePermissionChanged) changes.push('칭찬 통계 권한 변경');
     if (financePermissionChanged) changes.push('재정 관리 권한 변경');
+    if (currencyChanged) changes.push(`정산 통화 변경: ${currency === 'JPY' ? '엔화 (¥)' : '원화 (₩)'}`);
 
     if (changes.length > 0) {
       confirmMessage = `다음 설정을 변경하시겠습니까?\n\n${changes.map(c => `- ${c}`).join('\n')}\n\n모든 멤버에게 변경사항이 즉시 반영됩니다.`;
@@ -163,6 +172,13 @@ export default function SpaceSettingsPage() {
           user.displayName
         );
         setOriginalFinancePermission(financePermission);
+      }
+
+      // 통화 변경
+      if (currencyChanged) {
+        await spaceSettingsService.updateCurrency(spaceId, currency, user.id);
+        setOriginalCurrency(currency);
+        setSelectedSpace({ ...selectedSpace, currency });
       }
 
       alert('설정이 저장되었습니다.');
@@ -303,6 +319,32 @@ export default function SpaceSettingsPage() {
               </select>
               <p className="mt-2 text-xs text-slate-400">
                 입금 및 지출 내역 조회/등록 권한을 설정합니다
+              </p>
+            </div>
+
+            {/* 정산 통화 */}
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                정산 통화
+              </label>
+              <select
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+                disabled={saving}
+                className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-50 transition-all appearance-none cursor-pointer"
+                style={{
+                  backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23cbd5e1' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+                  backgroundPosition: 'right 0.5rem center',
+                  backgroundRepeat: 'no-repeat',
+                  backgroundSize: '1.5em 1.5em',
+                  paddingRight: '2.5rem'
+                }}
+              >
+                <option value="KRW">원화 (₩)</option>
+                <option value="JPY">엔화 (¥)</option>
+              </select>
+              <p className="mt-2 text-xs text-slate-400">
+                정산 페이지의 금액 단위로 사용됩니다
               </p>
             </div>
           </div>

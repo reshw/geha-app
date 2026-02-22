@@ -7,6 +7,7 @@ import useStore from '../../store/useStore';
 import spaceService from '../../services/spaceService';
 import resortService from '../../services/resortService';
 import tierService from '../../services/tierService';
+import spaceSettingsService from '../../services/spaceSettingsService';
 import AppSwitcher from './AppSwitcher';
 import SpaceDropdown from '../space/SpaceDropdown';
 import ResortDropdown from '../carpool/ResortDropdown';
@@ -55,19 +56,22 @@ const GlobalHeader = () => {
 
   // 스페이스 선택 시 tierConfig 자동 로드
   const handleSelectSpace = async (space) => {
-    // 스페이스 선택
     setSelectedSpace(space);
 
-    // tierConfig 로드 및 캐싱
-    if (space?.id || space?.spaceId) {
+    const spaceId = space?.id || space?.spaceId;
+    if (spaceId) {
       try {
-        const spaceId = space.id || space.spaceId;
-        const tierConfig = await tierService.getTierConfig(spaceId);
+        const [tierConfig, spaceSettings] = await Promise.all([
+          tierService.getTierConfig(spaceId),
+          spaceSettingsService.getSpaceSettings(spaceId),
+        ]);
         setTierConfig(spaceId, tierConfig);
-        console.log('✅ tierConfig 로드 완료:', spaceId);
+        // spaces/{spaceId}의 currency를 Zustand에 병합
+        if (spaceSettings?.currency) {
+          setSelectedSpace({ ...space, currency: spaceSettings.currency });
+        }
       } catch (error) {
-        console.error('⚠️ tierConfig 로드 실패:', error);
-        // 에러 발생해도 스페이스 선택은 정상 진행
+        console.error('⚠️ 스페이스 설정 로드 실패:', error);
       }
     }
   };
@@ -170,11 +174,13 @@ const GlobalHeader = () => {
           <div className="flex items-center justify-between">
             {/* 왼쪽: 앱 전환 + 컨텍스트 선택 */}
             <div className="flex items-center gap-3 flex-1">
-              {/* 앱 전환 드롭다운 */}
-              <AppSwitcher
-                currentApp={currentApp}
-                onSwitch={handleAppSwitch}
-              />
+              {/* 앱 전환 드롭다운 - TODO: 베타 완료 후 다시 활성화 */}
+              {false && (
+                <AppSwitcher
+                  currentApp={currentApp}
+                  onSwitch={handleAppSwitch}
+                />
+              )}
 
               {/* 컨텍스트 드롭다운 (스페이스 or 스키장) */}
               {currentApp === 'geha' && spaces && spaces.length > 0 && (

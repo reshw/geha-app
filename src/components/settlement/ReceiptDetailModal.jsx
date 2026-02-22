@@ -1,12 +1,9 @@
 // src/components/settlement/ReceiptDetailModal.jsx
 import { X, Edit, Users, Trash2 } from 'lucide-react';
+import { formatCurrency } from '../../utils/currency';
 
-const ReceiptDetailModal = ({ receipt, isOpen, onClose, onEdit, onDelete, canEdit, members, userProfiles }) => {
+const ReceiptDetailModal = ({ receipt, isOpen, onClose, onEdit, onDelete, canEdit, members, userProfiles, currency = 'KRW' }) => {
   if (!isOpen || !receipt) return null;
-
-  const formatCurrency = (amount) => {
-    return amount?.toLocaleString('ko-KR') + '원' || '0원';
-  };
 
   const formatDateTime = (date) => {
     if (!date) return '';
@@ -116,11 +113,11 @@ const ReceiptDetailModal = ({ receipt, isOpen, onClose, onEdit, onDelete, canEdi
                       <div className="flex-1">
                         <p className="font-medium text-gray-900">{item.itemName}</p>
                         <p className="text-sm text-gray-600 mt-1">
-                          {formatCurrency(item.amount)} ÷ {item.splitAmong?.length || 0}명
-                          = <span className="font-semibold text-blue-600">{formatCurrency(item.perPerson)}</span>/인
+                          {formatCurrency(item.amount, currency)} ÷ {item.splitAmong?.length || 0}명
+                          = <span className="font-semibold text-blue-600">{formatCurrency(item.perPerson, currency)}</span>/인
                         </p>
                       </div>
-                      <span className="font-bold text-gray-900">{formatCurrency(item.amount)}</span>
+                      <span className="font-bold text-gray-900">{formatCurrency(item.amount, currency)}</span>
                     </div>
 
                     {/* 분담자 목록 */}
@@ -169,7 +166,7 @@ const ReceiptDetailModal = ({ receipt, isOpen, onClose, onEdit, onDelete, canEdi
             <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-4 text-white">
               <div className="flex items-center justify-between">
                 <span className="font-medium">총 금액</span>
-                <span className="text-2xl font-bold">{formatCurrency(receipt.totalAmount)}</span>
+                <span className="text-2xl font-bold">{formatCurrency(receipt.totalAmount, currency)}</span>
               </div>
             </div>
           </div>
