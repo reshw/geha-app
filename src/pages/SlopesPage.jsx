@@ -3,10 +3,11 @@ import { useState } from 'react';
 import { MountainSnow } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import LoginOverlay from '../components/auth/LoginOverlay';
+import SlopeTrend from '../components/slopes/SlopeTrend';
 
 export default function SlopesPage() {
   const { isLoggedIn } = useAuth();
-  const [activeTab, setActiveTab] = useState('slopes'); // 'slopes' or 'video'
+  const [activeTab, setActiveTab] = useState('slopes'); // 'slopes' | 'video' | 'trend'
 
   const tabs = {
     slopes: {
@@ -59,6 +60,16 @@ export default function SlopesPage() {
               현장영상
             </button>
             <button
+              onClick={() => setActiveTab('trend')}
+              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${
+                activeTab === 'trend'
+                  ? 'bg-blue-500 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              오픈추이
+            </button>
+            <button
               onClick={() => window.open('https://www.snow-forecast.com/resorts/Phoenix-Park-Ski-World/6day/mid', '_blank')}
               className="flex-1 py-2 rounded-lg text-sm font-semibold transition-all bg-gray-100 text-gray-600 hover:bg-gray-200"
             >
@@ -75,17 +86,21 @@ export default function SlopesPage() {
         </div>
       </header>
 
-      {/* iframe - 영역 최대화 */}
-      <div className="max-w-[720px] mx-auto">
-        <iframe
-          key={activeTab}
-          src={tabs[activeTab].url}
-          className="w-full border-0"
-          style={{ height: 'calc(100vh - 180px - 64px)' }} // 전체 - 헤더 - BottomNav
-          title={`휘닉스 파크 ${tabs[activeTab].label}`}
-          loading="lazy"
-        />
-      </div>
+      {activeTab === 'trend' ? (
+        <SlopeTrend />
+      ) : (
+        /* iframe - 영역 최대화 */
+        <div className="max-w-[720px] mx-auto">
+          <iframe
+            key={activeTab}
+            src={tabs[activeTab].url}
+            className="w-full border-0"
+            style={{ height: 'calc(100vh - 180px - 64px)' }} // 전체 - 헤더 - BottomNav
+            title={`휘닉스 파크 ${tabs[activeTab].label}`}
+            loading="lazy"
+          />
+        </div>
+      )}
 
       {/* BottomNav를 위한 여백 */}
       <div style={{ height: 'calc(64px + env(safe-area-inset-bottom))' }} />
