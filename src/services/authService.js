@@ -198,6 +198,61 @@ class AuthService {
     return { ...userDoc, fullTag }; // fullTag 반환
   }
 
+  // ----- 4-0) 카카오 값 → 앱 규격 변환 -----
+
+  // "+82 10-1234-5678" → "01012345678". 형식이 맞지 않으면 ''.
+  normalizeKakaoPhone(raw) {
+    if (!raw) return '';
+    let digits = String(raw).replace(/[^0-9]/g, '');
+    if (digits.startsWith('82')) digits = `0${digits.slice(2)}`;
+    return /^01[0-9]{8,9}$/.test(digits) ? digits : '';
+  }
+
+  // 닉네임 규칙(2~12자, 한글/영문/숫자/_)에 맞게 정리. 쓸 수 없으면 fallback.
+  sanitizeDisplayName(...candidates) {
+    for (const c of candidates) {
+      const cleaned = String(c ?? '').replace(/[^가-힣a-zA-Z0-9_]/g, '').slice(0, 12);
+      if (cleaned.length >= 2) return cleaned;
+    }
+    return '게스트';
+  }
+
+  // ----- 4-0-1) 카카오 로그인 최초 1회: 가입 폼 없이 카카오 값으로 자동 가입 -----
+  async registerFromKakao(kakaoUserInfo) {
+    const displayName = this.sanitizeDisplayName(
+      kakaoUserInfo.kakaoNickname,
+      kakaoUserInfo.realName
+    );
+
+    return this.registerUser({
+      id: kakaoUserInfo.id,
+      displayName,
+      realName: kakaoUserInfo.realName || '',
+      kakaoNickname: kakaoUserInfo.kakaoNickname || '',
+      profileImage: kakaoUserInfo.profileImage || '',
+      email: kakaoUserInfo.email || '',
+      provider: 'kakao',
+      birthyear: kakaoUserInfo.birthyear || '',
+      gender: kakaoUserInfo.gender || '',
+      phoneNumber: this.normalizeKakaoPhone(kakaoUserInfo.phoneNumber)
+    });
+  }
+
+  // ----- 4-0-2) 닉네임#태그가 없는 기존 사용자: 기존 값을 살려 자동 부여 -----
+  async assignFullTagToExistingUser(userId, userData, kakaoUserInfo) {
+    const displayName = this.sanitizeDisplayName(
+      userData.displayName,
+      userData.nickname,
+      kakaoUserInfo.kakaoNickname,
+      userData.realName
+    );
+    const displayTag = await this.generateDiscriminator(displayName);
+    const fullTag = `${displayName}#${displayTag}`;
+
+    await this.updateUserProfile(userId, { displayName, displayTag, fullTag });
+    return { displayName, displayTag, fullTag };
+  }
+
   // ----- 4-1) Firestore: 사용자 프로필 정보 업데이트 (재로그인 시) -----
   async updateUserProfile(userId, profileData) {
     // ✅ userId를 반드시 string으로 통일

@@ -3,7 +3,6 @@ import MainLayout from './components/common/MainLayout';
 import HomePage from './pages/HomePage';
 import PraisePage from './pages/PraisePage';
 import KakaoCallback from './components/auth/KakaoCallback';
-import SignupPage from './pages/SignupPage';
 import ProfilePage from './pages/ProfilePage';
 import SignupDemoPage from './pages/SignupDemoPage';
 import JoinSpacePage from './pages/JoinSpacePage';
@@ -67,7 +66,6 @@ function App() {
 
           {/* 하단 네비게이션이 없는 독립 페이지들 */}
           <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
-          <Route path="/signup" element={<SignupPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/signin" element={<SignupDemoPage />} />
           <Route path="/join" element={<JoinSpacePage />} />

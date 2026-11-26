@@ -12,6 +12,13 @@ const LoginOverlay = () => {
         <div className="flex justify-center">
           <KakaoLogin />
         </div>
+        <p className="mt-4 text-xs text-center text-gray-500 leading-relaxed">
+          카카오로 로그인하면{' '}
+          <a href="/terms" className="underline">이용약관</a>과{' '}
+          <a href="/privacy" className="underline">개인정보처리방침</a>에
+          <br />
+          동의한 것으로 보며, 카카오 계정의 이름·전화번호가 회원 정보로 저장됩니다.
+        </p>
       </div>
     </div>
   );
