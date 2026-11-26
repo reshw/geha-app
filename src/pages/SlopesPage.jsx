@@ -3,16 +3,15 @@ import { useState } from 'react';
 import { MountainSnow } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import LoginOverlay from '../components/auth/LoginOverlay';
-import SlopeTrend from '../components/slopes/SlopeTrend';
 
 export default function SlopesPage() {
   const { isLoggedIn } = useAuth();
-  const [activeTab, setActiveTab] = useState('slopes'); // 'slopes' | 'video' | 'trend'
+  const [activeTab, setActiveTab] = useState('slopes'); // 'slopes' | 'video'
 
   const tabs = {
     slopes: {
       label: '오픈슬로프',
-      url: 'https://phoenixhnr.co.kr/m/static/pyeongchang/snowpark/slope-lift?tabId=3'
+      url: 'https://slope.scnd.kr/phoenix'
     },
     video: {
       label: '현장영상',
@@ -60,16 +59,6 @@ export default function SlopesPage() {
               현장영상
             </button>
             <button
-              onClick={() => setActiveTab('trend')}
-              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${
-                activeTab === 'trend'
-                  ? 'bg-blue-500 text-white shadow-md'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              오픈추이
-            </button>
-            <button
               onClick={() => window.open('https://www.snow-forecast.com/resorts/Phoenix-Park-Ski-World/6day/mid', '_blank')}
               className="flex-1 py-2 rounded-lg text-sm font-semibold transition-all bg-gray-100 text-gray-600 hover:bg-gray-200"
             >
@@ -80,27 +69,23 @@ export default function SlopesPage() {
           {/* 안내 문구 */}
           <div className="mt-2">
             <p className="text-xs text-center text-gray-500">
-              💡 정보는 휘닉스 파크 공식 홈페이지에서 제공됩니다
+              💡 오픈 현황은 오늘슬로프(slope.scnd.kr), 영상은 휘닉스 파크 공식 홈페이지에서 제공됩니다
             </p>
           </div>
         </div>
       </header>
 
-      {activeTab === 'trend' ? (
-        <SlopeTrend />
-      ) : (
-        /* iframe - 영역 최대화 */
-        <div className="max-w-[720px] mx-auto">
-          <iframe
-            key={activeTab}
-            src={tabs[activeTab].url}
-            className="w-full border-0"
-            style={{ height: 'calc(100vh - 180px - 64px)' }} // 전체 - 헤더 - BottomNav
-            title={`휘닉스 파크 ${tabs[activeTab].label}`}
-            loading="lazy"
-          />
-        </div>
-      )}
+      {/* iframe - 영역 최대화 */}
+      <div className="max-w-[720px] mx-auto">
+        <iframe
+          key={activeTab}
+          src={tabs[activeTab].url}
+          className="w-full border-0"
+          style={{ height: 'calc(100vh - 180px - 64px)' }} // 전체 - 헤더 - BottomNav
+          title={`휘닉스 파크 ${tabs[activeTab].label}`}
+          loading="lazy"
+        />
+      </div>
 
       {/* BottomNav를 위한 여백 */}
       <div style={{ height: 'calc(64px + env(safe-area-inset-bottom))' }} />
