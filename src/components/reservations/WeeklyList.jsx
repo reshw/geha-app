@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, ChevronDown, Plus, Check, X, Settings2, Share2, GripVertical, User, LogOut, FileText, Shield, UserCog, UserMinus, Wallet, ShieldCheck, List, Calendar, Users, Mars, Venus, Trophy, PackageOpen, Sun, Moon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Plus, Check, X, Settings2, Share2, GripVertical, User, LogOut, FileText, Shield, UserCog, UserMinus, Wallet, ShieldCheck, List, Calendar, Users, Mars, Venus, Trophy, PackageOpen, Sun, Moon, BeefOff } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useReservations } from '../../hooks/useReservations';
 import { useMonthlyReservations } from '../../hooks/useMonthlyReservations';
@@ -19,7 +19,6 @@ import MonthlyCalendarView from './MonthlyCalendarView';
 import ReservationManageModal from './ReservationManageModal';
 import ReservationEditModal from './ReservationEditModal';
 import SimpleMealModal from './SimpleMealModal';
-import MealOutIcon from './MealOutIcon';
 import SeasonOutModal from './SeasonOutModal';
 import SeasonOutListView from './SeasonOutListView';
 import CleanupDayModal from './CleanupDayModal';
@@ -492,7 +491,7 @@ const WeeklyList = () => {
                         className="meal-check-button flex items-center gap-1.5 px-1.5 py-1 hover:bg-orange-100 rounded-lg transition-colors"
                         title="밥X - 나가서 먹어요"
                       >
-                        <MealOutIcon className="w-4 h-4" />
+                        <BeefOff className="w-4 h-4 text-orange-600" />
                         {lunchOut > 0 && (
                           <span
                             className={`flex items-center gap-0.5 text-xs font-semibold text-green-700 ${myLunch ? 'underline underline-offset-2' : ''}`}

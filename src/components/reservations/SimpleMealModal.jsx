@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Sun, Moon } from 'lucide-react';
-import MealOutIcon from './MealOutIcon';
+import { X, Sun, Moon, BeefOff } from 'lucide-react';
 import MealParticipantListModal from './MealParticipantListModal';
 import simpleMealService from '../../services/simpleMealService';
 import { formatDate } from '../../utils/dateUtils';
@@ -125,7 +124,7 @@ const SimpleMealModal = ({
           {/* 헤더 */}
           <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <MealOutIcon className="w-6 h-6" />
+              <BeefOff className="w-6 h-6 text-orange-600" />
               <div>
                 <h3 className="text-xl font-bold text-gray-900">난 밥 나가서 먹어요~</h3>
                 <div className="text-sm text-gray-600">{dateLabel}</div>
