@@ -2,151 +2,86 @@ import { doc, setDoc, getDoc, updateDoc, arrayUnion, arrayRemove, Timestamp } fr
 import { db } from '../config/firebase';
 
 /**
- * 간단한 식사 참여 서비스
+ * 밥X(나가서 먹어요) 서비스
  * spaces/{spaceId}/dailyMeals/{date}
+ *
+ * - lunchOut / dinnerOut: 그날 점심/저녁을 밖에서 먹는 사람(userId 배열)
+ * - 예전 "식사 참여" 기록(lunch / dinner 필드)은 의미가 반대라 읽지 않는다.
+ * - 화면에는 { lunch, dinner } 형태로 돌려준다.
  */
+const FIELDS = { lunch: 'lunchOut', dinner: 'dinnerOut' };
+
 class SimpleMealService {
   /**
-   * 특정 날짜의 식사 참여자 조회
+   * 특정 날짜의 밖에서 먹는 사람 조회
    * @param {string} spaceId - 스페이스 ID
    * @param {string} dateStr - 날짜 문자열 (YYYY-MM-DD)
    * @returns {object} { lunch: [userId...], dinner: [userId...] }
    */
   async getMealParticipants(spaceId, dateStr) {
     try {
-      const docRef = doc(db, 'spaces', spaceId, 'dailyMeals', dateStr);
-      const docSnap = await getDoc(docRef);
-
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        return {
-          lunch: data.lunch || [],
-          dinner: data.dinner || []
-        };
-      }
-
-      return { lunch: [], dinner: [] };
+      const docSnap = await getDoc(doc(db, 'spaces', spaceId, 'dailyMeals', dateStr));
+      const data = docSnap.exists() ? docSnap.data() : {};
+      return {
+        lunch: data[FIELDS.lunch] || [],
+        dinner: data[FIELDS.dinner] || []
+      };
     } catch (error) {
-      console.error('❌ 식사 참여자 조회 실패:', error);
+      console.error('❌ 밥X 조회 실패:', error);
       return { lunch: [], dinner: [] };
     }
   }
 
   /**
-   * 점심 참여 토글
-   * @param {string} spaceId - 스페이스 ID
-   * @param {string} dateStr - 날짜 문자열
-   * @param {string} userId - 사용자 ID
+   * 점심/저녁 "나가서 먹어요" 토글
+   * @param {'lunch'|'dinner'} mealType
    */
-  async toggleLunch(spaceId, dateStr, userId) {
+  async toggleMealOut(spaceId, dateStr, userId, mealType) {
+    const field = FIELDS[mealType];
+    if (!field) throw new Error(`알 수 없는 식사 구분: ${mealType}`);
+
     try {
       const docRef = doc(db, 'spaces', spaceId, 'dailyMeals', dateStr);
       const docSnap = await getDoc(docRef);
 
       if (!docSnap.exists()) {
-        // 문서가 없으면 생성하고 추가
-        await setDoc(docRef, {
-          lunch: [userId],
-          dinner: [],
-          updatedAt: Timestamp.now()
-        });
-        console.log('✅ 점심 참여 (새 문서 생성):', userId);
+        await setDoc(docRef, { [field]: [userId], updatedAt: Timestamp.now() });
         return;
       }
 
-      const data = docSnap.data();
-      const lunchParticipants = data.lunch || [];
-
-      if (lunchParticipants.includes(userId)) {
-        // 이미 참여 중이면 제거
-        await updateDoc(docRef, {
-          lunch: arrayRemove(userId),
-          updatedAt: Timestamp.now()
-        });
-        console.log('✅ 점심 참여 취소:', userId);
-      } else {
-        // 참여 추가
-        await updateDoc(docRef, {
-          lunch: arrayUnion(userId),
-          updatedAt: Timestamp.now()
-        });
-        console.log('✅ 점심 참여:', userId);
-      }
+      const current = docSnap.data()[field] || [];
+      await updateDoc(docRef, {
+        [field]: current.includes(userId) ? arrayRemove(userId) : arrayUnion(userId),
+        updatedAt: Timestamp.now()
+      });
     } catch (error) {
-      console.error('❌ 점심 참여 토글 실패:', error);
+      console.error('❌ 밥X 토글 실패:', error);
       throw error;
     }
   }
 
-  /**
-   * 저녁 참여 토글
-   * @param {string} spaceId - 스페이스 ID
-   * @param {string} dateStr - 날짜 문자열
-   * @param {string} userId - 사용자 ID
-   */
-  async toggleDinner(spaceId, dateStr, userId) {
-    try {
-      const docRef = doc(db, 'spaces', spaceId, 'dailyMeals', dateStr);
-      const docSnap = await getDoc(docRef);
+  toggleLunch(spaceId, dateStr, userId) {
+    return this.toggleMealOut(spaceId, dateStr, userId, 'lunch');
+  }
 
-      if (!docSnap.exists()) {
-        // 문서가 없으면 생성하고 추가
-        await setDoc(docRef, {
-          lunch: [],
-          dinner: [userId],
-          updatedAt: Timestamp.now()
-        });
-        console.log('✅ 저녁 참여 (새 문서 생성):', userId);
-        return;
-      }
-
-      const data = docSnap.data();
-      const dinnerParticipants = data.dinner || [];
-
-      if (dinnerParticipants.includes(userId)) {
-        // 이미 참여 중이면 제거
-        await updateDoc(docRef, {
-          dinner: arrayRemove(userId),
-          updatedAt: Timestamp.now()
-        });
-        console.log('✅ 저녁 참여 취소:', userId);
-      } else {
-        // 참여 추가
-        await updateDoc(docRef, {
-          dinner: arrayUnion(userId),
-          updatedAt: Timestamp.now()
-        });
-        console.log('✅ 저녁 참여:', userId);
-      }
-    } catch (error) {
-      console.error('❌ 저녁 참여 토글 실패:', error);
-      throw error;
-    }
+  toggleDinner(spaceId, dateStr, userId) {
+    return this.toggleMealOut(spaceId, dateStr, userId, 'dinner');
   }
 
   /**
-   * 여러 날짜의 식사 참여자 일괄 조회
+   * 여러 날짜 일괄 조회
    * @param {string} spaceId - 스페이스 ID
    * @param {string[]} dateStrings - 날짜 문자열 배열
    * @returns {object} { "2024-01-01": { lunch: [], dinner: [] }, ... }
    */
   async getMealsByDateRange(spaceId, dateStrings) {
-    try {
-      const results = {};
-
-      // 각 날짜별로 조회
-      await Promise.all(
-        dateStrings.map(async (dateStr) => {
-          const participants = await this.getMealParticipants(spaceId, dateStr);
-          results[dateStr] = participants;
-        })
-      );
-
-      return results;
-    } catch (error) {
-      console.error('❌ 식사 범위 조회 실패:', error);
-      return {};
-    }
+    const results = {};
+    await Promise.all(
+      dateStrings.map(async (dateStr) => {
+        results[dateStr] = await this.getMealParticipants(spaceId, dateStr);
+      })
+    );
+    return results;
   }
 }
 

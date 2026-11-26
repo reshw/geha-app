@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, ChevronDown, Plus, Check, X, Settings2, Share2, GripVertical, User, LogOut, FileText, Shield, UserCog, UserMinus, Wallet, ShieldCheck, List, Calendar, Users, Mars, Venus, Trophy, Utensils, PackageOpen } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Plus, Check, X, Settings2, Share2, GripVertical, User, LogOut, FileText, Shield, UserCog, UserMinus, Wallet, ShieldCheck, List, Calendar, Users, Mars, Venus, Trophy, PackageOpen, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useReservations } from '../../hooks/useReservations';
 import { useMonthlyReservations } from '../../hooks/useMonthlyReservations';
@@ -19,6 +19,7 @@ import MonthlyCalendarView from './MonthlyCalendarView';
 import ReservationManageModal from './ReservationManageModal';
 import ReservationEditModal from './ReservationEditModal';
 import SimpleMealModal from './SimpleMealModal';
+import MealOutIcon from './MealOutIcon';
 import SeasonOutModal from './SeasonOutModal';
 import SeasonOutListView from './SeasonOutListView';
 import CleanupDayModal from './CleanupDayModal';
@@ -211,7 +212,7 @@ const WeeklyList = () => {
     newDate.setDate(newDate.getDate() - 7);
     setCurrentWeekStart(newDate);
   };
-  
+
   const nextWeek = () => {
     const newDate = new Date(currentWeekStart);
     newDate.setDate(newDate.getDate() + 7);
@@ -473,40 +474,46 @@ const WeeklyList = () => {
                   }`}>
                     ({formatWeekDay(date)})
                   </span>
-                  {/* 포크 아이콘 (식사 열기) */}
-                  <div className="relative meal-check-button">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedDateForMeal(date);
-                        setShowMealModal(true);
-                      }}
-                      className="p-1.5 hover:bg-orange-100 rounded-lg transition-colors"
-                      title="밥 보기"
-                    >
-                      <Utensils className="w-4 h-4 text-orange-600" />
-                    </button>
-                    {/* 본인 식사 상태 표시 */}
-                    {(() => {
-                      const dateMeals = mealsByDate[dateStr] || { lunch: [], dinner: [] };
-                      const myLunch = dateMeals.lunch.includes(user.id);
-                      const myDinner = dateMeals.dinner.includes(user.id);
-                      const hasMyMeal = myLunch || myDinner;
+                  {/* 밥X 아이콘 (나가서 먹는 사람) + 점심/저녁 인원 */}
+                  {(() => {
+                    const dateMeals = mealsByDate[dateStr] || { lunch: [], dinner: [] };
+                    const lunchOut = dateMeals.lunch.length;
+                    const dinnerOut = dateMeals.dinner.length;
+                    const myLunch = dateMeals.lunch.includes(user.id);
+                    const myDinner = dateMeals.dinner.includes(user.id);
 
-                      if (!hasMyMeal) return null;
-
-                      return (
-                        <div className="absolute -top-0.5 -right-0.5 flex gap-0.5">
-                          {myLunch && (
-                            <div className="w-1.5 h-1.5 rounded-full bg-green-500 border border-white" title="점심" />
-                          )}
-                          {myDinner && (
-                            <div className="w-1.5 h-1.5 rounded-full bg-orange-500 border border-white" title="저녁" />
-                          )}
-                        </div>
-                      );
-                    })()}
-                  </div>
+                    return (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedDateForMeal(date);
+                          setShowMealModal(true);
+                        }}
+                        className="meal-check-button flex items-center gap-1.5 px-1.5 py-1 hover:bg-orange-100 rounded-lg transition-colors"
+                        title="밥X - 나가서 먹어요"
+                      >
+                        <MealOutIcon className="w-4 h-4" />
+                        {lunchOut > 0 && (
+                          <span
+                            className={`flex items-center gap-0.5 text-xs font-semibold text-green-700 ${myLunch ? 'underline underline-offset-2' : ''}`}
+                            title={`점심 밖에서 ${lunchOut}명${myLunch ? ' (나 포함)' : ''}`}
+                          >
+                            <Sun className="w-3.5 h-3.5" />
+                            {lunchOut}
+                          </span>
+                        )}
+                        {dinnerOut > 0 && (
+                          <span
+                            className={`flex items-center gap-0.5 text-xs font-semibold text-orange-700 ${myDinner ? 'underline underline-offset-2' : ''}`}
+                            title={`저녁 밖에서 ${dinnerOut}명${myDinner ? ' (나 포함)' : ''}`}
+                          >
+                            <Moon className="w-3.5 h-3.5" />
+                            {dinnerOut}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })()}
                   {/* 게스트용 체크인/체크아웃 표시 */}
                   {isGuest && myReservations.length > 0 && myReservations.map(r => {
                     const isCheckInDay = formatDate(r.checkIn) === dateStr;
