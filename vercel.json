@@ -3,6 +3,7 @@
   "framework": "vite",
   "buildCommand": "if [ \"$VERCEL_ENV\" = \"production\" ]; then export VITE_DISABLE_CONSOLE=true; fi; npm run build",
   "outputDirectory": "dist",
+  "regions": ["icn1"],
   "rewrites": [
     {
       "source": "/((?!api/).*)",
