@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
-import { X, Utensils } from 'lucide-react';
+import { X, Sun, Moon } from 'lucide-react';
+import MealOutIcon from './MealOutIcon';
 import MealParticipantListModal from './MealParticipantListModal';
 import simpleMealService from '../../services/simpleMealService';
 import { formatDate } from '../../utils/dateUtils';
 
 /**
- * 간단한 식사 모달
- * - 점심/저녁 참여자만 표시
- * - 클릭하면 참여자 리스트 모달
+ * 밥X 모달: "난 밥 나가서 먹어요~"
+ * - 그날 점심/저녁을 밖에서 먹는 사람 표시
+ * - 클릭하면 명단 모달 (나도 나가서 먹기 / 취소)
  */
 const SimpleMealModal = ({
   isOpen,
@@ -108,7 +109,7 @@ const SimpleMealModal = ({
         )}
 
         {participantIds.length === 0 && (
-          <div className="text-sm text-gray-400">참여자 없음</div>
+          <div className="text-sm text-gray-400">아직 없음</div>
         )}
       </div>
     );
@@ -124,9 +125,9 @@ const SimpleMealModal = ({
           {/* 헤더 */}
           <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Utensils className="w-6 h-6 text-blue-600" />
+              <MealOutIcon className="w-6 h-6" />
               <div>
-                <h3 className="text-xl font-bold text-gray-900">밥</h3>
+                <h3 className="text-xl font-bold text-gray-900">난 밥 나가서 먹어요~</h3>
                 <div className="text-sm text-gray-600">{dateLabel}</div>
               </div>
             </div>
@@ -151,7 +152,7 @@ const SimpleMealModal = ({
               >
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="text-lg font-bold text-green-700 flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-green-500"></span>
+                    <Sun className="w-5 h-5" />
                     점심
                   </h4>
                   <div className="px-3 py-1 bg-green-500 text-white text-sm font-semibold rounded-full">
@@ -162,7 +163,7 @@ const SimpleMealModal = ({
                 {renderProfileImages(participants.lunch, 'green')}
 
                 <div className="mt-3 text-center text-xs text-green-600">
-                  클릭하여 참여자 확인 및 참여/취소
+                  눌러서 명단 보기 · 나도 나가서 먹기/취소
                 </div>
               </div>
 
@@ -173,7 +174,7 @@ const SimpleMealModal = ({
               >
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="text-lg font-bold text-orange-700 flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-orange-500"></span>
+                    <Moon className="w-5 h-5" />
                     저녁
                   </h4>
                   <div className="px-3 py-1 bg-orange-500 text-white text-sm font-semibold rounded-full">
@@ -184,7 +185,7 @@ const SimpleMealModal = ({
                 {renderProfileImages(participants.dinner, 'orange')}
 
                 <div className="mt-3 text-center text-xs text-orange-600">
-                  클릭하여 참여자 확인 및 참여/취소
+                  눌러서 명단 보기 · 나도 나가서 먹기/취소
                 </div>
               </div>
             </div>

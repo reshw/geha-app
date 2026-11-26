@@ -1,9 +1,9 @@
-import { X, Users } from 'lucide-react';
+import { X, Sun, Moon } from 'lucide-react';
 
 /**
- * 식사 참여자 모달
- * - 참여한 사람만 카드로 표시
- * - 하단에 본인 참여/취소 버튼
+ * 밥X 명단 모달
+ * - 그 끼니를 밖에서 먹는 사람만 카드로 표시
+ * - 하단에 본인 "나도 나가서 먹어요" / 취소 버튼
  */
 const MealParticipantListModal = ({
   isOpen,
@@ -29,10 +29,12 @@ const MealParticipantListModal = ({
         {/* 헤더 */}
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Users className={isLunch ? 'w-6 h-6 text-green-600' : 'w-6 h-6 text-orange-600'} />
+            {isLunch
+              ? <Sun className="w-6 h-6 text-green-600" />
+              : <Moon className="w-6 h-6 text-orange-600" />}
             <div>
-              <h3 className="text-lg font-bold text-gray-900">{mealTypeLabel} 참여자</h3>
-              <div className="text-sm text-gray-600">{participants.length}명 참여 중</div>
+              <h3 className="text-lg font-bold text-gray-900">{mealTypeLabel} 나가서 먹는 사람</h3>
+              <div className="text-sm text-gray-600">{participants.length}명</div>
             </div>
           </div>
           <button
@@ -99,7 +101,7 @@ const MealParticipantListModal = ({
             </div>
           ) : (
             <div className="py-8 text-center text-gray-400 mb-4">
-              아직 참여자가 없습니다
+              아직 없어요 (다들 여기서 먹어요)
             </div>
           )}
 
@@ -115,7 +117,7 @@ const MealParticipantListModal = ({
                   : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
               }`}
             >
-              {isParticipating ? '참여 취소' : '참여하기'}
+              {isParticipating ? '취소 (여기서 먹을래요)' : `나도 ${mealTypeLabel} 나가서 먹어요`}
             </button>
           </div>
         </div>
