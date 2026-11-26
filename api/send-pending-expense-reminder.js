@@ -1,9 +1,11 @@
-// netlify/functions/send-pending-expense-reminder.js
+import { withNetlifyEvent } from '../lib/withNetlifyEvent.js';
+import { getAppBaseUrl } from '../lib/appBaseUrl.js';
+// api/send-pending-expense-reminder.js
 // 운영비 승인 독려 메일 발송
-// 매일 한국시간 오전 10시에 실행되어야 함 (netlify.toml 설정: UTC 01:00 = KST 10:00)
+// 매일 한국시간 오전 10시에 실행되어야 함 (vercel.json crons: UTC 01:00 = KST 10:00)
 
-const { initializeApp, cert } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
+import { initializeApp, cert } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 
 // Firebase Admin 초기화 (개별 환경변수 사용)
 let adminApp;
@@ -121,7 +123,7 @@ const sendPendingExpenseReminders = async () => {
 
       // 독려 메일 발송
       try {
-        const emailResponse = await fetch('https://loungeap.netlify.app/.netlify/functions/send-email', {
+        const emailResponse = await fetch(`${getAppBaseUrl()}/api/send-email`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -176,12 +178,12 @@ const sendPendingExpenseReminders = async () => {
 };
 
 /**
- * Netlify Scheduled Function Handler
+ * Vercel Cron Handler
  * 매일 한국시간 오전 10시에 실행 (UTC 01:00)
  */
-exports.handler = async (event) => {
+const handler = async () => {
   const kstNow = getKoreanTime();
-  console.log('📧 Netlify 독려 메일 Scheduled Function 실행 (한국시간):', kstNow.toISOString());
+  console.log('📧 독려 메일 Cron 실행 (한국시간):', kstNow.toISOString());
 
   try {
     const results = await sendPendingExpenseReminders();
@@ -216,3 +218,5 @@ exports.handler = async (event) => {
     };
   }
 };
+
+export default withNetlifyEvent(handler, { cron: true });

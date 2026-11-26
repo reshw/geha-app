@@ -1,6 +1,7 @@
-const axios = require('axios');
+import { withNetlifyEvent } from '../lib/withNetlifyEvent.js';
+import axios from 'axios';
 
-exports.handler = async (event) => {
+const handler = async (event) => {
   // CORS 헤더
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -128,3 +129,5 @@ exports.handler = async (event) => {
     };
   }
 };
+
+export default withNetlifyEvent(handler);

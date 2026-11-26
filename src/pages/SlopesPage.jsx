@@ -6,12 +6,12 @@ import LoginOverlay from '../components/auth/LoginOverlay';
 
 export default function SlopesPage() {
   const { isLoggedIn } = useAuth();
-  const [activeTab, setActiveTab] = useState('slopes'); // 'slopes' or 'video'
+  const [activeTab, setActiveTab] = useState('slopes'); // 'slopes' | 'video'
 
   const tabs = {
     slopes: {
       label: '오픈슬로프',
-      url: 'https://phoenixhnr.co.kr/m/static/pyeongchang/snowpark/slope-lift?tabId=3'
+      url: 'https://slope.scnd.kr/phoenix'
     },
     video: {
       label: '현장영상',
@@ -69,7 +69,7 @@ export default function SlopesPage() {
           {/* 안내 문구 */}
           <div className="mt-2">
             <p className="text-xs text-center text-gray-500">
-              💡 정보는 휘닉스 파크 공식 홈페이지에서 제공됩니다
+              💡 오픈 현황은 오늘슬로프(slope.scnd.kr), 영상은 휘닉스 파크 공식 홈페이지에서 제공됩니다
             </p>
           </div>
         </div>

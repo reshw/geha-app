@@ -96,9 +96,8 @@ class AuthService {
     return {
       id: String(id),
       email: account?.email ?? '',
-      // ✅ displayName = 실명, nickname = 카카오닉네임
-      displayName: name || nickname || '사용자',  // 실명 우선
-      nickname,                                    // 카카오 닉네임 별도 보관
+      realName: name || '',                        // ✅ 카카오 실명 (참고용, 변경 불가)
+      kakaoNickname: nickname || '',               // 카카오 닉네임 (참고용)
       gender,
       birthyear,
       phoneNumber: phone_number,
@@ -115,15 +114,70 @@ class AuthService {
     return snap.exists();
   }
 
+  // ----- 3-1) 닉네임#태그 중복 체크 -----
+  async checkFullTagExists(fullTag) {
+    const usersRef = collection(db, 'users');
+    const snapshot = await getDocs(usersRef);
+
+    for (const doc of snapshot.docs) {
+      if (doc.data().fullTag === fullTag) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // ----- 3-2) 사용 가능한 discriminator 생성 -----
+  async generateDiscriminator(displayName) {
+    const maxAttempts = 100; // 최대 100번 시도
+    const usersRef = collection(db, 'users');
+    const snapshot = await getDocs(usersRef);
+
+    // 이미 사용 중인 태그 수집
+    const usedTags = new Set();
+    snapshot.docs.forEach(doc => {
+      const data = doc.data();
+      if (data.displayName === displayName && data.displayTag) {
+        usedTags.add(data.displayTag);
+      }
+    });
+
+    // 0001-9999 범위에서 사용 가능한 태그 찾기
+    for (let i = 0; i < maxAttempts; i++) {
+      const tag = String(Math.floor(Math.random() * 9999) + 1).padStart(4, '0');
+      if (!usedTags.has(tag)) {
+        return tag;
+      }
+    }
+
+    // 랜덤으로 못 찾으면 순차 검색
+    for (let i = 1; i <= 9999; i++) {
+      const tag = String(i).padStart(4, '0');
+      if (!usedTags.has(tag)) {
+        return tag;
+      }
+    }
+
+    throw new Error('사용 가능한 태그가 없습니다. (별명이 너무 많이 사용되었습니다)');
+  }
+
   // ----- 4) Firestore: 사용자 최초 등록 (확장된 필드 지원) -----
   async registerUser(userData) {
     // ✅ userId를 반드시 string으로 통일
     const userId = String(userData.id);
 
+    // displayName과 discriminator로 fullTag 생성
+    const displayName = userData.displayName || 'User';
+    const displayTag = userData.displayTag || await this.generateDiscriminator(displayName);
+    const fullTag = `${displayName}#${displayTag}`;
+
     const userDoc = {
       id: userId,  // ✅ string으로 변환된 id 저장
-      displayName: userData.displayName ?? '',  // 실명
-      nickname: userData.nickname ?? '',         // ✅ 카카오 닉네임 추가
+      displayName,                     // 사용자 지정 별명 (변경 가능!) - 메인!
+      displayTag,                      // discriminator (#0001-#9999)
+      fullTag,                         // unique 식별자 (displayName#1234)
+      realName: userData.realName ?? '',        // 카카오 실명 (참고용, 변경 불가)
+      nickname: userData.kakaoNickname ?? '',   // 카카오 닉네임 (레거시)
       email: userData.email ?? '',
       phoneNumber: userData.phoneNumber ?? '',
       profileImage: userData.profileImage ?? '',
@@ -140,6 +194,63 @@ class AuthService {
     }
 
     await setDoc(doc(db, 'users', userId), userDoc, { merge: true });
+
+    return { ...userDoc, fullTag }; // fullTag 반환
+  }
+
+  // ----- 4-0) 카카오 값 → 앱 규격 변환 -----
+
+  // "+82 10-1234-5678" → "01012345678". 형식이 맞지 않으면 ''.
+  normalizeKakaoPhone(raw) {
+    if (!raw) return '';
+    let digits = String(raw).replace(/[^0-9]/g, '');
+    if (digits.startsWith('82')) digits = `0${digits.slice(2)}`;
+    return /^01[0-9]{8,9}$/.test(digits) ? digits : '';
+  }
+
+  // 닉네임 규칙(2~12자, 한글/영문/숫자/_)에 맞게 정리. 쓸 수 없으면 fallback.
+  sanitizeDisplayName(...candidates) {
+    for (const c of candidates) {
+      const cleaned = String(c ?? '').replace(/[^가-힣a-zA-Z0-9_]/g, '').slice(0, 12);
+      if (cleaned.length >= 2) return cleaned;
+    }
+    return '게스트';
+  }
+
+  // ----- 4-0-1) 카카오 로그인 최초 1회: 가입 폼 없이 카카오 값으로 자동 가입 -----
+  async registerFromKakao(kakaoUserInfo) {
+    const displayName = this.sanitizeDisplayName(
+      kakaoUserInfo.kakaoNickname,
+      kakaoUserInfo.realName
+    );
+
+    return this.registerUser({
+      id: kakaoUserInfo.id,
+      displayName,
+      realName: kakaoUserInfo.realName || '',
+      kakaoNickname: kakaoUserInfo.kakaoNickname || '',
+      profileImage: kakaoUserInfo.profileImage || '',
+      email: kakaoUserInfo.email || '',
+      provider: 'kakao',
+      birthyear: kakaoUserInfo.birthyear || '',
+      gender: kakaoUserInfo.gender || '',
+      phoneNumber: this.normalizeKakaoPhone(kakaoUserInfo.phoneNumber)
+    });
+  }
+
+  // ----- 4-0-2) 닉네임#태그가 없는 기존 사용자: 기존 값을 살려 자동 부여 -----
+  async assignFullTagToExistingUser(userId, userData, kakaoUserInfo) {
+    const displayName = this.sanitizeDisplayName(
+      userData.displayName,
+      userData.nickname,
+      kakaoUserInfo.kakaoNickname,
+      userData.realName
+    );
+    const displayTag = await this.generateDiscriminator(displayName);
+    const fullTag = `${displayName}#${displayTag}`;
+
+    await this.updateUserProfile(userId, { displayName, displayTag, fullTag });
+    return { displayName, displayTag, fullTag };
   }
 
   // ----- 4-1) Firestore: 사용자 프로필 정보 업데이트 (재로그인 시) -----
@@ -150,10 +261,19 @@ class AuthService {
     const updates = {};
 
     if (profileData.displayName !== undefined) {
-      updates.displayName = profileData.displayName;  // 실명
+      updates.displayName = profileData.displayName;  // 사용자 지정 별명 (변경 가능)
     }
-    if (profileData.nickname !== undefined) {  // ✅ 카카오 닉네임 업데이트 추가
-      updates.nickname = profileData.nickname;
+    if (profileData.displayTag !== undefined) {
+      updates.displayTag = profileData.displayTag;  // discriminator
+    }
+    if (profileData.fullTag !== undefined) {
+      updates.fullTag = profileData.fullTag;  // displayName#1234
+    }
+    if (profileData.realName !== undefined) {
+      updates.realName = profileData.realName;  // 카카오 실명 (참고용)
+    }
+    if (profileData.nickname !== undefined) {
+      updates.nickname = profileData.nickname;  // 카카오 닉네임 (레거시)
     }
     if (profileData.profileImage !== undefined) {
       updates.profileImage = profileData.profileImage;

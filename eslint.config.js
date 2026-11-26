@@ -26,4 +26,11 @@ export default defineConfig([
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
     },
   },
+  {
+    // Vercel 서버리스 함수와 공용 서버 코드는 Node 환경
+    files: ['api/**/*.js', 'lib/**/*.js'],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
 ])

@@ -1,9 +1,11 @@
-// netlify/functions/send-praise-notification.js
+import { withNetlifyEvent } from '../lib/withNetlifyEvent.js';
+import { getAppBaseUrl } from '../lib/appBaseUrl.js';
+// api/send-praise-notification.js
 import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-export async function handler(event) {
+async function handler(event) {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
@@ -83,7 +85,7 @@ export async function handler(event) {
             </div>
 
             <div style="text-align: center; margin-top: 30px;">
-              <a href="https://geha-app.netlify.app/praise" class="button">
+              <a href="${getAppBaseUrl()}/praise" class="button">
                 관리자 페이지에서 승인하기
               </a>
             </div>
@@ -111,7 +113,7 @@ ${originalText}
 ${refinedText}
 
 관리자 페이지에서 승인해주세요:
-https://geha-app.netlify.app/praise
+${getAppBaseUrl()}/praise
     `;
 
     const data = await resend.emails.send({
@@ -146,3 +148,4 @@ https://geha-app.netlify.app/praise
     };
   }
 }
+export default withNetlifyEvent(handler);

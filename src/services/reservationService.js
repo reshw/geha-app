@@ -332,7 +332,7 @@ class ReservationService {
             console.log(`📧 이메일 발송 시작 (${reservationType} 예약)`);
 
             try {
-              const emailResponse = await fetch('/.netlify/functions/send-email', {
+              const emailResponse = await fetch('/api/send-email', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

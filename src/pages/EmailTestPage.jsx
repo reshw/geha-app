@@ -83,7 +83,7 @@ export default function EmailTestPage() {
 
       console.log('발송할 데이터:', emailData);
 
-      const response = await fetch('/.netlify/functions/send-email', {
+      const response = await fetch('/api/send-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(emailData)
@@ -247,7 +247,7 @@ export default function EmailTestPage() {
             <ul className="space-y-1 text-blue-200/80">
               <li>• 각 버튼을 클릭하면 해당 타입의 테스트 이메일이 발송됩니다.</li>
               <li>• 브라우저 개발자 도구 콘솔에서 상세 로그를 확인할 수 있습니다.</li>
-              <li>• Netlify Functions가 배포되어 있어야 합니다.</li>
+              <li>• 서버리스 함수(/api)가 배포되어 있어야 합니다.</li>
               <li>• RESEND_API_KEY 환경 변수가 설정되어 있어야 합니다.</li>
             </ul>
           </div>

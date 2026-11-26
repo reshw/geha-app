@@ -381,7 +381,7 @@ const bartenderService = {
         if (emailSettings?.bartender_order?.enabled && emailSettings.bartender_order.recipients.length > 0) {
           console.log('📧 바텐더 주문 이메일 발송 시작');
 
-          const emailResponse = await fetch('/.netlify/functions/send-email', {
+          const emailResponse = await fetch('/api/send-email', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

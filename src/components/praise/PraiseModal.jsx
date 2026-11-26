@@ -81,7 +81,7 @@ export default function PraiseModal({ onClose, onSuccess }) {
 
       // 2. AI 처리
       console.log('🤖 AI 처리 시작...');
-      const aiResponse = await fetch('/.netlify/functions/process-praise', {
+      const aiResponse = await fetch('/api/process-praise', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -121,7 +121,7 @@ export default function PraiseModal({ onClose, onSuccess }) {
 
       // 4. 관리자 이메일 알림
       try {
-        await fetch('/.netlify/functions/send-praise-notification', {
+        await fetch('/api/send-praise-notification', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

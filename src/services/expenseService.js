@@ -198,7 +198,7 @@ const expenseService = {
         if (emailSettings?.expense?.enabled && emailSettings.expense.recipients.length > 0) {
           console.log('📧 운영비 청구 이메일 발송 시작');
 
-          const emailResponse = await fetch('/.netlify/functions/send-email', {
+          const emailResponse = await fetch('/api/send-email', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "buildCommand": "if [ \"$VERCEL_ENV\" = \"production\" ]; then export VITE_DISABLE_CONSOLE=true; fi; npm run build",
+  "outputDirectory": "dist",
+  "regions": ["icn1"],
+  "rewrites": [
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ],
+  "functions": {
+    "api/settlement-auto-close.js": {
+      "maxDuration": 60
+    },
+    "api/send-pending-expense-reminder.js": {
+      "maxDuration": 60
+    },
+    "api/send-email.js": {
+      "maxDuration": 30
+    }
+  }
+}

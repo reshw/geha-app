@@ -1,6 +1,7 @@
-const { Resend } = require('resend');
+import { withNetlifyEvent } from '../lib/withNetlifyEvent.js';
+import { Resend } from 'resend';
 
-exports.handler = async (event) => {
+const handler = async (event) => {
   // CORS 헤더
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -938,3 +939,5 @@ function generateExpenseReminderEmail(data) {
 
   return { subject, html };
 }
+
+export default withNetlifyEvent(handler);

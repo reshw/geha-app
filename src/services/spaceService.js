@@ -81,6 +81,12 @@ class SpaceService {
         return { alreadyJoined: true };
       }
 
+      // 데모 스페이스 여부 확인 (자동 부매니저 권한 부여)
+      const isDemoSpace = space.isDemoSpace === true;
+      const autoUserType = isDemoSpace ? 'vice-manager' : 'guest';
+
+      console.log(`🔍 [joinSpace] 스페이스 타입: ${isDemoSpace ? '데모 스페이스 (자동 부매니저)' : '일반 스페이스'}`);
+
       // 1) users/{userId}/spaceAccess/{spaceId} 생성
       const userSpaceRef = doc(db, `users/${userIdStr}/spaceAccess`, spaceIdStr);
       const userSpaceData = {
@@ -89,7 +95,7 @@ class SpaceService {
         spaceName: space.name || spaceIdStr,
         status: 'active',
         updatedAt: now,
-        userType: 'guest' // 기본 guest로 가입
+        userType: autoUserType // 데모 스페이스면 vice-manager, 아니면 guest
       };
       
       await setDoc(userSpaceRef, userSpaceData);
@@ -103,7 +109,7 @@ class SpaceService {
         joinedAt: now,
         profileImage: userData.profileImage || '',
         status: 'active',
-        userType: 'guest'
+        userType: autoUserType // 데모 스페이스면 vice-manager, 아니면 guest
       };
       
       await setDoc(spaceUserRef, spaceUserData);

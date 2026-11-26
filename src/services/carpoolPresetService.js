@@ -65,6 +65,7 @@ class CarpoolPresetService {
         cost: presetData.cost,
         hasEquipment: presetData.hasEquipment || false,
         equipmentCost: presetData.equipmentCost || 0,
+        kakaoOpenChatLink: presetData.kakaoOpenChatLink || '',
         memo: presetData.memo || '',
         createdAt: Timestamp.now(),
         lastUsedAt: Timestamp.now()

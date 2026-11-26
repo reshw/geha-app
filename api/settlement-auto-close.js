@@ -1,10 +1,11 @@
-// netlify/functions/settlement-auto-close.js
+import { withNetlifyEvent } from '../lib/withNetlifyEvent.js';
+// api/settlement-auto-close.js
 // 정산 자동 마감 함수
 // 매주 월요일 18:00에 실행되어야 함
 // GitHub Actions 또는 외부 cron 서비스로 호출
 
-const { initializeApp, cert } = require('firebase-admin/app');
-const { getFirestore, Timestamp } = require('firebase-admin/firestore');
+import { initializeApp, cert } from 'firebase-admin/app';
+import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 
 // Firebase Admin 초기화 (개별 환경변수 사용)
 let adminApp;
@@ -256,13 +257,13 @@ const autoCloseSettlements = async () => {
 };
 
 /**
- * Netlify Scheduled Function Handler
- * Netlify가 자동으로 매시간 실행합니다 (netlify.toml 설정)
+ * Vercel Cron Handler
+ * Vercel Cron이 매시간 실행합니다 (vercel.json crons)
  */
-exports.handler = async (event) => {
+const handler = async () => {
   // Scheduled function은 event.body가 없으므로 따로 체크하지 않음
   const kstNow = getKoreanTime();
-  console.log('🤖 Netlify Scheduled Function 실행 (한국시간):', kstNow.toISOString());
+  console.log('🤖 Cron 실행 (한국시간):', kstNow.toISOString());
 
   try {
     const results = await autoCloseSettlements();
@@ -298,3 +299,5 @@ exports.handler = async (event) => {
     };
   }
 };
+
+export default withNetlifyEvent(handler, { cron: true });

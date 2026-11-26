@@ -1,6 +1,7 @@
-const fetch = require('node-fetch');
+import { withNetlifyEvent } from '../lib/withNetlifyEvent.js';
+import fetch from 'node-fetch';
 
-exports.handler = async (event) => {
+const handler = async (event) => {
   // CORS 헤더
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -116,3 +117,4 @@ exports.handler = async (event) => {
     };
   }
 };
+export default withNetlifyEvent(handler);
