@@ -1,6 +1,7 @@
-const axios = require('axios');
+import { withNetlifyEvent } from '../lib/withNetlifyEvent.js';
+import axios from 'axios';
 
-exports.handler = async (event) => {
+const handler = async (event) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
@@ -22,7 +23,7 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         success: true,
         ip: ip,
-        message: `현재 Netlify Functions IP: ${ip}`
+        message: `현재 Vercel Functions IP: ${ip}`
       })
     };
   } catch (error) {
@@ -36,3 +37,5 @@ exports.handler = async (event) => {
     };
   }
 };
+
+export default withNetlifyEvent(handler);

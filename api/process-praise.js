@@ -1,11 +1,12 @@
-// netlify/functions/process-praise.js
+import { withNetlifyEvent } from '../lib/withNetlifyEvent.js';
+// api/process-praise.js
 import OpenAI from 'openai';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
-export async function handler(event) {
+async function handler(event) {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
@@ -187,3 +188,4 @@ export async function handler(event) {
     };
   }
 }
+export default withNetlifyEvent(handler);

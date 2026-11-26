@@ -79,7 +79,7 @@ const praiseService = {
           const spaceDoc = await getDoc(spaceDocRef);
           const spaceData = spaceDoc.exists() ? spaceDoc.data() : {};
 
-          const emailResponse = await fetch('/.netlify/functions/send-email', {
+          const emailResponse = await fetch('/api/send-email', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

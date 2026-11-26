@@ -74,8 +74,8 @@ const adminSettingsService = {
         return { success: false, message: '방 생성 알림이 비활성화되어 있습니다.' };
       }
 
-      // Netlify Function 호출
-      const response = await fetch('/.netlify/functions/send-email', {
+      // 서버리스 함수 호출
+      const response = await fetch('/api/send-email', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,5 +1,6 @@
+import { withNetlifyEvent } from '../lib/withNetlifyEvent.js';
 /**
- * NHN Cloud 카카오 알림톡 발송 Netlify Function
+ * NHN Cloud 카카오 알림톡 발송 Vercel Function
  *
  * 환경변수 필요:
  * - NHN_APPKEY
@@ -11,9 +12,9 @@
  * - NHN_TEMPLATE_SETTLEMENT_COMPLETE
  */
 
-const fetch = require('node-fetch');
+import fetch from 'node-fetch';
 
-exports.handler = async (event) => {
+const handler = async (event) => {
   // CORS 헤더
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -389,3 +390,4 @@ ${params.성명}님
 계좌: ${params.어카운트번호}
 도어번호: ${params.도어번호}11*`;
 }
+export default withNetlifyEvent(handler);

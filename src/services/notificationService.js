@@ -6,7 +6,7 @@
 
 import spaceSettingsService from './spaceSettingsService';
 
-const NETLIFY_FUNCTION_URL = '/.netlify/functions/send-notification';
+const NOTIFICATION_API_URL = '/api/send-notification';
 
 /**
  * 예약 확인 알림 발송 (타입별 분기)
@@ -116,8 +116,8 @@ export async function sendGuestConfirmation(reservationData) {
       doorNumber,
     });
 
-    // Netlify Function 호출
-    const response = await fetch(NETLIFY_FUNCTION_URL, {
+    // 서버리스 함수 호출
+    const response = await fetch(NOTIFICATION_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -310,8 +310,8 @@ export async function sendSettlementComplete(settlementData, options = {}) {
           console.log(`📱 [${participant.name}] 낼 돈 알림 발송 (${Math.abs(balance).toLocaleString()}원)`);
         }
 
-        // Netlify Function 호출
-        const response = await fetch(NETLIFY_FUNCTION_URL, {
+        // 서버리스 함수 호출
+        const response = await fetch(NOTIFICATION_API_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
